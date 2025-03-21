@@ -1,3 +1,4 @@
+using System.Runtime.InteropServices;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
 
@@ -19,41 +20,71 @@ public class Benchmarks
     }
 
     [Benchmark(Baseline = true)]
-    [BenchmarkCategory("Insert if not exists, new key")]
-    public void Traditional_OrInsert_NotExists()
+    [BenchmarkCategory("Get or add, new key")]
+    public int Traditional_OrInsert_NotExists()
     {
-        if (!_dictionary.TryGetValue(NewKey, out _))
+        if (!_dictionary.TryGetValue(NewKey, out var val))
         {
-            _dictionary[NewKey] = 1;
+            val = 1;
+            _dictionary[NewKey] = val;
         }
+
+        return val;
+    }
+
+    [BenchmarkCategory("Get or add, new key")]
+    public int Optimized_OrInsert_NotExists()
+    {
+        ref var val = ref CollectionsMarshal.GetValueRefOrAddDefault(_dictionary, NewKey, out var exists);
+        if (!exists)
+        {
+            val = 1;
+        }
+
+        return val;
     }
 
     [Benchmark]
-    [BenchmarkCategory("Insert if not exists, new key")]
-    public void EntryAPI_OrInsert_NotExists()
+    [BenchmarkCategory("Get or add, new key")]
+    public int EntryAPI_OrInsert_NotExists()
     {
-        _dictionary.Entry(NewKey).OrInsert(1);
+        return _dictionary.Entry(NewKey).OrInsert(1);
     }
 
     [Benchmark(Baseline = true)]
-    [BenchmarkCategory("Insert if not exists, exists")]
-    public void Traditional_OrInsert_Exists()
+    [BenchmarkCategory("Get or add, exists")]
+    public int Traditional_OrInsert_Exists()
     {
-        if (!_dictionary.TryGetValue(ExistingKey, out _))
+        if (!_dictionary.TryGetValue(ExistingKey, out var val))
         {
-            _dictionary[ExistingKey] = 1;
+            val = 1;
+            _dictionary[ExistingKey] = val;
         }
+
+        return val;
+    }
+
+    [BenchmarkCategory("Get or add, exists")]
+    public int Optimized_OrInsert_Exists()
+    {
+        ref var val = ref CollectionsMarshal.GetValueRefOrAddDefault(_dictionary, ExistingKey, out var exists);
+        if (!exists)
+        {
+            val = 1;
+        }
+
+        return val;
     }
 
     [Benchmark]
-    [BenchmarkCategory("Insert if not exists, exists")]
-    public void EntryAPI_OrInsert_Exists()
+    [BenchmarkCategory("Get or add, exists")]
+    public int EntryAPI_OrInsert_Exists()
     {
-        _dictionary.Entry(ExistingKey).OrInsert(1);
+        return _dictionary.Entry(ExistingKey).OrInsert(1);
     }
 
     [Benchmark(Baseline = true)]
-    [BenchmarkCategory("Update if exists, exists")]
+    [BenchmarkCategory("Increment value, exists")]
     public void Traditional_Update_Exists()
     {
         if (_dictionary.TryGetValue(ExistingKey, out var value))
@@ -67,14 +98,14 @@ public class Benchmarks
     }
 
     [Benchmark]
-    [BenchmarkCategory("Update if exists, exists")]
+    [BenchmarkCategory("Increment value, exists")]
     public void EntryAPI_Update_Exists()
     {
         _dictionary.Entry(ExistingKey).AndModify(x => x + 1).OrInsert(1);
     }
 
     [Benchmark(Baseline = true)]
-    [BenchmarkCategory("Update if exists, new key")]
+    [BenchmarkCategory("Increment value, new key")]
     public void Traditional_Update_NewKey()
     {
         if (_dictionary.TryGetValue(NewKey, out var value))
@@ -88,16 +119,10 @@ public class Benchmarks
     }
 
     [Benchmark]
-    [BenchmarkCategory("Update if exists, new key")]
+    [BenchmarkCategory("Increment value, new key")]
     public void EntryAPI_Update_NewKey()
     {
         _dictionary.Entry(NewKey).AndModify(x => x + 1).OrInsert(1);
-    }
-
-    private static int ComputeValue()
-    {
-        // Simulate some computation
-        return DateTime.Now.Year;
     }
 
     [Benchmark(Baseline = true)]
@@ -220,7 +245,7 @@ public class Benchmarks
     {
         if (!_dictionary.TryGetValue(ExistingKey, out var value))
         {
-            value = ComputeExpensiveValue(ExistingKey);
+            value = ComputeValue();
             _dictionary[ExistingKey] = value;
         }
 
@@ -233,7 +258,7 @@ public class Benchmarks
     {
         return _dictionary.Entry(ExistingKey).Match(
             occupied => occupied.Value(),
-            vacant => vacant.Insert(ComputeExpensiveValue(vacant.Key())));
+            vacant => vacant.Insert(ComputeValue()));
     }
 
     [Benchmark(Baseline = true)]
@@ -242,7 +267,7 @@ public class Benchmarks
     {
         if (!_dictionary.TryGetValue(NewKey, out var value))
         {
-            value = ComputeExpensiveValue(NewKey);
+            value = ComputeValue();
             _dictionary[NewKey] = value;
         }
 
@@ -255,13 +280,7 @@ public class Benchmarks
     {
         return _dictionary.Entry(NewKey).Match(
             occupied => occupied.Value(),
-            vacant => vacant.Insert(ComputeExpensiveValue(vacant.Key())));
-    }
-
-    private int ComputeExpensiveValue(string key)
-    {
-        // Simulate an expensive computation
-        return key.Length * 10;
+            vacant => vacant.Insert(ComputeValue()));
     }
 
     [Benchmark(Baseline = true)]
@@ -332,5 +351,11 @@ public class Benchmarks
                 occupied.Insert(value);
             },
             vacant => vacant.Insert(5));
+    }
+
+    private static int ComputeValue()
+    {
+        // Simulate some computation
+        return DateTime.Now.Year;
     }
 }
