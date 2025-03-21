@@ -22,19 +22,12 @@ public ref struct Entry<TKey, TValue> where TKey : notnull
     public bool IsOccupied() => _exists;
     public bool IsVacant() => !_exists;
 
-    public Entry<TKey, TValue> AndModify(Action<TValue> action)
-    {
-        if (!_exists) return this;
-
-        var value = _valueRef;
-        action(_valueRef);
-        _dictionary[_key] = value;
-        return this;
-    }
-
     public Entry<TKey, TValue> AndModify(Func<TValue, TValue> updateFunc)
     {
-        if (!_exists) return this;
+        if (!_exists)
+        {
+            return this;
+        }
 
         _dictionary[_key] = updateFunc(_valueRef);
         return this;
@@ -42,7 +35,10 @@ public ref struct Entry<TKey, TValue> where TKey : notnull
 
     public ref TValue OrInsert(TValue defaultValue)
     {
-        if (_exists) return ref _valueRef;
+        if (_exists)
+        {
+            return ref _valueRef;
+        }
 
         _dictionary.Add(_key, defaultValue);
         _valueRef = ref CollectionsMarshal.GetValueRefOrNullRef(_dictionary, _key);
@@ -52,7 +48,10 @@ public ref struct Entry<TKey, TValue> where TKey : notnull
 
     public ref TValue OrInsertWith(Func<TValue> valueFactory)
     {
-        if (_exists) return ref _valueRef;
+        if (_exists)
+        {
+            return ref _valueRef;
+        }
 
         var value = valueFactory();
         _dictionary.Add(_key, value);
@@ -63,7 +62,10 @@ public ref struct Entry<TKey, TValue> where TKey : notnull
 
     public ref TValue OrInsertWithKey(Func<TKey, TValue> valueFactory)
     {
-        if (_exists) return ref _valueRef;
+        if (_exists)
+        {
+            return ref _valueRef;
+        }
 
         var value = valueFactory(_key);
         _dictionary.Add(_key, value);
@@ -74,7 +76,10 @@ public ref struct Entry<TKey, TValue> where TKey : notnull
 
     public ref TValue OrDefault()
     {
-        if (_exists) return ref _valueRef;
+        if (_exists)
+        {
+            return ref _valueRef;
+        }
 
         _dictionary.Add(_key, default!);
         _valueRef = ref CollectionsMarshal.GetValueRefOrNullRef(_dictionary, _key);
@@ -82,32 +87,23 @@ public ref struct Entry<TKey, TValue> where TKey : notnull
         return ref _valueRef;
     }
 
-    // TODO: Insert
-
-    public TValue Remove()
+    public OccupiedEntry<TKey, TValue> InsertEntry(TValue value)
     {
-        if (!_exists) ThrowKeyNotFound();
-
-        var value = _valueRef;
-        _dictionary.Remove(_key);
-        return value;
-    }
-
-    public bool TryRemove(out TValue value)
-    {
-        if (!_exists)
+        if (_exists)
         {
-            value = default!;
-            return false;
+            _dictionary[_key] = value;
+            return new OccupiedEntry<TKey, TValue>(_dictionary, _key, value);
         }
 
-        value = _valueRef;
-        return _dictionary.Remove(_key);
+        _dictionary.Add(_key, value);
+        _valueRef = ref CollectionsMarshal.GetValueRefOrNullRef(_dictionary, _key);
+        _exists = true;
+        return new OccupiedEntry<TKey, TValue>(_dictionary, _key, _valueRef);
     }
 
     public OccupiedEntry<TKey, TValue> ToOccupied()
     {
-        if (!_exists) ThrowKeyNotFound();
+        if (!_exists) throw new Exception("The entry is vacant.");
         return new OccupiedEntry<TKey, TValue>(_dictionary, _key, _valueRef);
     }
 
@@ -133,9 +129,12 @@ public ref struct Entry<TKey, TValue> where TKey : notnull
     public TResult Match<TResult>(Func<OccupiedEntry<TKey, TValue>, TResult> occupiedFunc,
         Func<VacantEntry<TKey, TValue>, TResult> vacantFunc)
     {
-        return _exists
-            ? occupiedFunc(new OccupiedEntry<TKey, TValue>(_dictionary, _key, _valueRef))
-            : vacantFunc(new VacantEntry<TKey, TValue>(_dictionary, _key));
+        if (_exists)
+        {
+            return occupiedFunc(new OccupiedEntry<TKey, TValue>(_dictionary, _key, _valueRef));
+        }
+
+        return vacantFunc(new VacantEntry<TKey, TValue>(_dictionary, _key));
     }
 
     public bool TryGetOccupied(out OccupiedEntry<TKey, TValue> occupied)
@@ -161,6 +160,4 @@ public ref struct Entry<TKey, TValue> where TKey : notnull
         vacant = default;
         return false;
     }
-
-    private static void ThrowKeyNotFound() => throw new KeyNotFoundException("The key does not exist in the dictionary.");
 }

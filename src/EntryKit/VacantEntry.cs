@@ -19,7 +19,7 @@ public readonly struct VacantEntry<TKey, TValue> where TKey : notnull
         return value;
     }
 
-    public OccupiedEntry<TKey, TValue> ToOccupiedEntry(TValue value)
+    public OccupiedEntry<TKey, TValue> InsertEntry(TValue value)
     {
         _dictionary[_key] = value;
         return new OccupiedEntry<TKey, TValue>(_dictionary, _key, value);
