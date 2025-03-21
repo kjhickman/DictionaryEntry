@@ -1,4 +1,4 @@
-namespace EntryKit;
+namespace DictionaryEntry;
 
 public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
 {

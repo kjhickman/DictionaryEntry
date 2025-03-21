@@ -4,7 +4,7 @@
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <OutputType>Exe</OutputType>
-        <RootNamespace>EntryKit.Tests</RootNamespace>
+        <RootNamespace>DictionaryEntry.Tests</RootNamespace>
         <TargetFramework>net9.0</TargetFramework>
         <TestingPlatformDotnetTestSupport>true</TestingPlatformDotnetTestSupport>
         <UseMicrosoftTestingPlatformRunner>true</UseMicrosoftTestingPlatformRunner>
@@ -25,7 +25,7 @@
     </ItemGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\EntryKit\EntryKit.csproj" />
+      <ProjectReference Include="..\DictionaryEntry\DictionaryEntry.csproj" />
     </ItemGroup>
 
 </Project>

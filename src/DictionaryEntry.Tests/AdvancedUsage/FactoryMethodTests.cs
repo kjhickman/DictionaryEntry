@@ -1,4 +1,4 @@
-namespace EntryKit.Tests.AdvancedUsage;
+namespace DictionaryEntry.Tests.AdvancedUsage;
 
 public class FactoryMethodTests
 {

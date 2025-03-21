@@ -1,13 +1,13 @@
-﻿
+
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.0.31903.59
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EntryKit", "src\EntryKit\EntryKit.csproj", "{6D68E402-5369-4881-B0B3-6C4C8C90C601}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DictionaryEntry", "src\DictionaryEntry\DictionaryEntry.csproj", "{6D68E402-5369-4881-B0B3-6C4C8C90C601}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EntryKit.Benchmarks", "src\EntryKit.Benchmarks\EntryKit.Benchmarks.csproj", "{90CC74A9-2AE1-4DE6-8756-126CE0159DD0}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DictionaryEntry.Benchmarks", "src\DictionaryEntry.Benchmarks\DictionaryEntry.Benchmarks.csproj", "{90CC74A9-2AE1-4DE6-8756-126CE0159DD0}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "EntryKit.Tests", "src\EntryKit.Tests\EntryKit.Tests.csproj", "{AF00BCB7-06E3-41BA-8312-00742EE9F5E6}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "DictionaryEntry.Tests", "src\DictionaryEntry.Tests\DictionaryEntry.Tests.csproj", "{AF00BCB7-06E3-41BA-8312-00742EE9F5E6}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

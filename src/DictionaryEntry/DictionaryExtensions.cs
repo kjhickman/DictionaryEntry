@@ -1,4 +1,4 @@
-﻿namespace EntryKit;
+namespace DictionaryEntry;
 
 public static class DictionaryExtensions
 {

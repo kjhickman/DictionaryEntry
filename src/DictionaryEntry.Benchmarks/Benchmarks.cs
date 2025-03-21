@@ -2,7 +2,7 @@ using System.Runtime.InteropServices;
 using BenchmarkDotNet.Attributes;
 using BenchmarkDotNet.Configs;
 
-namespace EntryKit.Benchmarks;
+namespace DictionaryEntry.Benchmarks;
 
 [MemoryDiagnoser]
 [ShortRunJob]

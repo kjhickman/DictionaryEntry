@@ -1,4 +1,4 @@
-namespace EntryKit.Tests.BasicUsage;
+namespace DictionaryEntry.Tests.BasicUsage;
 
 public class OccupiedEntryTests
 {

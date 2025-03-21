@@ -1,7 +1,7 @@
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
-namespace EntryKit;
+namespace DictionaryEntry;
 
 public ref struct Entry<TKey, TValue> where TKey : notnull
 {
