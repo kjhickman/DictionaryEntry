@@ -14,27 +14,20 @@ public ref struct Entry<TKey, TValue> where TKey : notnull
     {
         _dictionary = dictionary;
         _key = key;
-
-        // Check if the key exists and get a reference to the value
         _valueRef = ref CollectionsMarshal.GetValueRefOrNullRef(dictionary, key);
         _exists = !Unsafe.IsNullRef(ref _valueRef);
     }
 
-    // Check if the key exists
-    public bool Exists => _exists;
+    public TKey Key() => _key;
+    public bool IsOccupied() => _exists;
+    public bool IsVacant() => !_exists;
 
-    // Get the key
-    public TKey Key => _key;
-
-    // Apply an action to the value if the key exists
     public Entry<TKey, TValue> AndModify(Action<TValue> action)
     {
         if (!_exists) return this;
 
-        // Create a local variable that gets updated by the action
         var value = _valueRef;
-        action(value);
-        // Assign the modified value back to the dictionary
+        action(_valueRef);
         _dictionary[_key] = value;
         return this;
     }
@@ -43,64 +36,54 @@ public ref struct Entry<TKey, TValue> where TKey : notnull
     {
         if (!_exists) return this;
 
-        // Calculate new value based on current value
-        var newValue = updateFunc(_valueRef);
-
-        // Store new value directly
-        _dictionary[_key] = newValue;
+        _dictionary[_key] = updateFunc(_valueRef);
         return this;
     }
 
-    // Get or insert a value
     public ref TValue OrInsert(TValue defaultValue)
     {
-        if (!_exists)
-        {
-            _dictionary.Add(_key, defaultValue);
-            _valueRef = ref CollectionsMarshal.GetValueRefOrNullRef(_dictionary, _key);
-            _exists = true;
-        }
+        if (_exists) return ref _valueRef;
 
+        _dictionary.Add(_key, defaultValue);
+        _valueRef = ref CollectionsMarshal.GetValueRefOrNullRef(_dictionary, _key);
+        _exists = true;
         return ref _valueRef;
     }
 
-    // Get or insert a value using a factory
     public ref TValue OrInsertWith(Func<TValue> valueFactory)
     {
-        if (!_exists)
-        {
-            var value = valueFactory();
-            _dictionary.Add(_key, value);
-            _valueRef = ref CollectionsMarshal.GetValueRefOrNullRef(_dictionary, _key);
-            _exists = true;
-        }
+        if (_exists) return ref _valueRef;
 
+        var value = valueFactory();
+        _dictionary.Add(_key, value);
+        _valueRef = ref CollectionsMarshal.GetValueRefOrNullRef(_dictionary, _key);
+        _exists = true;
         return ref _valueRef;
     }
 
-    // Get or insert a value using the key and a factory
     public ref TValue OrInsertWithKey(Func<TKey, TValue> valueFactory)
     {
-        if (!_exists)
-        {
-            var value = valueFactory(_key);
-            _dictionary.Add(_key, value);
-            _valueRef = ref CollectionsMarshal.GetValueRefOrNullRef(_dictionary, _key);
-            _exists = true;
-        }
+        if (_exists) return ref _valueRef;
 
+        var value = valueFactory(_key);
+        _dictionary.Add(_key, value);
+        _valueRef = ref CollectionsMarshal.GetValueRefOrNullRef(_dictionary, _key);
+        _exists = true;
         return ref _valueRef;
     }
 
-    // Get the value or throw if the key doesn't exist
-    public ref TValue ValueOrThrow()
+    public ref TValue OrDefault()
     {
-        if (!_exists) ThrowKeyNotFound();
+        if (_exists) return ref _valueRef;
 
+        _dictionary.Add(_key, default!);
+        _valueRef = ref CollectionsMarshal.GetValueRefOrNullRef(_dictionary, _key);
+        _exists = true;
         return ref _valueRef;
     }
 
-    // Remove the entry and return the value
+    // TODO: Insert
+
     public TValue Remove()
     {
         if (!_exists) ThrowKeyNotFound();
@@ -110,7 +93,6 @@ public ref struct Entry<TKey, TValue> where TKey : notnull
         return value;
     }
 
-    // Try to remove the entry
     public bool TryRemove(out TValue value)
     {
         if (!_exists)
@@ -121,6 +103,63 @@ public ref struct Entry<TKey, TValue> where TKey : notnull
 
         value = _valueRef;
         return _dictionary.Remove(_key);
+    }
+
+    public OccupiedEntry<TKey, TValue> ToOccupied()
+    {
+        if (!_exists) ThrowKeyNotFound();
+        return new OccupiedEntry<TKey, TValue>(_dictionary, _key, _valueRef);
+    }
+
+    public VacantEntry<TKey, TValue> ToVacant()
+    {
+        if (_exists) throw new Exception("The entry is occupied.");
+        return new VacantEntry<TKey, TValue>(_dictionary, _key);
+    }
+
+    public void Match(Action<OccupiedEntry<TKey, TValue>> occupiedAction,
+        Action<VacantEntry<TKey, TValue>> vacantAction)
+    {
+        if (_exists)
+        {
+            occupiedAction(new OccupiedEntry<TKey, TValue>(_dictionary, _key, _valueRef));
+        }
+        else
+        {
+            vacantAction(new VacantEntry<TKey, TValue>(_dictionary, _key));
+        }
+    }
+
+    public TResult Match<TResult>(Func<OccupiedEntry<TKey, TValue>, TResult> occupiedFunc,
+        Func<VacantEntry<TKey, TValue>, TResult> vacantFunc)
+    {
+        return _exists
+            ? occupiedFunc(new OccupiedEntry<TKey, TValue>(_dictionary, _key, _valueRef))
+            : vacantFunc(new VacantEntry<TKey, TValue>(_dictionary, _key));
+    }
+
+    public bool TryGetOccupied(out OccupiedEntry<TKey, TValue> occupied)
+    {
+        if (_exists)
+        {
+            occupied = new OccupiedEntry<TKey, TValue>(_dictionary, _key, _valueRef);
+            return true;
+        }
+
+        occupied = default;
+        return false;
+    }
+
+    public bool TryGetVacant(out VacantEntry<TKey, TValue> vacant)
+    {
+        if (!_exists)
+        {
+            vacant = new VacantEntry<TKey, TValue>(_dictionary, _key);
+            return true;
+        }
+
+        vacant = default;
+        return false;
     }
 
     private static void ThrowKeyNotFound() => throw new KeyNotFoundException("The key does not exist in the dictionary.");

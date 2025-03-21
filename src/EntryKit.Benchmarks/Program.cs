@@ -1,4 +1,4 @@
 ﻿using BenchmarkDotNet.Running;
 using EntryKit.Benchmarks;
 
-BenchmarkRunner.Run<DictionaryBenchmarks>();
+BenchmarkRunner.Run<Benchmarks>();
