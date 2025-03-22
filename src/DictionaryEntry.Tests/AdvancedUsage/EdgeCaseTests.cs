@@ -10,7 +10,7 @@ public class EdgeCaseTests
         var dict = new Dictionary<string, int>();
 
         // Act & Assert
-        Assert.Throws<Exception>(() => dict.Entry("key").ToOccupied());
+        Assert.Throws<KeyNotFoundException>(() => dict.Entry("key").ToOccupied());
     }
 
     [Fact]
@@ -20,7 +20,7 @@ public class EdgeCaseTests
         var dict = new Dictionary<string, int> { ["key"] = 42 };
 
         // Act & Assert
-        Assert.Throws<Exception>(() => dict.Entry("key").ToVacant());
+        Assert.Throws<InvalidOperationException>(() => dict.Entry("key").ToVacant());
     }
 
     [Fact]
