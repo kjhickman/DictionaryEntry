@@ -1,0 +1,16 @@
+﻿{
+  "profiles": {
+    "Benchmarks": {
+      "commandName": "Project",
+      "commandLineArgs": "--join"
+    },
+    "Benchmarks-Long": {
+      "commandName": "Project",
+      "commandLineArgs": "--filter * --job long --join"
+    },
+    "Benchmarks-Short": {
+      "commandName": "Project",
+      "commandLineArgs": "--filter * --job short --join"
+    }
+  }
+}

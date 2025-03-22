@@ -1,4 +1,5 @@
+using System.Reflection;
 using BenchmarkDotNet.Running;
-using DictionaryEntry.Benchmarks;
 
-BenchmarkRunner.Run<Benchmarks>();
+// BenchmarkRunner.Run<GetOrAddBenchmarks>();
+BenchmarkSwitcher.FromAssembly(Assembly.Load("DictionaryEntry.Benchmarks")).Run(args);
