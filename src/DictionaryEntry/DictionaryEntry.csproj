@@ -1,10 +1,29 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFramework>net8.0</TargetFramework>
+        <TargetFrameworks>net7.0;net8.0;net9.0</TargetFrameworks>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <IsAotCompatible>true</IsAotCompatible>
+        <LangVersion>latest</LangVersion>
+
+        <PackageId>DictionaryEntry</PackageId>
+        <Version>0.1.0</Version>
+        <PackageVersion>0.1.0</PackageVersion>
+        <Authors>Kyle Hickman</Authors>
+        <Description>Brings Rust's HashMap "entry" API pattern to C# dictionaries, enabling more elegant dictionary manipulations with fluent syntax.</Description>
+        <PackageTags>dictionary;collections;entry;fluent</PackageTags>
+        <Copyright>Copyright © Kyle Hickman</Copyright>
+        <PackageLicenseExpression>MIT</PackageLicenseExpression>
+        <PackageProjectUrl>https://github.com/kjhickman/DictionaryEntry</PackageProjectUrl>
+        <RepositoryUrl>https://github.com/kjhickman/DictionaryEntry.git</RepositoryUrl>
+        <RepositoryType>git</RepositoryType>
+        <PackageReadmeFile>README.md</PackageReadmeFile>
+        <OutputType>Library</OutputType>
+        <SymbolPackageFormat>snupkg</SymbolPackageFormat>
+        <IncludeSymbols>true</IncludeSymbols>
+        <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
+        <PublishRepositoryUrl>true</PublishRepositoryUrl>
     </PropertyGroup>
 
 </Project>
