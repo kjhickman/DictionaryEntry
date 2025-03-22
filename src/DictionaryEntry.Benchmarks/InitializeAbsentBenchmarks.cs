@@ -33,7 +33,7 @@ public class InitializeAbsentBenchmarks
         return false;
     }
 
-    [Benchmark]
+    [Benchmark(Baseline = true)]
     public bool InitializeAbsent_Traditional_Exists() => InitializeAbsentTraditional(ExistingKey);
 
     [Benchmark]

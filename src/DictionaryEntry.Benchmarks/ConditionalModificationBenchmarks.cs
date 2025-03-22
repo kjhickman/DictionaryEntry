@@ -56,7 +56,7 @@ public class ConditionalModificationBenchmarks
         );
     }
 
-    [Benchmark]
+    [Benchmark(Baseline = true)]
     public void ConditionalModify_Traditional_Exists() => ConditionalModifyTraditional(ExistingKey);
 
     [Benchmark]

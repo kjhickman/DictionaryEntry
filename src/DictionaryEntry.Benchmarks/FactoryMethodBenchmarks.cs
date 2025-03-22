@@ -57,7 +57,7 @@ public class FactoryMethodBenchmarks
         return _dictionary.Entry(key).OrInsertWithKey(ComputeFromKey);
     }
 
-    [Benchmark]
+    [Benchmark(Baseline = true)]
     public int FactoryMethod_Traditional_Exists() => FactoryMethodTraditional(ExistingKey);
 
     [Benchmark]

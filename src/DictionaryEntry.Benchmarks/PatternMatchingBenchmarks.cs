@@ -71,7 +71,7 @@ public class PatternMatchingBenchmarks
         );
     }
 
-    [Benchmark]
+    [Benchmark(Baseline = true)]
     public string PatternMatching_Traditional_Exists() => PatternMatchingTraditional(ExistingKey);
 
     [Benchmark]

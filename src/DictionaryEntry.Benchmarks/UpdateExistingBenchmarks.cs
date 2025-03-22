@@ -31,7 +31,7 @@ public class UpdateExistingBenchmarks
         _dictionary.Entry(key).AndModify(x => x * 2);
     }
 
-    [Benchmark]
+    [Benchmark(Baseline = true)]
     public void Update_Traditional_Exists() => UpdateTraditional(ExistingKey);
 
     [Benchmark]

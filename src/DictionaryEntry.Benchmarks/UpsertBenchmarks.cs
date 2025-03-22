@@ -27,7 +27,7 @@ public class UpsertBenchmarks
         _dictionary.Entry(key).InsertEntry(15);
     }
 
-    [Benchmark]
+    [Benchmark(Baseline = true)]
     public void Upsert_Traditional_Exists() => UpsertTraditional(ExistingKey);
 
     [Benchmark]

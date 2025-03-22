@@ -51,7 +51,7 @@ public class IncrementCounterBenchmarks
         _dictionary.Entry(key).AndModify(count => count + amount).OrInsert(amount);
     }
 
-    [Benchmark]
+    [Benchmark(Baseline = true)]
     public void IncrementCounter_Traditional_Exists() => IncrementCounterTraditional(ExistingKey);
 
     [Benchmark]

@@ -11,8 +11,8 @@
         <Version>0.1.0</Version>
         <PackageVersion>0.1.0</PackageVersion>
         <Authors>Kyle Hickman</Authors>
-        <Description>Brings Rust's HashMap "entry" API pattern to C# dictionaries, enabling more elegant dictionary manipulations with fluent syntax.</Description>
-        <PackageTags>dictionary;collections;entry;fluent</PackageTags>
+        <Description>Dictionary manipulation with a fluent, expressive syntax.</Description>
+        <PackageTags>dictionary;collections;entry;fluent;extension</PackageTags>
         <Copyright>Copyright © Kyle Hickman</Copyright>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageProjectUrl>https://github.com/kjhickman/DictionaryEntry</PackageProjectUrl>
@@ -25,5 +25,9 @@
         <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
         <PublishRepositoryUrl>true</PublishRepositoryUrl>
     </PropertyGroup>
+
+    <ItemGroup>
+        <None Include="../../README.md" Pack="true" PackagePath="\" />
+    </ItemGroup>
 
 </Project>

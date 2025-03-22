@@ -61,7 +61,7 @@ public class ConditionalGetOrCompute
         return _dictionary.Entry(key).OrInsertWith(() => ComputeValueFromString(key));
     }
 
-    [Benchmark]
+    [Benchmark(Baseline = true)]
     public int GetOrCompute_Traditional_Exists() => GetOrComputeTraditional(ExistingKey);
 
     [Benchmark]

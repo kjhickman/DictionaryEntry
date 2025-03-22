@@ -37,7 +37,7 @@ public class GetAndRemoveBenchmarks
         return null;
     }
 
-    [Benchmark]
+    [Benchmark(Baseline = true)]
     public int? GetAndRemove_Traditional_Exists() => GetAndRemoveTraditional(ExistingKey);
 
     [Benchmark]

@@ -41,7 +41,7 @@ public class GetOrAddBenchmarks
         return _dictionary.Entry(key).OrInsert(1);
     }
 
-    [Benchmark]
+    [Benchmark(Baseline = true)]
     public int GetOrAdd_Traditional_Exists() => GetOrAddTraditional(ExistingKey);
 
     [Benchmark]

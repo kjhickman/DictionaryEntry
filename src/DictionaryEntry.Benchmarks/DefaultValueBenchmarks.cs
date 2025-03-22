@@ -51,7 +51,7 @@ public class DefaultValueBenchmarks
         return _stringDictionary.Entry(key).OrDefault();
     }
 
-    [Benchmark]
+    [Benchmark(Baseline = true)]
     public int DefaultValue_Traditional_Exists() => DefaultValueTraditional(ExistingKey);
 
     [Benchmark]

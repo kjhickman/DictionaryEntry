@@ -35,7 +35,7 @@ public class UpdateOrInsertBenchmarks
         _dictionary.Entry(key).AndModify(x => x * 2).OrInsert(1);
     }
 
-    [Benchmark]
+    [Benchmark(Baseline = true)]
     public void InsertOrUpdate_Traditional_Exists() => InsertOrUpdateTraditional(ExistingKey);
 
     [Benchmark]
