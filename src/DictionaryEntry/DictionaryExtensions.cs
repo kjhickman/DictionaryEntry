@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 namespace DictionaryEntry;
 
 /// <summary>
@@ -13,6 +15,7 @@ public static class DictionaryExtensions
     /// <param name="dictionary">The dictionary to operate on.</param>
     /// <param name="key">The key to look up in the dictionary.</param>
     /// <returns>An <see cref="Entry{TKey, TValue}"/> that can be used to manipulate the dictionary.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Entry<TKey, TValue> Entry<TKey, TValue>(this Dictionary<TKey, TValue> dictionary, TKey key)
         where TKey : notnull
     {

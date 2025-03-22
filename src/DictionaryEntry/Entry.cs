@@ -31,18 +31,21 @@ public ref struct Entry<TKey, TValue> where TKey : notnull
     /// Gets the key associated with this entry.
     /// </summary>
     /// <returns>The key associated with this entry.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public TKey Key() => _key;
 
     /// <summary>
     /// Determines whether the entry exists in the dictionary.
     /// </summary>
     /// <returns><c>true</c> if the entry exists in the dictionary; otherwise, <c>false</c>.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool IsOccupied() => _exists;
 
     /// <summary>
     /// Determines whether the entry does not exist in the dictionary.
     /// </summary>
     /// <returns><c>true</c> if the entry does not exist in the dictionary; otherwise, <c>false</c>.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool IsVacant() => !_exists;
 
     /// <summary>

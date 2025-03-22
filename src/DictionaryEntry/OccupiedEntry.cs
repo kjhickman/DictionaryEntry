@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 namespace DictionaryEntry;
 
 /// <summary>
@@ -23,12 +25,14 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
     /// Gets the key associated with this entry.
     /// </summary>
     /// <returns>The key associated with this entry.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public TKey Key() => _key;
 
     /// <summary>
     /// Gets the value associated with this entry.
     /// </summary>
     /// <returns>The value associated with this entry.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public TValue Value() => _value;
 
     /// <summary>
@@ -36,6 +40,7 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
     /// </summary>
     /// <param name="newValue">The new value to set.</param>
     /// <returns>The newly set value.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public TValue Insert(TValue newValue)
     {
         _dictionary[_key] = newValue;
@@ -46,6 +51,7 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
     /// Removes this entry from the dictionary and returns the value that was removed.
     /// </summary>
     /// <returns>The value that was removed from the dictionary.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public TValue Remove()
     {
         _dictionary.Remove(_key);
@@ -56,6 +62,7 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
     /// Removes this entry from the dictionary and returns both the key and the value.
     /// </summary>
     /// <returns>A tuple containing the key and value that were removed from the dictionary.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public (TKey, TValue) RemoveEntry()
     {
         _dictionary.Remove(_key, out var value);

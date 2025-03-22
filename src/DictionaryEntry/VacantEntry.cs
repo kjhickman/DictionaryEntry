@@ -1,3 +1,5 @@
+using System.Runtime.CompilerServices;
+
 namespace DictionaryEntry;
 
 /// <summary>
@@ -21,6 +23,7 @@ public readonly struct VacantEntry<TKey, TValue> where TKey : notnull
     /// Gets the key associated with this entry.
     /// </summary>
     /// <returns>The key associated with this entry.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public TKey Key() => _key;
 
     /// <summary>
@@ -28,6 +31,7 @@ public readonly struct VacantEntry<TKey, TValue> where TKey : notnull
     /// </summary>
     /// <param name="value">The value to insert.</param>
     /// <returns>The inserted value.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public TValue Insert(TValue value)
     {
         _dictionary[_key] = value;
@@ -39,6 +43,7 @@ public readonly struct VacantEntry<TKey, TValue> where TKey : notnull
     /// </summary>
     /// <param name="value">The value to insert.</param>
     /// <returns>An <see cref="OccupiedEntry{TKey, TValue}"/> representing the newly inserted entry.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public OccupiedEntry<TKey, TValue> InsertEntry(TValue value)
     {
         _dictionary[_key] = value;
