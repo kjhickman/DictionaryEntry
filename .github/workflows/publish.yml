@@ -17,16 +17,17 @@ jobs:
         dotnet-version: '9.0.x'
         
     - name: Restore dependencies
-      run: dotnet restore
+      run: dotnet restore src/DictionaryEntry/DictionaryEntry.csproj
       
     - name: Build
-      run: dotnet build --configuration Release --no-restore
+      run: dotnet build src/DictionaryEntry/DictionaryEntry.csproj --configuration Release --no-restore
       
     - name: Test
       run: dotnet test --configuration Release --no-build --verbosity normal
       
     - name: Pack
-      run: dotnet pack --configuration Release --no-build --output ./nupkgs
+      run: dotnet pack src/DictionaryEntry/DictionaryEntry.csproj --configuration Release --no-build --output ./nupkgs
       
     - name: Push to NuGet.org
       run: dotnet nuget push ./nupkgs/*.nupkg --api-key ${{ secrets.NUGET_API_KEY }} --source https://api.nuget.org/v3/index.json --skip-duplicate
+      
