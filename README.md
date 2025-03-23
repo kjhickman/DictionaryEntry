@@ -4,13 +4,7 @@ Dictionary manipulation with a fluent, expressive syntax. Inspired by Rust's "En
 
 ## Overview
 
-DictionaryEntry is a lightweight library that brings an entry API pattern to C# dictionaries, allowing for more ergonomic dictionary operations. It provides extension methods that enable you to work with dictionary entries directly, eliminating repetitive key lookups and simplifying some common operations.
-
-## Installation
-
-```
-dotnet add package DictionaryEntry
-```
+DictionaryEntry is a lightweight library that brings an entry API pattern to C# dictionaries, allowing for more ergonomic dictionary operations. Instead of repeatedly looking up keys and checking if they exist, you get a unified entry object that represents either an existing entry (occupied) or a non-existing entry (vacant).
 
 ## Features
 
@@ -19,16 +13,22 @@ dotnet add package DictionaryEntry
 - Efficient reference access to dictionary values
 - Pattern matching for occupied/vacant entries
 - Clean, expressive syntax for common operations
-- Performance nearly matching traditional Dictionary operations (see [benchmarks](#benchmarks))
+- Performance nearly matching traditional Dictionary operations in most cases (see [benchmarks](#benchmarks))
 
-### Entry API Structure
+## Installation
+
+```
+dotnet add package DictionaryEntry
+```
+
+## Examples
 
 The library provides three main types:
 - `Entry<TKey, TValue>`: The initial entry point that can be either occupied or vacant
 - `OccupiedEntry<TKey, TValue>`: Represents an entry for an existing key
 - `VacantEntry<TKey, TValue>`: Represents an entry for a non-existing key
 
-## Examples
+The core functionality revolves around the `.Entry(key)` extension method that lets you work with dictionary entries in a more fluent way.
 
 ### Insert-or-Update (Upsert)
 
@@ -169,16 +169,6 @@ Increment counter
 | IncrementByAmount_Entry_NotExists        | 17.074 ns | 0.2999 ns | 0.2805 ns | 16.958 ns | 0.0017 |      88 B |
 ```
 
-Here's one "gotcha"; some operations that use lambdas might have small allocations due to closure capturing. For instance this method allocates because of the `amount` variable capture. If it was just `count => count + 1`, there would be no allocation.
-
-```csharp
-private void IncrementByAmountEntry(string key, int amount)
-{
-    _dictionary.Entry(key).AndModify(count => count + amount).OrInsert(amount);
-}
-```
-
-
 To run the benchmarks yourself:
 
 ```bash
@@ -187,6 +177,58 @@ dotnet run -c Release
 ```
 
 For detailed benchmark results and analysis, see the [Benchmark Results](./benchmarks/results-0.1.0.md) document.
+
+### Performance Considerations with Lambdas
+
+When using methods that accept lambda expressions like `AndModify` or `OrInsertWith`, be aware that capturing local variables in these lambdas can cause heap allocations. This is important to understand in performance-critical scenarios:
+
+```csharp
+// This method allocates a closure on the heap because it captures the 'amount' parameter
+private void IncrementByAmountEntry(string key, int amount)
+{
+    _dictionary.Entry(key).AndModify(count => count + amount).OrInsert(amount);
+}
+
+// This method doesn't allocate because it uses a simple non-capturing lambda
+private void IncrementByOneEntry(string key)
+{
+    _dictionary.Entry(key).AndModify(count => count + 1).OrInsert(1);
+}
+```
+
+## Potential Features and Plans
+
+### Potential Features
+- Support for `ConcurrentDictionary<TKey, TValue>` and other dictionary-like collections
+- Specialized overloads to optimize common scenarios such as incrementing a value
+
+### Future plans
+In the future when C# introduces [typed union structs](https://github.com/dotnet/csharplang/blob/main/proposals/TypeUnions.md#specialized---union-structs) I may create a new version to take full advantage of that.
+
+In rust, I like the `if let` syntax where you can do this:
+```rust
+if let Entry::Occupied(entry) = map.entry(key) {
+    println!("Found: {} -> {}", key, entry.get());
+}
+```
+
+and I'd like to be able to do similar in C# like this:
+```csharp
+if (dict.Entry(key) is OccupiedEntry occupied)
+{
+    Console.WriteLine($"Found: {occupied.Key()} -> {occupied.Value()}");
+}
+```
+
+But as far as I know, it's not currently possible without using a class + inheritance, which would result in too many allocations for this use-case.
+
+For now, `TryGetOccupied` gets pretty close:
+```csharp
+if (dict.Entry(key).TryGetOccupied(out var occupied))
+{
+    Console.WriteLine($"Found: {occupied.Key()} -> {occupied.Value()}");
+}
+```
 
 ## License
 
