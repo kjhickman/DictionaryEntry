@@ -142,6 +142,36 @@ public ref struct Entry<TKey, TValue> where TKey : notnull
     }
 
     /// <summary>
+    /// Gets the value in the dictionary if it exists, or computes and inserts a new value asynchronously if it doesn't.
+    /// </summary>
+    /// <param name="valueFactory">An asynchronous function that computes the value to insert if the entry does not exist.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result contains the value in the dictionary.</returns>
+    public Task<TValue> OrInsertWithAsync(Func<Task<TValue>> valueFactory)
+    {
+        if (_exists)
+        {
+            return Task.FromResult(_valueRef);
+        }
+
+        return DictionaryExtensions.OrInsertWithAsyncCore(_dictionary, _key, valueFactory);
+    }
+
+    /// <summary>
+    /// Gets the value in the dictionary if it exists, or computes and inserts a new value asynchronously based on the key if it doesn't.
+    /// </summary>
+    /// <param name="valueFactory">An asynchronous function that takes the key and computes the value to insert if the entry does not exist.</param>
+    /// <returns>A task that represents the asynchronous operation. The task result contains the value in the dictionary.</returns>
+    public Task<TValue> OrInsertWithKeyAsync(Func<TKey, Task<TValue>> valueFactory)
+    {
+        if (_exists)
+        {
+            return Task.FromResult(_valueRef);
+        }
+
+        return DictionaryExtensions.OrInsertWithKeyAsyncCore(_dictionary, _key, valueFactory);
+    }
+
+    /// <summary>
     /// Creates an occupied entry with the specified value. If the entry already exists, the value is updated.
     /// </summary>
     /// <param name="value">The value to insert or update.</param>

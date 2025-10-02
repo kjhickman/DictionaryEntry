@@ -31,4 +31,20 @@ public static class DictionaryExtensions
     {
         return new Entry<TKey, TValue>(dictionary, key);
     }
+
+    internal static async Task<TValue> OrInsertWithAsyncCore<TKey, TValue>(Dictionary<TKey, TValue> dictionary, TKey key, Func<Task<TValue>> valueFactory)
+        where TKey : notnull
+    {
+        var value = await valueFactory().ConfigureAwait(false);
+        dictionary.Add(key, value);
+        return value;
+    }
+
+    internal static async Task<TValue> OrInsertWithKeyAsyncCore<TKey, TValue>(Dictionary<TKey, TValue> dictionary, TKey key, Func<TKey, Task<TValue>> valueFactory)
+        where TKey : notnull
+    {
+        var value = await valueFactory(key).ConfigureAwait(false);
+        dictionary.Add(key, value);
+        return value;
+    }
 }
