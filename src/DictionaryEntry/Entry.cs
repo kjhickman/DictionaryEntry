@@ -9,9 +9,6 @@ namespace DictionaryEntry;
 /// </summary>
 /// <typeparam name="TKey">The type of the key in the dictionary.</typeparam>
 /// <typeparam name="TValue">The type of the value in the dictionary.</typeparam>
-/// <remarks>
-/// The struct is marked as 'ref' to prevent copying of potentially large dictionaries.
-/// </remarks>
 public ref struct Entry<TKey, TValue> where TKey : notnull
 {
     private readonly Dictionary<TKey, TValue> _dictionary;
@@ -51,10 +48,11 @@ public ref struct Entry<TKey, TValue> where TKey : notnull
     /// <summary>
     /// Applies a modification function to the value if the entry exists in the dictionary.
     /// </summary>
-    /// <param name="updateFunc">A function that takes the current value and returns the new value.</param>
+    /// <param name="updateFunc">A function that takes the current value and returns the new value. This function is only called if the entry exists.</param>
     /// <returns>The entry instance to allow for method chaining.</returns>
     /// <remarks>
     /// If the entry does not exist, this method does nothing and returns the unchanged entry.
+    /// The update function is applied atomically to the dictionary entry.
     /// </remarks>
     public Entry<TKey, TValue> AndModify(Func<TValue, TValue> updateFunc)
     {
@@ -127,6 +125,9 @@ public ref struct Entry<TKey, TValue> where TKey : notnull
     /// Gets a reference to the value in the dictionary if it exists, or inserts the default value for the type if it doesn't.
     /// </summary>
     /// <returns>A reference to the value in the dictionary.</returns>
+    /// <remarks>
+    /// For reference types, the default value is null. For value types, the default value is the zero-initialized value.
+    /// </remarks>
     public ref TValue OrDefault()
     {
         if (_exists)
@@ -145,6 +146,9 @@ public ref struct Entry<TKey, TValue> where TKey : notnull
     /// </summary>
     /// <param name="value">The value to insert or update.</param>
     /// <returns>An <see cref="OccupiedEntry{TKey, TValue}"/> representing the entry in the dictionary.</returns>
+    /// <remarks>
+    /// This method always results in an occupied entry, regardless of whether the key previously existed.
+    /// </remarks>
     public OccupiedEntry<TKey, TValue> InsertEntry(TValue value)
     {
         if (_exists)

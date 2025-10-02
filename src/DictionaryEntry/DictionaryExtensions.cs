@@ -15,6 +15,16 @@ public static class DictionaryExtensions
     /// <param name="dictionary">The dictionary to operate on.</param>
     /// <param name="key">The key to look up in the dictionary.</param>
     /// <returns>An <see cref="Entry{TKey, TValue}"/> that can be used to manipulate the dictionary.</returns>
+    /// <remarks>
+    /// This method performs a single dictionary lookup and returns an entry that can be used
+    /// for conditional operations without additional lookups.
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// var dict = new Dictionary&lt;string, int&gt;();
+    /// dict.Entry("key").OrInsert(42);
+    /// </code>
+    /// </example>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static Entry<TKey, TValue> Entry<TKey, TValue>(this Dictionary<TKey, TValue> dictionary, TKey key)
         where TKey : notnull
