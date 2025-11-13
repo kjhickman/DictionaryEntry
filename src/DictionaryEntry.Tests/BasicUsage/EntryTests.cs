@@ -71,6 +71,25 @@ public class EntryTests
     }
 
     [Fact]
+    public void AndModify_WhenNotExists_DoesNotInvokeCallback()
+    {
+        // Arrange
+        var dict = new Dictionary<string, int>();
+        var invoked = false;
+
+        // Act
+        dict.Entry("key").AndModify(value =>
+        {
+            invoked = true;
+            return value + 1;
+        });
+
+        // Assert
+        Assert.False(invoked);
+        Assert.Empty(dict);
+    }
+
+    [Fact]
     public void OrInsert_WhenNotExists_InsertsValue()
     {
         // Arrange
@@ -83,6 +102,20 @@ public class EntryTests
         Assert.True(dict.ContainsKey("key"));
         Assert.Equal(42, dict["key"]);
         Assert.Equal(42, value);
+    }
+
+    [Fact]
+    public void OrInsert_ReturnsReferenceToInsertedValue()
+    {
+        // Arrange
+        var dict = new Dictionary<string, int>();
+
+        // Act
+        ref var valueRef = ref dict.Entry("key").OrInsert(42);
+        valueRef = 100;
+
+        // Assert
+        Assert.Equal(100, dict["key"]);
     }
 
     [Fact]
@@ -101,6 +134,23 @@ public class EntryTests
         Assert.True(dict.ContainsKey("key"));
         Assert.Equal(42, dict["key"]);
         Assert.Equal(42, value);
+    }
+
+    [Fact]
+    public void OrInsert_WhenExists_ReturnsReferenceToExistingValue()
+    {
+        // Arrange
+        var dict = new Dictionary<string, int>
+        {
+            ["key"] = 42
+        };
+
+        // Act
+        ref var valueRef = ref dict.Entry("key").OrInsert(43);
+        valueRef = 100;
+
+        // Assert
+        Assert.Equal(100, dict["key"]);
     }
 
     [Fact]
@@ -134,18 +184,24 @@ public class EntryTests
     }
 
     [Fact]
-    public void OrInsertWithKey_WhenExists_DoesNothing()
+    public void OrInsertWithKey_WhenExists_DoesNotInvokeFactory()
     {
         // Arrange
         var dict = new Dictionary<string, int>
         {
             ["key"] = 42
         };
+        var factoryCalled = false;
 
         // Act
-        var value = dict.Entry("key").OrInsertWithKey(key => key.Length);
+        ref var value = ref dict.Entry("key").OrInsertWithKey(key =>
+        {
+            factoryCalled = true;
+            return key.Length;
+        });
 
         // Assert
+        Assert.False(factoryCalled);
         Assert.True(dict.ContainsKey("key"));
         Assert.Equal(42, dict["key"]);
         Assert.Equal(42, value);
@@ -164,6 +220,20 @@ public class EntryTests
         Assert.True(dict.ContainsKey("key"));
         Assert.Equal(0, dict["key"]);
         Assert.Equal(0, value);
+    }
+
+    [Fact]
+    public void OrDefault_ReturnsReferenceAllowingMutation()
+    {
+        // Arrange
+        var dict = new Dictionary<string, int>();
+
+        // Act
+        ref var valueRef = ref dict.Entry("key").OrDefault();
+        valueRef = 7;
+
+        // Assert
+        Assert.Equal(7, dict["key"]);
     }
 
     [Fact]

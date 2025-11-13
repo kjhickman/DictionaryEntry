@@ -39,6 +39,21 @@ public class PatternMatchingTests
     }
 
     [Fact]
+    public void Match_WithVacantEntry_CanInsertThroughVacantAction()
+    {
+        // Arrange
+        var dict = new Dictionary<string, int>();
+
+        // Act
+        dict.Entry("key").Match(
+            occupied => { },
+            vacant => vacant.Insert(10));
+
+        // Assert
+        Assert.Equal(10, dict["key"]);
+    }
+
+    [Fact]
     public void Match_WithFuncReturnsCorrectValue()
     {
         // Arrange
