@@ -3,6 +3,7 @@ name: Publish NuGet Package
 on:
   release:
     types: [published]
+  workflow_dispatch: {}
     
 jobs:
   build-and-publish:
@@ -17,7 +18,7 @@ jobs:
     - name: Setup .NET
       uses: actions/setup-dotnet@v4
       with:
-        dotnet-version: '9.0.x'
+        dotnet-version: '10.0.x'
         
     - name: Restore dependencies
       run: dotnet restore src/DictionaryEntry/DictionaryEntry.csproj
