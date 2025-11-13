@@ -1,11 +1,9 @@
-﻿using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Attributes;
 
-namespace DictionaryEntry.Benchmarks;
+namespace DictionaryEntry.Benchmarks.ConditionalOps;
 
-[MemoryDiagnoser]
-[SimpleJob(invocationCount: 10_000_000)]
-[BenchmarkCategory("InsertOrUpdate")]
-public class UpdateOrInsertBenchmarks
+[BenchmarkCategory("ConditionalOps")]
+public class InsertOrUpdateBenchmarks : BenchmarkBase
 {
     private Dictionary<string, int> _dictionary = null!;
     private const string ExistingKey = "existing";
@@ -19,10 +17,10 @@ public class UpdateOrInsertBenchmarks
 
     private void InsertOrUpdateTraditional(string key)
     {
-        if (_dictionary.TryGetValue(key, out var val))
+        if (_dictionary.TryGetValue(key, out var value))
         {
-            val *= 2;
-            _dictionary[key] = val;
+            value *= 2;
+            _dictionary[key] = value;
         }
         else
         {

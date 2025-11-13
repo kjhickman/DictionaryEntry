@@ -1,12 +1,9 @@
-﻿using BenchmarkDotNet.Attributes;
-// ReSharper disable PreferConcreteValueOverDefault
+using BenchmarkDotNet.Attributes;
 
-namespace DictionaryEntry.Benchmarks;
+namespace DictionaryEntry.Benchmarks.BasicOps;
 
-[MemoryDiagnoser]
-[SimpleJob(invocationCount: 10_000_000)]
-[BenchmarkCategory("DefaultValue")]
-public class DefaultValueBenchmarks
+[BenchmarkCategory("BasicOps")]
+public class DefaultValueBenchmarks : BenchmarkBase
 {
     private Dictionary<string, int> _dictionary = null!;
     private Dictionary<string, string?> _stringDictionary = null!;
@@ -28,6 +25,7 @@ public class DefaultValueBenchmarks
             value = default;
             _dictionary[key] = value;
         }
+
         return value;
     }
 
@@ -38,6 +36,7 @@ public class DefaultValueBenchmarks
             value = default;
             _stringDictionary[key] = value;
         }
+
         return value;
     }
 

@@ -1,11 +1,9 @@
-﻿using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Attributes;
 
-namespace DictionaryEntry.Benchmarks;
+namespace DictionaryEntry.Benchmarks.BasicOps;
 
-[MemoryDiagnoser]
-[SimpleJob(invocationCount: 10_000_000)]
-[BenchmarkCategory("GetAndRemove")]
-public class GetAndRemoveBenchmarks
+[BenchmarkCategory("BasicOps")]
+public class RetrieveAndRemoveBenchmarks : BenchmarkBase
 {
     private Dictionary<string, int> _dictionary = null!;
     private const string ExistingKey = "existing";
@@ -19,12 +17,7 @@ public class GetAndRemoveBenchmarks
 
     private int? GetAndRemoveTraditional(string key)
     {
-        if (_dictionary.Remove(key, out var value))
-        {
-            return value;
-        }
-
-        return null;
+        return _dictionary.Remove(key, out var value) ? value : null;
     }
 
     private int? GetAndRemoveEntry(string key)
