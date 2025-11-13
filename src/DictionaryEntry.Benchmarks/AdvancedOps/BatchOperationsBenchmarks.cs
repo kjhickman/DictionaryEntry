@@ -1,11 +1,9 @@
-﻿using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Attributes;
 
-namespace DictionaryEntry.Benchmarks;
+namespace DictionaryEntry.Benchmarks.AdvancedOps;
 
-[MemoryDiagnoser]
-[SimpleJob(invocationCount: 10_000_000)]
-[BenchmarkCategory("BatchOperations")]
-public class BatchOperationsBenchmarks
+[BenchmarkCategory("AdvancedOps")]
+public class BatchOperationsBenchmarks : BenchmarkBase
 {
     private Dictionary<string, int> _dictionary = null!;
     private const string ExistingKey = "existing";
@@ -45,18 +43,17 @@ public class BatchOperationsBenchmarks
                 value = Math.Min(100, value);
                 occupied.Insert(value);
             },
-            vacant => vacant.Insert(5)
-        );
+            vacant => vacant.Insert(5));
     }
 
     [Benchmark(Baseline = true)]
     public void BatchOperations_Traditional_Exists() => BatchOperationsTraditional(ExistingKey);
 
     [Benchmark]
-    public void BatchOperations_Entry_Exists() => BatchOperationsEntry(ExistingKey);
+    public void BatchOperations_Traditional_NotExists() => BatchOperationsTraditional(NewKey);
 
     [Benchmark]
-    public void BatchOperations_Traditional_NotExists() => BatchOperationsTraditional(NewKey);
+    public void BatchOperations_Entry_Exists() => BatchOperationsEntry(ExistingKey);
 
     [Benchmark]
     public void BatchOperations_Entry_NotExists() => BatchOperationsEntry(NewKey);

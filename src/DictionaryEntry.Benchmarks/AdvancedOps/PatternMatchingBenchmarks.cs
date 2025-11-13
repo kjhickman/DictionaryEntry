@@ -1,11 +1,9 @@
-﻿using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Attributes;
 
-namespace DictionaryEntry.Benchmarks;
+namespace DictionaryEntry.Benchmarks.AdvancedOps;
 
-[MemoryDiagnoser]
-[SimpleJob(invocationCount: 10_000_000)]
-[BenchmarkCategory("PatternMatching")]
-public class PatternMatchingBenchmarks
+[BenchmarkCategory("AdvancedOps")]
+public class PatternMatchingBenchmarks : BenchmarkBase
 {
     private Dictionary<string, int> _dictionary = null!;
     private const string ExistingKey = "existing";
@@ -30,25 +28,22 @@ public class PatternMatchingBenchmarks
                 _ => "Zero or negative"
             };
         }
+
         return "Not found";
     }
 
     private string PatternMatchingEntry(string key)
     {
         return _dictionary.Entry(key).Match(
-            occupied =>
+            occupied => occupied.Value() switch
             {
-                return occupied.Value() switch
-                {
-                    > 100 => "Very large",
-                    > 50 => "Large",
-                    > 10 => "Medium",
-                    > 0 => "Small",
-                    _ => "Zero or negative"
-                };
+                > 100 => "Very large",
+                > 50 => "Large",
+                > 10 => "Medium",
+                > 0 => "Small",
+                _ => "Zero or negative"
             },
-            _ => "Not found"
-        );
+            _ => "Not found");
     }
 
     private void DifferentActionsTraditional(string key)
@@ -67,8 +62,7 @@ public class PatternMatchingBenchmarks
     {
         _dictionary.Entry(key).Match(
             occupied => occupied.Insert(occupied.Value() * 2),
-            vacant => vacant.Insert(1)
-        );
+            vacant => vacant.Insert(1));
     }
 
     [Benchmark(Baseline = true)]

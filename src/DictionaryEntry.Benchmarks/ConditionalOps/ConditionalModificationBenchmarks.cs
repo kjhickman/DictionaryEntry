@@ -1,11 +1,9 @@
-﻿using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Attributes;
 
-namespace DictionaryEntry.Benchmarks;
+namespace DictionaryEntry.Benchmarks.ConditionalOps;
 
-[MemoryDiagnoser]
-[SimpleJob(invocationCount: 10_000_000)]
-[BenchmarkCategory("ConditionalModification")]
-public class ConditionalModificationBenchmarks
+[BenchmarkCategory("ConditionalOps")]
+public class ConditionalModificationBenchmarks : BenchmarkBase
 {
     private Dictionary<string, int> _dictionary = null!;
     private const string ExistingKey = "existing";
@@ -52,8 +50,7 @@ public class ConditionalModificationBenchmarks
                     occupied.Insert(value + 1);
                 }
             },
-            vacant => vacant.Insert(1)
-        );
+            vacant => vacant.Insert(1));
     }
 
     [Benchmark(Baseline = true)]

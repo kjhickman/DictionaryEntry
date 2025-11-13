@@ -1,4 +1,14 @@
-using System.Reflection;
 using BenchmarkDotNet.Running;
 
-BenchmarkSwitcher.FromAssembly(Assembly.Load("DictionaryEntry.Benchmarks")).Run(args);
+namespace DictionaryEntry.Benchmarks;
+
+public static class Program
+{
+    public static void Main(string[] args)
+    {
+        BenchmarkSwitcher
+            .FromAssembly(typeof(Program).Assembly)
+            .Run(args);
+    }
+}
+

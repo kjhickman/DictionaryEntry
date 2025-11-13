@@ -1,11 +1,9 @@
-﻿using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Attributes;
 
-namespace DictionaryEntry.Benchmarks;
+namespace DictionaryEntry.Benchmarks.ConditionalOps;
 
-[MemoryDiagnoser]
-[SimpleJob(invocationCount: 10_000_000)]
-[BenchmarkCategory("ConditionalGetOrCompute")]
-public class ConditionalGetOrCompute
+[BenchmarkCategory("ConditionalOps")]
+public class ConditionalGetOrComputeBenchmarks : BenchmarkBase
 {
     private Dictionary<string, int> _dictionary = null!;
     private const string ExistingKey = "existing";
@@ -17,38 +15,38 @@ public class ConditionalGetOrCompute
         _dictionary = new Dictionary<string, int> { { ExistingKey, 10 } };
     }
 
-    private int ComputeValue()
+    private static int ComputeValue()
     {
         return DateTime.UtcNow.Millisecond % 100;
     }
 
-    private int ComputeValueFromString(string key)
+    private static int ComputeValueFromString(string key)
     {
         return key.Length;
     }
 
     private int GetOrComputeTraditional(string key)
     {
-        if (_dictionary.TryGetValue(key, out var val))
+        if (_dictionary.TryGetValue(key, out var value))
         {
-            return val;
+            return value;
         }
 
-        val = ComputeValue();
-        _dictionary[key] = val;
-        return val;
+        value = ComputeValue();
+        _dictionary[key] = value;
+        return value;
     }
 
     private int GetOrComputeTraditionalUsingKey(string key)
     {
-        if (_dictionary.TryGetValue(key, out var val))
+        if (_dictionary.TryGetValue(key, out var value))
         {
-            return val;
+            return value;
         }
 
-        val = ComputeValueFromString(key);
-        _dictionary[key] = val;
-        return val;
+        value = ComputeValueFromString(key);
+        _dictionary[key] = value;
+        return value;
     }
 
     private int GetOrComputeEntry(string key)

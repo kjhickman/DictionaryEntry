@@ -1,11 +1,9 @@
-﻿using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Attributes;
 
-namespace DictionaryEntry.Benchmarks;
+namespace DictionaryEntry.Benchmarks.FactoryOps;
 
-[MemoryDiagnoser]
-[SimpleJob(invocationCount: 10_000_000)]
-[BenchmarkCategory("FactoryMethod")]
-public class FactoryMethodBenchmarks
+[BenchmarkCategory("FactoryOps")]
+public class FactoryMethodBenchmarks : BenchmarkBase
 {
     private Dictionary<string, int> _dictionary = null!;
     private const string ExistingKey = "existing";
@@ -17,12 +15,12 @@ public class FactoryMethodBenchmarks
         _dictionary = new Dictionary<string, int> { { ExistingKey, 10 } };
     }
 
-    private int ComputeExpensiveValue()
+    private static int ComputeExpensiveValue()
     {
         return DateTime.UtcNow.Second + DateTime.UtcNow.Minute;
     }
 
-    private int ComputeFromKey(string key)
+    private static int ComputeFromKey(string key)
     {
         return key.Length * 10;
     }
@@ -34,6 +32,7 @@ public class FactoryMethodBenchmarks
             value = ComputeExpensiveValue();
             _dictionary[key] = value;
         }
+
         return value;
     }
 
@@ -44,6 +43,7 @@ public class FactoryMethodBenchmarks
             value = ComputeFromKey(key);
             _dictionary[key] = value;
         }
+
         return value;
     }
 

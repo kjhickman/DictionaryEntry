@@ -1,11 +1,9 @@
-﻿using BenchmarkDotNet.Attributes;
+using BenchmarkDotNet.Attributes;
 
-namespace DictionaryEntry.Benchmarks;
+namespace DictionaryEntry.Benchmarks.BasicOps;
 
-[MemoryDiagnoser]
-[SimpleJob(invocationCount: 10_000_000)]
-[BenchmarkCategory("GetOrAdd")]
-public class GetOrAddBenchmarks
+[BenchmarkCategory("BasicOps")]
+public class GetOrAddBenchmarks : BenchmarkBase
 {
     private Dictionary<int, int> _dictionary = null!;
     private const int ExistingKey = 42;
@@ -26,14 +24,14 @@ public class GetOrAddBenchmarks
 
     private int GetOrAddTraditional(int key)
     {
-        if (_dictionary.TryGetValue(key, out var val))
+        if (_dictionary.TryGetValue(key, out var value))
         {
-            return val;
+            return value;
         }
 
-        val = 1;
-        _dictionary[key] = val;
-        return val;
+        value = 1;
+        _dictionary[key] = value;
+        return value;
     }
 
     private int GetOrAddEntry(int key)
