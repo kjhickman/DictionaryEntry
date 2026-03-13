@@ -1,34 +1,22 @@
 # DictionaryEntry
 
-Dictionary manipulation with a fluent, expressive syntax. Inspired by Rust's "Entry" API.
-
-## Overview
-
-DictionaryEntry is a lightweight library that brings an entry API pattern to C# dictionaries, allowing for more ergonomic dictionary operations. Instead of repeatedly looking up keys and checking if they exist, you get a unified entry object that represents either an existing entry (occupied) or a non-existing entry (vacant).
-
-## Features
-
-- Eliminate repetitive dictionary key lookups
-- Fluent API for dictionary manipulation
-- Efficient reference access to dictionary values
-- Pattern matching for occupied/vacant entries
-- Clean, expressive syntax for common operations
-- Performance nearly matching traditional Dictionary operations in most cases (see [benchmarks](#benchmarks))
+DictionaryEntry is a small library that brings the "Entry" API pattern from Rust to C# dictionaries, allowing for more ergonomic dictionary operations. It can simplify common dictionary access patterns while matching or nearly matching traditional Dictionary performance in most cases (see [benchmarks](#benchmarks)).
 
 ## Installation
 
-```
+```bash
 dotnet add package DictionaryEntry
 ```
 
 ## Examples
 
 The library provides three main types:
+
 - `Entry<TKey, TValue>`: The initial entry point that can be either occupied or vacant
 - `OccupiedEntry<TKey, TValue>`: Represents an entry for an existing key
 - `VacantEntry<TKey, TValue>`: Represents an entry for a non-existing key
 
-The core functionality revolves around the `.Entry(key)` extension method that lets you work with dictionary entries in a more fluent way.
+The core functionality revolves around the `.Entry(key)` extension method that lets you work with dictionary entries in a fluent way.
 
 ### Insert-or-Update (Upsert)
 
@@ -129,7 +117,7 @@ The library is designed with performance in mind. Performance is usually very cl
 
 Here are a few of the more common scenarios:
 
-```
+```text
 BenchmarkDotNet v0.14.0, Windows 11 (10.0.26100.3476)
 AMD Ryzen 7 7800X3D, 1 CPU, 16 logical and 8 physical cores
 .NET SDK 10.0.100-preview.1.25120.13
@@ -138,8 +126,10 @@ AMD Ryzen 7 7800X3D, 1 CPU, 16 logical and 8 physical cores
 
 InvocationCount=10000000  
 ```
+
 Get-or-Add
-```
+
+```text
 | Method                                   | Mean      | Error     | StdDev    | Median    | Allocated |
 | GetOrAdd_Traditional_Exists              |  2.514 ns | 0.0242 ns | 0.0189 ns |  2.507 ns |         - |
 | GetOrAdd_Traditional_NotExists           |  2.866 ns | 0.0334 ns | 0.0260 ns |  2.864 ns |         - |
@@ -148,7 +138,8 @@ Get-or-Add
 ```
 
 Get-or-Default
-```
+
+```text
 | Method                                   | Mean      | Error     | StdDev    | Median    | Allocated |
 | DefaultValue_Traditional_Exists          |  6.229 ns | 0.0248 ns | 0.0207 ns |  6.230 ns |         - |
 | DefaultValue_Traditional_NotExists       |  5.738 ns | 0.0328 ns | 0.0290 ns |  5.740 ns |         - |
@@ -157,7 +148,8 @@ Get-or-Default
 ```
 
 Increment counter
-```
+
+```text
 | Method                                   | Mean      | Error     | StdDev    | Median    | Gen0   | Allocated |
 | IncrementCounter_Traditional_Exists      | 13.083 ns | 0.0494 ns | 0.0549 ns | 13.063 ns |      - |         - |
 | IncrementCounter_Traditional_NotExists   | 12.340 ns | 0.1864 ns | 0.2551 ns | 12.244 ns |      - |         - |
@@ -196,16 +188,42 @@ private void IncrementByOneEntry(string key)
 }
 ```
 
+These costs are improving over time, and newer runtimes (including .NET 10 and .NET 11 previews) include additional JIT/runtime optimizations that can reduce delegate- and closure-related allocations in some patterns.
+
+## Limitations
+
+### Async Operations
+
+`Entry<TKey, TValue>` is a `ref struct`, which means it cannot be used across `await` boundaries.
+
+```csharp
+// This does NOT work
+var user = cache.Entry(userId).OrInsertWith(async () => await db.LoadAsync(userId));
+```
+
+You can still use the entry API with async by returning a `Task` from `Match` and awaiting the result:
+
+```csharp
+var user = await cache.Entry(userId).Match(
+    occupied => Task.FromResult(occupied.Value()),
+    async vacant => vacant.Insert(await db.LoadUserAsync(vacant.Key())));
+```
+
+`Dictionary<TKey, TValue>` is not thread-safe. In concurrent scenarios, protect access with synchronization or use a concurrent collection.
+
 ## Potential Features and Plans
 
 ### Potential Features
+
 - Support for `ConcurrentDictionary<TKey, TValue>` and other dictionary-like collections
 - Specialized overloads to optimize common scenarios such as incrementing a value
 
 ### Future plans
+
 In the future when C# introduces [typed union structs](https://github.com/dotnet/csharplang/blob/main/proposals/TypeUnions.md#specialized---union-structs) I may create a new version to take full advantage of that.
 
 In rust, I like the `if let` syntax where you can do this:
+
 ```rust
 if let Entry::Occupied(entry) = map.entry(key) {
     println!("Found: {} -> {}", key, entry.get());
@@ -213,6 +231,7 @@ if let Entry::Occupied(entry) = map.entry(key) {
 ```
 
 and I'd like to be able to do similar in C# like this:
+
 ```csharp
 if (dict.Entry(key) is OccupiedEntry occupied)
 {
@@ -223,6 +242,7 @@ if (dict.Entry(key) is OccupiedEntry occupied)
 But as far as I know, it's not currently possible without using a class + inheritance, which would result in too many allocations for this use-case.
 
 For now, `TryGetOccupied` gets pretty close:
+
 ```csharp
 if (dict.Entry(key).TryGetOccupied(out var occupied))
 {
