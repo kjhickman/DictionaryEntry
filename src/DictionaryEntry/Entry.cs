@@ -64,6 +64,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// </summary>
     /// <param name="updateFunc">A function that takes the current value and returns the new value. This function is only called if the entry exists.</param>
     /// <returns>The entry instance to allow for method chaining.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
     /// <remarks>
     /// If the entry does not exist, this method does nothing and returns the unchanged entry.
     /// The update function is applied atomically to the dictionary entry.
@@ -72,6 +73,11 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     {
         if (!_exists)
         {
+            if (_dictionary is null)
+            {
+                ThrowDefaultEntry();
+            }
+
             return this;
         }
 
@@ -91,11 +97,17 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// </summary>
     /// <param name="defaultValue">The value to insert if the entry does not exist.</param>
     /// <returns>A reference to the value in the dictionary.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
     public ref TValue OrInsert(TValue defaultValue)
     {
         if (_exists)
         {
             return ref _valueRef;
+        }
+
+        if (_dictionary is null)
+        {
+            ThrowDefaultEntry();
         }
 
         _dictionary.Add(_key, defaultValue);
@@ -109,11 +121,17 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// </summary>
     /// <param name="valueFactory">A function that computes the value to insert if the entry does not exist.</param>
     /// <returns>A reference to the value in the dictionary.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
     public ref TValue OrInsertWith(Func<TValue> valueFactory)
     {
         if (_exists)
         {
             return ref _valueRef;
+        }
+
+        if (_dictionary is null)
+        {
+            ThrowDefaultEntry();
         }
 
         var value = valueFactory();
@@ -128,11 +146,17 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// </summary>
     /// <param name="valueFactory">A function that takes the key and computes the value to insert if the entry does not exist.</param>
     /// <returns>A reference to the value in the dictionary.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
     public ref TValue OrInsertWithKey(Func<TKey, TValue> valueFactory)
     {
         if (_exists)
         {
             return ref _valueRef;
+        }
+
+        if (_dictionary is null)
+        {
+            ThrowDefaultEntry();
         }
 
         var value = valueFactory(_key);
@@ -146,6 +170,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// Gets a reference to the value in the dictionary if it exists, or inserts the default value for the type if it doesn't.
     /// </summary>
     /// <returns>A reference to the value in the dictionary.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
     /// <remarks>
     /// For reference types, the default value is null. For value types, the default value is the zero-initialized value.
     /// </remarks>
@@ -154,6 +179,11 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         if (_exists)
         {
             return ref _valueRef;
+        }
+
+        if (_dictionary is null)
+        {
+            ThrowDefaultEntry();
         }
 
         _dictionary.Add(_key, default!);
@@ -167,6 +197,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// </summary>
     /// <param name="value">The value to insert or update.</param>
     /// <returns>An <see cref="OccupiedEntry{TKey, TValue}"/> representing the entry in the dictionary.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
     /// <remarks>
     /// This method always results in an occupied entry, regardless of whether the key previously existed.
     /// </remarks>
@@ -176,6 +207,11 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         {
             _dictionary[_key] = value;
             return new OccupiedEntry<TKey, TValue>(_dictionary, _key, value);
+        }
+
+        if (_dictionary is null)
+        {
+            ThrowDefaultEntry();
         }
 
         _dictionary.Add(_key, value);
@@ -188,12 +224,18 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// Converts the entry to an occupied entry if it exists in the dictionary.
     /// </summary>
     /// <returns>An <see cref="OccupiedEntry{TKey, TValue}"/> representing the entry in the dictionary.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
     /// <exception cref="KeyNotFoundException">Thrown if the entry does not exist in the dictionary.</exception>
     public OccupiedEntry<TKey, TValue> ToOccupied()
     {
         if (!_exists)
         {
-            throw new KeyNotFoundException($"The key '{_key}' was not found in the dictionary.");
+            if (_dictionary is null)
+            {
+                ThrowDefaultEntry();
+            }
+
+            ThrowKeyNotFound(_key);
         }
 
         return new OccupiedEntry<TKey, TValue>(_dictionary, _key, _valueRef);
@@ -208,7 +250,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     {
         if (_exists)
         {
-            throw new InvalidOperationException($"The key '{_key}' already exists in the dictionary.");
+            ThrowKeyAlreadyExists(_key);
         }
 
         if (_dictionary is null)
@@ -272,6 +314,16 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     private static void ThrowDefaultEntry() =>
         throw new InvalidOperationException(
             "The entry is not associated with a dictionary. Obtain entries with Dictionary.Entry(key) rather than default.");
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ThrowKeyNotFound(TKey key) =>
+        throw new KeyNotFoundException($"The key '{key}' was not found in the dictionary.");
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ThrowKeyAlreadyExists(TKey key) =>
+        throw new InvalidOperationException($"The key '{key}' already exists in the dictionary.");
 
     /// <summary>
     /// Tries to get an occupied entry if the key exists in the dictionary.

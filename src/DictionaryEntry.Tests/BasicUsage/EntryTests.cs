@@ -255,6 +255,23 @@ public class EntryTests
     }
 
     [Fact]
+    public void OrDefault_WhenExists_ReturnsReferenceAllowingMutation()
+    {
+        // Arrange
+        var dict = new Dictionary<string, int>
+        {
+            ["key"] = 42
+        };
+
+        // Act
+        ref var valueRef = ref dict.Entry("key").OrDefault();
+        valueRef += 8;
+
+        // Assert
+        Assert.Equal(50, dict["key"]);
+    }
+
+    [Fact]
     public void InsertEntry_WhenNewKey_InsertsValue()
     {
         // Arrange

@@ -200,4 +200,46 @@ public class OccupiedEntryTests
         Assert.Null(removed);
         Assert.Empty(dict);
     }
+
+    [Fact]
+    public void Remove_WhenKeyRemovedExternally_ThrowsKeyNotFoundException()
+    {
+        // Arrange
+        var dict = new Dictionary<string, int> { ["key"] = 42 };
+        var occupied = dict.Entry("key").ToOccupied();
+        dict.Remove("key");
+
+        // Act & Assert
+        Assert.Throws<KeyNotFoundException>(() => occupied.Remove());
+        Assert.Empty(dict);
+    }
+
+    [Fact]
+    public void RemoveEntry_CalledTwice_ThrowsKeyNotFoundException()
+    {
+        // Arrange
+        var dict = new Dictionary<string, int> { ["key"] = 42 };
+        var occupied = dict.Entry("key").ToOccupied();
+        occupied.RemoveEntry();
+
+        // Act & Assert
+        var ex = Assert.Throws<KeyNotFoundException>(() => occupied.RemoveEntry());
+        Assert.Contains("'key'", ex.Message);
+    }
+
+    [Fact]
+    public void RemoveEntry_WithNullValue_ReturnsNullInTuple()
+    {
+        // Arrange
+        var dict = new Dictionary<string, string?> { ["key"] = null };
+        var occupied = dict.Entry("key").ToOccupied();
+
+        // Act
+        var (key, value) = occupied.RemoveEntry();
+
+        // Assert
+        Assert.Equal("key", key);
+        Assert.Null(value);
+        Assert.Empty(dict);
+    }
 }
