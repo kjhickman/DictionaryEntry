@@ -266,6 +266,7 @@ private void IncrementByAmountRef(string key, int amount)
 ### C# 15 Union Pattern Matching
 
 - **Requires C# 15 (.NET 11 SDK):** Native union `switch` and `is` patterns require compiling with C# 15 (`net11.0` uses C# 15 by default; projects targeting `net8.0`–`net10.0` on the .NET 11 SDK can also opt in with `<LangVersion>15.0</LangVersion>` or `<LangVersion>latest</LangVersion>`). On older C# versions/SDKs, all fluent methods, `Match`, `TryGetOccupied`, and `TryGetVacant` continue to work normally.
+- **`Entry` is live, cases are snapshots:** `OccupiedEntry.Value` is captured when the entry is obtained and is not updated by `Insert` or later dictionary changes. Converting an `OccupiedEntry` / `VacantEntry` back to `Entry<TKey, TValue>` (e.g. `Entry<string, int> e = occupied;`) performs a fresh lookup, so the result reflects the dictionary's *current* state and may be a different case if the dictionary changed in between. `OccupiedEntry.Remove()` / `RemoveEntry()` return the value actually removed, and throw `KeyNotFoundException` if the key is no longer present.
 - **Explicit generic type arguments in type patterns:** Because C# 15 unions are type unions rather than nominal enum variants, C# does not infer `<TKey, TValue>` in `OccupiedEntry<TKey, TValue>` / `VacantEntry<TKey, TValue>` patterns. When `<TKey, TValue>` is verbose, `TryGetOccupied(out var occupied)`, `Match(...)`, or a `using` type alias avoids repeating the type parameters.
 
 ### `ref struct` & Async Operations

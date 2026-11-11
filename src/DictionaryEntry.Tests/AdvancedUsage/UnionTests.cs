@@ -122,6 +122,83 @@ public class UnionTests
     }
 
     [Fact]
+    public void ImplicitUnionConversion_FromRemovedOccupiedEntry_IsVacant()
+    {
+        // Entry is a live view; converting a case re-reads the dictionary rather than trusting the snapshot
+        var dict = new Dictionary<string, int> { ["key"] = 42 };
+        var occupied = dict.Entry("key").ToOccupied();
+        dict.Remove("key");
+
+        Entry<string, int> entry = occupied;
+
+        Assert.True(entry is VacantEntry<string, int> { Key: "key" });
+    }
+
+    [Fact]
+    public void ImplicitUnionConversion_FromStaleOccupiedEntry_CarriesCurrentValue()
+    {
+        var dict = new Dictionary<string, int> { ["key"] = 1 };
+        var occupied = dict.Entry("key").ToOccupied();
+        dict["key"] = 99;
+
+        Entry<string, int> entry = occupied;
+
+        Assert.True(entry is OccupiedEntry<string, int> { Value: 99 });
+        Assert.Equal(1, occupied.Value);
+    }
+
+    [Fact]
+    public void ImplicitUnionConversion_FromFilledVacantEntry_IsOccupied()
+    {
+        var dict = new Dictionary<string, int>();
+        var vacant = dict.Entry("key").ToVacant();
+        vacant.Insert(7);
+
+        Entry<string, int> entry = vacant;
+
+        Assert.True(entry is OccupiedEntry<string, int> { Value: 7 });
+    }
+
+    [Fact]
+    public void ImplicitUnionConversion_ReturnedFromMethod_ProducesUsableEntry()
+    {
+        var dict = new Dictionary<string, int>();
+
+        ref var value = ref Lookup(dict, "key").OrInsert(3);
+        value++;
+
+        Assert.Equal(4, dict["key"]);
+
+        static Entry<string, int> Lookup(Dictionary<string, int> d, string key) => d.Entry(key).ToVacant();
+    }
+
+    [Fact]
+    public void ImplicitUnionConversion_FromDefaultCases_IsNullUnion()
+    {
+        Entry<string, int> fromOccupied = default(OccupiedEntry<string, int>);
+        Entry<string, int> fromVacant = default(VacantEntry<string, int>);
+
+        Assert.True(fromOccupied is null);
+        Assert.True(fromVacant is null);
+    }
+
+    [Fact]
+    public void OccupiedWithNullValue_IsOccupiedNotNullUnion()
+    {
+        var dict = new Dictionary<string, string?> { ["key"] = null };
+
+        var result = dict.Entry("key") switch
+        {
+            OccupiedEntry<string, string?> { Value: null } => "occupied-null",
+            OccupiedEntry<string, string?> => "occupied",
+            VacantEntry<string, string?> => "vacant",
+        };
+
+        Assert.Equal("occupied-null", result);
+        Assert.False(dict.Entry("key") is null);
+    }
+
+    [Fact]
     public void DefaultEntry_IsNullUnionAndDoesNotMatchCases()
     {
         Entry<string, int> defaultEntry = default;

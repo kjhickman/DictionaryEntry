@@ -1,3 +1,4 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
 namespace DictionaryEntry;
@@ -33,8 +34,11 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
     }
 
     /// <summary>
-    /// Gets the value associated with this entry.
+    /// Gets the value associated with this entry at the time the entry was obtained.
     /// </summary>
+    /// <remarks>
+    /// This is a snapshot: it is not updated by <see cref="Insert"/> or by later changes to the dictionary.
+    /// </remarks>
     public TValue Value
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -58,6 +62,9 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
     /// </summary>
     /// <param name="newValue">The new value to set.</param>
     /// <returns>The newly set value.</returns>
+    /// <remarks>
+    /// <see cref="Value"/> is a snapshot and is not updated by this method.
+    /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public TValue Insert(TValue newValue)
     {
@@ -68,22 +75,43 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
     /// <summary>
     /// Removes this entry from the dictionary and returns the value that was removed.
     /// </summary>
-    /// <returns>The value that was removed from the dictionary.</returns>
+    /// <returns>
+    /// The value that was actually removed from the dictionary, which reflects any changes made since the entry
+    /// was obtained (for example via <see cref="Insert"/>), and may therefore differ from <see cref="Value"/>.
+    /// </returns>
+    /// <exception cref="KeyNotFoundException">Thrown if the key is no longer present in the dictionary.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public TValue Remove()
     {
-        _dictionary.Remove(_key);
-        return _value;
+        if (!_dictionary.Remove(_key, out var value))
+        {
+            ThrowKeyNotFound(_key);
+        }
+
+        return value;
     }
 
     /// <summary>
     /// Removes this entry from the dictionary and returns both the key and the value.
     /// </summary>
-    /// <returns>A tuple containing the key and value that were removed from the dictionary.</returns>
+    /// <returns>
+    /// A tuple containing the key and the value that was actually removed from the dictionary, which reflects any
+    /// changes made since the entry was obtained and may therefore differ from <see cref="Value"/>.
+    /// </returns>
+    /// <exception cref="KeyNotFoundException">Thrown if the key is no longer present in the dictionary.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public (TKey, TValue) RemoveEntry()
     {
-        _dictionary.Remove(_key, out var value);
-        return (_key, value)!;
+        if (!_dictionary.Remove(_key, out var value))
+        {
+            ThrowKeyNotFound(_key);
+        }
+
+        return (_key, value);
     }
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ThrowKeyNotFound(TKey key) =>
+        throw new KeyNotFoundException($"The key '{key}' is no longer present in the dictionary.");
 }

@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -49,10 +50,13 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// <summary>
     /// Gets a value indicating whether the entry does not exist in the dictionary.
     /// </summary>
+    /// <remarks>
+    /// A <c>default</c> entry is neither occupied nor vacant.
+    /// </remarks>
     public bool IsVacant
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => !_exists;
+        get => !_exists && _dictionary is not null;
     }
 
     /// <summary>
@@ -71,7 +75,14 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
             return this;
         }
 
-        _dictionary[_key] = updateFunc(_valueRef);
+        var newValue = updateFunc(_valueRef);
+
+        // Re-acquire the ref rather than writing through the indexer: updateFunc may have mutated the
+        // dictionary (e.g. triggered a resize), which would leave _valueRef pointing at stale storage
+        // for chained calls like .OrInsert(). This costs the same single lookup as the indexer set,
+        // and still re-adds the key if updateFunc removed it.
+        _valueRef = ref CollectionsMarshal.GetValueRefOrAddDefault(_dictionary, _key, out _)!;
+        _valueRef = newValue;
         return this;
     }
 
@@ -192,12 +203,17 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// Converts the entry to a vacant entry if it does not exist in the dictionary.
     /// </summary>
     /// <returns>A <see cref="VacantEntry{TKey, TValue}"/> representing the entry not in the dictionary.</returns>
-    /// <exception cref="InvalidOperationException">Thrown if the entry exists in the dictionary.</exception>
+    /// <exception cref="InvalidOperationException">Thrown if the entry exists in the dictionary, or if this is a <c>default</c> entry.</exception>
     public VacantEntry<TKey, TValue> ToVacant()
     {
         if (_exists)
         {
             throw new InvalidOperationException($"The key '{_key}' already exists in the dictionary.");
+        }
+
+        if (_dictionary is null)
+        {
+            ThrowDefaultEntry();
         }
 
         return new VacantEntry<TKey, TValue>(_dictionary, _key);
@@ -208,6 +224,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// </summary>
     /// <param name="occupiedAction">The action to execute if the entry exists.</param>
     /// <param name="vacantAction">The action to execute if the entry does not exist.</param>
+    /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
     public void Match(Action<OccupiedEntry<TKey, TValue>> occupiedAction,
         Action<VacantEntry<TKey, TValue>> vacantAction)
     {
@@ -217,6 +234,11 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         }
         else
         {
+            if (_dictionary is null)
+            {
+                ThrowDefaultEntry();
+            }
+
             vacantAction(new VacantEntry<TKey, TValue>(_dictionary, _key));
         }
     }
@@ -228,6 +250,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// <param name="occupiedFunc">The function to execute if the entry exists.</param>
     /// <param name="vacantFunc">The function to execute if the entry does not exist.</param>
     /// <returns>The result of the executed function.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
     public TResult Match<TResult>(Func<OccupiedEntry<TKey, TValue>, TResult> occupiedFunc,
         Func<VacantEntry<TKey, TValue>, TResult> vacantFunc)
     {
@@ -236,8 +259,19 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
             return occupiedFunc(new OccupiedEntry<TKey, TValue>(_dictionary, _key, _valueRef));
         }
 
+        if (_dictionary is null)
+        {
+            ThrowDefaultEntry();
+        }
+
         return vacantFunc(new VacantEntry<TKey, TValue>(_dictionary, _key));
     }
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ThrowDefaultEntry() =>
+        throw new InvalidOperationException(
+            "The entry is not associated with a dictionary. Obtain entries with Dictionary.Entry(key) rather than default.");
 
     /// <summary>
     /// Tries to get an occupied entry if the key exists in the dictionary.
@@ -282,10 +316,20 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     public interface IUnionMembers
     {
         /// <summary>Creates an <see cref="Entry{TKey, TValue}"/> from an <see cref="OccupiedEntry{TKey, TValue}"/>.</summary>
+        /// <remarks>
+        /// Performs a fresh dictionary lookup: the resulting entry reflects the dictionary's current state, not the
+        /// snapshot held by <paramref name="value"/>. If the key was removed since the occupied entry was obtained,
+        /// the result is vacant; if the value changed, the result carries the current value.
+        /// A <c>default</c> occupied entry produces a <c>default</c> (null) entry.
+        /// </remarks>
         static Entry<TKey, TValue> Create(OccupiedEntry<TKey, TValue> value) =>
             value.Dictionary is not null ? new Entry<TKey, TValue>(value.Dictionary, value.Key) : default;
 
         /// <summary>Creates an <see cref="Entry{TKey, TValue}"/> from a <see cref="VacantEntry{TKey, TValue}"/>.</summary>
+        /// <remarks>
+        /// Performs a fresh dictionary lookup: if the key was inserted since the vacant entry was obtained,
+        /// the result is occupied. A <c>default</c> vacant entry produces a <c>default</c> (null) entry.
+        /// </remarks>
         static Entry<TKey, TValue> Create(VacantEntry<TKey, TValue> value) =>
             value.Dictionary is not null ? new Entry<TKey, TValue>(value.Dictionary, value.Key) : default;
 

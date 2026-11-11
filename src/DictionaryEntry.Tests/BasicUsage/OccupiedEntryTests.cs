@@ -86,4 +86,118 @@ public class OccupiedEntryTests
         Assert.Equal(42, value);
         Assert.False(dict.ContainsKey("key"));
     }
+
+    [Fact]
+    public void Insert_ReturnsNewValueAndDoesNotChangeSnapshotValue()
+    {
+        // Arrange
+        var dict = new Dictionary<string, int> { ["key"] = 42 };
+        var occupied = dict.Entry("key").ToOccupied();
+
+        // Act
+        var returned = occupied.Insert(99);
+
+        // Assert
+        Assert.Equal(99, returned);
+        Assert.Equal(99, dict["key"]);
+        Assert.Equal(42, occupied.Value);
+    }
+
+    [Fact]
+    public void Remove_AfterInsert_ReturnsValueActuallyRemoved()
+    {
+        // Arrange
+        var dict = new Dictionary<string, int> { ["key"] = 1 };
+        var occupied = dict.Entry("key").ToOccupied();
+        occupied.Insert(5);
+
+        // Act
+        var removed = occupied.Remove();
+
+        // Assert
+        Assert.Equal(5, removed);
+        Assert.Empty(dict);
+    }
+
+    [Fact]
+    public void RemoveEntry_AfterInsert_ReturnsValueActuallyRemoved()
+    {
+        // Arrange
+        var dict = new Dictionary<string, int> { ["key"] = 1 };
+        var occupied = dict.Entry("key").ToOccupied();
+        occupied.Insert(5);
+
+        // Act
+        var (key, value) = occupied.RemoveEntry();
+
+        // Assert
+        Assert.Equal("key", key);
+        Assert.Equal(5, value);
+        Assert.Empty(dict);
+    }
+
+    [Fact]
+    public void Remove_AfterExternalUpdate_ReturnsCurrentValue()
+    {
+        // Arrange
+        var dict = new Dictionary<string, int> { ["key"] = 1 };
+        var occupied = dict.Entry("key").ToOccupied();
+        dict["key"] = 99;
+
+        // Act & Assert
+        Assert.Equal(99, occupied.Remove());
+    }
+
+    [Fact]
+    public void RemoveEntry_AfterExternalUpdate_ReturnsCurrentValue()
+    {
+        // Arrange
+        var dict = new Dictionary<string, int> { ["key"] = 1 };
+        var occupied = dict.Entry("key").ToOccupied();
+        dict["key"] = 99;
+
+        // Act & Assert
+        Assert.Equal(("key", 99), occupied.RemoveEntry());
+    }
+
+    [Fact]
+    public void Remove_CalledTwice_ThrowsKeyNotFoundException()
+    {
+        // Arrange
+        var dict = new Dictionary<string, int> { ["key"] = 42 };
+        var occupied = dict.Entry("key").ToOccupied();
+        occupied.Remove();
+
+        // Act & Assert
+        var ex = Assert.Throws<KeyNotFoundException>(() => occupied.Remove());
+        Assert.Contains("'key'", ex.Message);
+    }
+
+    [Fact]
+    public void RemoveEntry_WhenKeyRemovedExternally_ThrowsKeyNotFoundException()
+    {
+        // Arrange
+        var dict = new Dictionary<string, int> { ["key"] = 42 };
+        var occupied = dict.Entry("key").ToOccupied();
+        dict.Remove("key");
+
+        // Act & Assert
+        Assert.Throws<KeyNotFoundException>(() => occupied.RemoveEntry());
+        Assert.Empty(dict);
+    }
+
+    [Fact]
+    public void Remove_WithNullValue_ReturnsNull()
+    {
+        // Arrange
+        var dict = new Dictionary<string, string?> { ["key"] = null };
+        var occupied = dict.Entry("key").ToOccupied();
+
+        // Act
+        var removed = occupied.Remove();
+
+        // Assert
+        Assert.Null(removed);
+        Assert.Empty(dict);
+    }
 }
