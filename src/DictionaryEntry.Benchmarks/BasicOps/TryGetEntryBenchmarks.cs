@@ -20,11 +20,21 @@ public class TryGetEntryBenchmarks : BenchmarkBase
         return _dictionary.TryGetValue(key, out var value) ? value : null;
     }
 
-    private int? TryLookupEntry(string key)
+    private int? TryLookupTryGetOccupied(string key)
     {
         if (_dictionary.Entry(key).TryGetOccupied(out var occupied))
         {
-            return occupied.Value();
+            return occupied.Value;
+        }
+
+        return null;
+    }
+
+    private int? TryLookupIsPattern(string key)
+    {
+        if (_dictionary.Entry(key) is OccupiedEntry<string, int> occupied)
+        {
+            return occupied.Value;
         }
 
         return null;
@@ -37,8 +47,14 @@ public class TryGetEntryBenchmarks : BenchmarkBase
     public int? TryLookup_Traditional_NotExists() => TryLookupTraditional(MissingKey);
 
     [Benchmark]
-    public int? TryLookup_Entry_Exists() => TryLookupEntry(ExistingKey);
+    public int? TryLookup_TryGetOccupied_Exists() => TryLookupTryGetOccupied(ExistingKey);
 
     [Benchmark]
-    public int? TryLookup_Entry_NotExists() => TryLookupEntry(MissingKey);
+    public int? TryLookup_TryGetOccupied_NotExists() => TryLookupTryGetOccupied(MissingKey);
+
+    [Benchmark]
+    public int? TryLookup_IsPattern_Exists() => TryLookupIsPattern(ExistingKey);
+
+    [Benchmark]
+    public int? TryLookup_IsPattern_NotExists() => TryLookupIsPattern(MissingKey);
 }

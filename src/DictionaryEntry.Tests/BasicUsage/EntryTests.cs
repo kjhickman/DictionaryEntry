@@ -12,8 +12,8 @@ public class EntryTests
         var entry = dict.Entry("key");
 
         // Assert
-        Assert.True(entry.IsOccupied());
-        Assert.False(entry.IsVacant());
+        Assert.True(entry.IsOccupied);
+        Assert.False(entry.IsVacant);
     }
 
     [Fact]
@@ -26,8 +26,8 @@ public class EntryTests
         var entry = dict.Entry("key");
 
         // Assert
-        Assert.False(entry.IsOccupied());
-        Assert.True(entry.IsVacant());
+        Assert.False(entry.IsOccupied);
+        Assert.True(entry.IsVacant);
     }
 
     [Fact]
@@ -40,7 +40,7 @@ public class EntryTests
         var entry = dict.Entry("key");
 
         // Assert
-        Assert.Equal("key", entry.Key());
+        Assert.Equal("key", entry.Key);
     }
 
     [Fact]
@@ -54,7 +54,7 @@ public class EntryTests
 
         // Assert
         Assert.Equal(43, dict["key"]);
-        Assert.Equal(43, entry.ToOccupied().Value());
+        Assert.Equal(43, entry.ToOccupied().Value);
     }
 
     [Fact]
@@ -67,7 +67,7 @@ public class EntryTests
         var entry = dict.Entry("key").AndModify(value => value + 1);
 
         // Assert
-        Assert.True(entry.IsVacant());
+        Assert.True(entry.IsVacant);
     }
 
     [Fact]
@@ -266,7 +266,7 @@ public class EntryTests
         // Assert
         Assert.True(dict.ContainsKey("key"));
         Assert.Equal(42, dict["key"]);
-        Assert.Equal(42, occupied.Value());
+        Assert.Equal(42, occupied.Value);
     }
 
     [Fact]
@@ -284,7 +284,7 @@ public class EntryTests
         // Assert
         Assert.True(dict.ContainsKey("key"));
         Assert.Equal(43, dict["key"]);
-        Assert.Equal(43, occupied.Value());
+        Assert.Equal(43, occupied.Value);
     }
 
     [Fact]
@@ -301,7 +301,7 @@ public class EntryTests
 
         // Assert
         Assert.True(success);
-        Assert.Equal(42, occupied.Value());
+        Assert.Equal(42, occupied.Value);
     }
 
     [Fact]
@@ -348,6 +348,6 @@ public class EntryTests
 
         // Assert
         Assert.True(success);
-        Assert.Equal(expectedKey, vacant.Key());
+        Assert.Equal(expectedKey, vacant.Key);
     }
 }

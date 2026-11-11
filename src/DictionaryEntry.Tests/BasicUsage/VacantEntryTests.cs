@@ -27,7 +27,7 @@ public class VacantEntryTests
         var vacant = dict.Entry("key").ToVacant();
 
         // Assert
-        Assert.Equal("key", vacant.Key());
+        Assert.Equal("key", vacant.Key);
     }
 
     [Fact]
@@ -43,6 +43,6 @@ public class VacantEntryTests
         // Assert
         Assert.True(dict.ContainsKey("key"));
         Assert.Equal(42, dict["key"]);
-        Assert.Equal(42, occupied.Value());
+        Assert.Equal(42, occupied.Value);
     }
 }

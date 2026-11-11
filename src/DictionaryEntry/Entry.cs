@@ -1,3 +1,4 @@
+using System.ComponentModel;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
@@ -5,11 +6,14 @@ namespace DictionaryEntry;
 
 /// <summary>
 /// Represents a dictionary entry that may or may not exist within the dictionary.
-/// Provides a unified API for dictionary operations without duplicating key lookups.
+/// Provides a unified API and C# union support (<see cref="OccupiedEntry{TKey, TValue}"/> or <see cref="VacantEntry{TKey, TValue}"/>)
+/// for dictionary operations without duplicating key lookups.
 /// </summary>
 /// <typeparam name="TKey">The type of the key in the dictionary.</typeparam>
 /// <typeparam name="TValue">The type of the value in the dictionary.</typeparam>
-public ref struct Entry<TKey, TValue> where TKey : notnull
+[Union]
+public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
+    where TKey : notnull
 {
     private readonly Dictionary<TKey, TValue> _dictionary;
     private readonly TKey _key;
@@ -27,23 +31,29 @@ public ref struct Entry<TKey, TValue> where TKey : notnull
     /// <summary>
     /// Gets the key associated with this entry.
     /// </summary>
-    /// <returns>The key associated with this entry.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public TKey Key() => _key;
+    public TKey Key
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => _key;
+    }
 
     /// <summary>
-    /// Determines whether the entry exists in the dictionary.
+    /// Gets a value indicating whether the entry exists in the dictionary.
     /// </summary>
-    /// <returns><c>true</c> if the entry exists in the dictionary; otherwise, <c>false</c>.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool IsOccupied() => _exists;
+    public bool IsOccupied
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => _exists;
+    }
 
     /// <summary>
-    /// Determines whether the entry does not exist in the dictionary.
+    /// Gets a value indicating whether the entry does not exist in the dictionary.
     /// </summary>
-    /// <returns><c>true</c> if the entry does not exist in the dictionary; otherwise, <c>false</c>.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool IsVacant() => !_exists;
+    public bool IsVacant
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => !_exists;
+    }
 
     /// <summary>
     /// Applies a modification function to the value if the entry exists in the dictionary.
@@ -234,6 +244,7 @@ public ref struct Entry<TKey, TValue> where TKey : notnull
     /// </summary>
     /// <param name="occupied">When this method returns, contains the occupied entry if the key was found; otherwise, the default value.</param>
     /// <returns><c>true</c> if the key was found; otherwise, <c>false</c>.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetOccupied(out OccupiedEntry<TKey, TValue> occupied)
     {
         if (_exists)
@@ -251,15 +262,81 @@ public ref struct Entry<TKey, TValue> where TKey : notnull
     /// </summary>
     /// <param name="vacant">When this method returns, contains the vacant entry if the key was not found; otherwise, the default value.</param>
     /// <returns><c>true</c> if the key was not found; otherwise, <c>false</c>.</returns>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public bool TryGetVacant(out VacantEntry<TKey, TValue> vacant)
     {
-        if (!_exists)
+        if (!_exists && _dictionary is not null)
         {
             vacant = new VacantEntry<TKey, TValue>(_dictionary, _key);
             return true;
         }
 
         vacant = default;
+        return false;
+    }
+
+    /// <summary>
+    /// Provides compiler union members for C# union conversions and non-boxing pattern matching.
+    /// </summary>
+    [EditorBrowsable(EditorBrowsableState.Never)]
+    public interface IUnionMembers
+    {
+        /// <summary>Creates an <see cref="Entry{TKey, TValue}"/> from an <see cref="OccupiedEntry{TKey, TValue}"/>.</summary>
+        static Entry<TKey, TValue> Create(OccupiedEntry<TKey, TValue> value) =>
+            value.Dictionary is not null ? new Entry<TKey, TValue>(value.Dictionary, value.Key) : default;
+
+        /// <summary>Creates an <see cref="Entry{TKey, TValue}"/> from a <see cref="VacantEntry{TKey, TValue}"/>.</summary>
+        static Entry<TKey, TValue> Create(VacantEntry<TKey, TValue> value) =>
+            value.Dictionary is not null ? new Entry<TKey, TValue>(value.Dictionary, value.Key) : default;
+
+        /// <summary>Gets the boxed case value of the union, or <c>null</c> for a default instance.</summary>
+        object? Value { get; }
+
+        /// <summary>Gets a value indicating whether the union contains a value.</summary>
+        bool HasValue { get; }
+
+        /// <summary>Tries to extract the <see cref="OccupiedEntry{TKey, TValue}"/> case without boxing.</summary>
+        bool TryGetValue(out OccupiedEntry<TKey, TValue> value);
+
+        /// <summary>Tries to extract the <see cref="VacantEntry{TKey, TValue}"/> case without boxing.</summary>
+        bool TryGetValue(out VacantEntry<TKey, TValue> value);
+    }
+
+    object? IUnionMembers.Value => _dictionary is null
+        ? null
+        : _exists
+            ? new OccupiedEntry<TKey, TValue>(_dictionary, _key, _valueRef)
+            : new VacantEntry<TKey, TValue>(_dictionary, _key);
+
+    bool IUnionMembers.HasValue
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => _dictionary is not null;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    bool IUnionMembers.TryGetValue(out OccupiedEntry<TKey, TValue> value)
+    {
+        if (_exists)
+        {
+            value = new OccupiedEntry<TKey, TValue>(_dictionary, _key, _valueRef);
+            return true;
+        }
+
+        value = default;
+        return false;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    bool IUnionMembers.TryGetValue(out VacantEntry<TKey, TValue> value)
+    {
+        if (!_exists && _dictionary is not null)
+        {
+            value = new VacantEntry<TKey, TValue>(_dictionary, _key);
+            return true;
+        }
+
+        value = default;
         return false;
     }
 }

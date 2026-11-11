@@ -4,7 +4,7 @@ namespace DictionaryEntry;
 
 /// <summary>
 /// Represents an entry that does not exist in the dictionary.
-/// Provides methods for inserting values into the dictionary at the associated key.
+/// Provides members for inserting values into the dictionary at the associated key.
 /// </summary>
 /// <typeparam name="TKey">The type of the key in the dictionary.</typeparam>
 /// <typeparam name="TValue">The type of the value in the dictionary.</typeparam>
@@ -12,6 +12,8 @@ public readonly struct VacantEntry<TKey, TValue> where TKey : notnull
 {
     private readonly Dictionary<TKey, TValue> _dictionary;
     private readonly TKey _key;
+
+    internal Dictionary<TKey, TValue> Dictionary => _dictionary;
 
     internal VacantEntry(Dictionary<TKey, TValue> dictionary, TKey key)
     {
@@ -22,9 +24,11 @@ public readonly struct VacantEntry<TKey, TValue> where TKey : notnull
     /// <summary>
     /// Gets the key associated with this entry.
     /// </summary>
-    /// <returns>The key associated with this entry.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public TKey Key() => _key;
+    public TKey Key
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => _key;
+    }
 
     /// <summary>
     /// Inserts a value into the dictionary with the key associated with this entry.

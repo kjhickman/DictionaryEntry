@@ -27,7 +27,7 @@ public class IncrementCounterBenchmarks : BenchmarkBase
         }
     }
 
-    private void IncrementCounterEntry(string key)
+    private void IncrementCounterEntryAndModify(string key)
     {
         _dictionary.Entry(key).AndModify(count => count + 1).OrInsert(1);
     }
@@ -44,9 +44,22 @@ public class IncrementCounterBenchmarks : BenchmarkBase
         }
     }
 
-    private void IncrementByAmountEntry(string key, int amount)
+    private void IncrementByAmountEntryAndModify(string key, int amount)
     {
         _dictionary.Entry(key).AndModify(count => count + amount).OrInsert(amount);
+    }
+
+    private void IncrementByAmountEntrySwitch(string key, int amount)
+    {
+        switch (_dictionary.Entry(key))
+        {
+            case OccupiedEntry<string, int> occupied:
+                occupied.Insert(occupied.Value + amount);
+                break;
+            case VacantEntry<string, int> vacant:
+                vacant.Insert(amount);
+                break;
+        }
     }
 
     [Benchmark(Baseline = true)]
@@ -56,10 +69,10 @@ public class IncrementCounterBenchmarks : BenchmarkBase
     public void IncrementCounter_Traditional_NotExists() => IncrementCounterTraditional(NewKey);
 
     [Benchmark]
-    public void IncrementCounter_Entry_Exists() => IncrementCounterEntry(ExistingKey);
+    public void IncrementCounter_EntryAndModify_Exists() => IncrementCounterEntryAndModify(ExistingKey);
 
     [Benchmark]
-    public void IncrementCounter_Entry_NotExists() => IncrementCounterEntry(NewKey);
+    public void IncrementCounter_EntryAndModify_NotExists() => IncrementCounterEntryAndModify(NewKey);
 
     [Benchmark]
     public void IncrementByAmount_Traditional_Exists() => IncrementByAmountTraditional(ExistingKey, 5);
@@ -68,8 +81,14 @@ public class IncrementCounterBenchmarks : BenchmarkBase
     public void IncrementByAmount_Traditional_NotExists() => IncrementByAmountTraditional(NewKey, 5);
 
     [Benchmark]
-    public void IncrementByAmount_Entry_Exists() => IncrementByAmountEntry(ExistingKey, 5);
+    public void IncrementByAmount_EntryAndModify_Exists() => IncrementByAmountEntryAndModify(ExistingKey, 5);
 
     [Benchmark]
-    public void IncrementByAmount_Entry_NotExists() => IncrementByAmountEntry(NewKey, 5);
+    public void IncrementByAmount_EntryAndModify_NotExists() => IncrementByAmountEntryAndModify(NewKey, 5);
+
+    [Benchmark]
+    public void IncrementByAmount_EntrySwitch_Exists() => IncrementByAmountEntrySwitch(ExistingKey, 5);
+
+    [Benchmark]
+    public void IncrementByAmount_EntrySwitch_NotExists() => IncrementByAmountEntrySwitch(NewKey, 5);
 }

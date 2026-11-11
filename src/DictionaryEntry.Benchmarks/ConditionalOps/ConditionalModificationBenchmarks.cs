@@ -40,7 +40,7 @@ public class ConditionalModificationBenchmarks : BenchmarkBase
         _dictionary.Entry(key).Match(
             occupied =>
             {
-                var value = occupied.Value();
+                var value = occupied.Value;
                 if (value > Threshold)
                 {
                     occupied.Insert(value * 2);

@@ -1,18 +1,18 @@
 <Project Sdk="Microsoft.NET.Sdk">
 
     <PropertyGroup>
-        <TargetFrameworks>net8.0;net9.0;net10.0</TargetFrameworks>
+        <TargetFrameworks>net8.0;net9.0;net10.0;net11.0</TargetFrameworks>
         <ImplicitUsings>enable</ImplicitUsings>
         <Nullable>enable</Nullable>
         <IsAotCompatible>true</IsAotCompatible>
         <LangVersion>latest</LangVersion>
 
         <PackageId>DictionaryEntry</PackageId>
-        <Version>0.2.0</Version>
-        <PackageVersion>0.2.0</PackageVersion>
+        <Version>0.3.0</Version>
+        <PackageVersion>0.3.0</PackageVersion>
         <Authors>Kyle Hickman</Authors>
         <Description>Dictionary manipulation with a fluent, expressive syntax.</Description>
-        <PackageTags>dictionary;collections;entry;fluent;extension</PackageTags>
+        <PackageTags>dictionary;collections;entry;fluent;extension;union</PackageTags>
         <Copyright>Copyright © Kyle Hickman</Copyright>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageProjectUrl>https://github.com/kjhickman/DictionaryEntry</PackageProjectUrl>
