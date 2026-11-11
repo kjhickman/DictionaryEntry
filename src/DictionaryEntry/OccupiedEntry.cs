@@ -4,7 +4,7 @@ namespace DictionaryEntry;
 
 /// <summary>
 /// Represents an entry that exists in the dictionary.
-/// Provides methods for manipulating an existing dictionary entry.
+/// Provides members for inspecting and manipulating an existing dictionary entry.
 /// </summary>
 /// <typeparam name="TKey">The type of the key in the dictionary.</typeparam>
 /// <typeparam name="TValue">The type of the value in the dictionary.</typeparam>
@@ -13,6 +13,8 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
     private readonly Dictionary<TKey, TValue> _dictionary;
     private readonly TKey _key;
     private readonly TValue _value;
+
+    internal Dictionary<TKey, TValue> Dictionary => _dictionary;
 
     internal OccupiedEntry(Dictionary<TKey, TValue> dictionary, TKey key, TValue value)
     {
@@ -24,16 +26,32 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
     /// <summary>
     /// Gets the key associated with this entry.
     /// </summary>
-    /// <returns>The key associated with this entry.</returns>
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public TKey Key() => _key;
+    public TKey Key
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => _key;
+    }
 
     /// <summary>
     /// Gets the value associated with this entry.
     /// </summary>
-    /// <returns>The value associated with this entry.</returns>
+    public TValue Value
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => _value;
+    }
+
+    /// <summary>
+    /// Deconstructs this entry into its key and value.
+    /// </summary>
+    /// <param name="key">The key associated with this entry.</param>
+    /// <param name="value">The value associated with this entry.</param>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public TValue Value() => _value;
+    public void Deconstruct(out TKey key, out TValue value)
+    {
+        key = _key;
+        value = _value;
+    }
 
     /// <summary>
     /// Updates the value of this entry in the dictionary.

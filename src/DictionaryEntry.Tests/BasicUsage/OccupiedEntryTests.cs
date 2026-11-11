@@ -12,7 +12,7 @@ public class OccupiedEntryTests
         var occupied = dict.Entry("key").ToOccupied();
 
         // Assert
-        Assert.Equal("key", occupied.Key());
+        Assert.Equal("key", occupied.Key);
     }
 
     [Fact]
@@ -25,7 +25,21 @@ public class OccupiedEntryTests
         var occupied = dict.Entry("key").ToOccupied();
 
         // Assert
-        Assert.Equal(42, occupied.Value());
+        Assert.Equal(42, occupied.Value);
+    }
+
+    [Fact]
+    public void Deconstruct_ReturnsKeyAndValue()
+    {
+        // Arrange
+        var dict = new Dictionary<string, int> { ["key"] = 42 };
+
+        // Act
+        var (key, value) = dict.Entry("key").ToOccupied();
+
+        // Assert
+        Assert.Equal("key", key);
+        Assert.Equal(42, value);
     }
 
     [Fact]

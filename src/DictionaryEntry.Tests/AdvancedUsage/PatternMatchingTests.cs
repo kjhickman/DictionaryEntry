@@ -61,7 +61,7 @@ public class PatternMatchingTests
 
         // Act
         var result = dict.Entry("key").Match(
-            occupied => occupied.Value() * 2,
+            occupied => occupied.Value * 2,
             vacant => 0);
 
         // Assert
@@ -70,7 +70,7 @@ public class PatternMatchingTests
         // Test with vacant entry
         dict.Clear();
         result = dict.Entry("key").Match(
-            occupied => occupied.Value() * 2,
+            occupied => occupied.Value * 2,
             vacant => 99);
 
         // Assert

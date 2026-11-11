@@ -36,7 +36,7 @@ public class BatchOperationsBenchmarks : BenchmarkBase
         _dictionary.Entry(key).Match(
             occupied =>
             {
-                var value = occupied.Value();
+                var value = occupied.Value;
                 value *= 2;
                 value = Math.Max(0, value);
                 value += 5;

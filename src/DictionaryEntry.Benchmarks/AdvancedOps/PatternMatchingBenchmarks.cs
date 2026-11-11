@@ -32,10 +32,10 @@ public class PatternMatchingBenchmarks : BenchmarkBase
         return "Not found";
     }
 
-    private string PatternMatchingEntry(string key)
+    private string PatternMatchingEntryMatch(string key)
     {
         return _dictionary.Entry(key).Match(
-            occupied => occupied.Value() switch
+            occupied => occupied.Value switch
             {
                 > 100 => "Very large",
                 > 50 => "Large",
@@ -44,6 +44,19 @@ public class PatternMatchingBenchmarks : BenchmarkBase
                 _ => "Zero or negative"
             },
             _ => "Not found");
+    }
+
+    private string PatternMatchingEntrySwitch(string key)
+    {
+        return _dictionary.Entry(key) switch
+        {
+            OccupiedEntry<string, int> { Value: > 100 } => "Very large",
+            OccupiedEntry<string, int> { Value: > 50 } => "Large",
+            OccupiedEntry<string, int> { Value: > 10 } => "Medium",
+            OccupiedEntry<string, int> { Value: > 0 } => "Small",
+            OccupiedEntry<string, int> => "Zero or negative",
+            VacantEntry<string, int> => "Not found",
+        };
     }
 
     private void DifferentActionsTraditional(string key)
@@ -58,11 +71,24 @@ public class PatternMatchingBenchmarks : BenchmarkBase
         }
     }
 
-    private void DifferentActionsEntry(string key)
+    private void DifferentActionsEntryMatch(string key)
     {
         _dictionary.Entry(key).Match(
-            occupied => occupied.Insert(occupied.Value() * 2),
+            occupied => occupied.Insert(occupied.Value * 2),
             vacant => vacant.Insert(1));
+    }
+
+    private void DifferentActionsEntrySwitch(string key)
+    {
+        switch (_dictionary.Entry(key))
+        {
+            case OccupiedEntry<string, int> occupied:
+                occupied.Insert(occupied.Value * 2);
+                break;
+            case VacantEntry<string, int> vacant:
+                vacant.Insert(1);
+                break;
+        }
     }
 
     [Benchmark(Baseline = true)]
@@ -72,10 +98,16 @@ public class PatternMatchingBenchmarks : BenchmarkBase
     public string PatternMatching_Traditional_NotExists() => PatternMatchingTraditional(NewKey);
 
     [Benchmark]
-    public string PatternMatching_Entry_Exists() => PatternMatchingEntry(ExistingKey);
+    public string PatternMatching_EntryMatch_Exists() => PatternMatchingEntryMatch(ExistingKey);
 
     [Benchmark]
-    public string PatternMatching_Entry_NotExists() => PatternMatchingEntry(NewKey);
+    public string PatternMatching_EntryMatch_NotExists() => PatternMatchingEntryMatch(NewKey);
+
+    [Benchmark]
+    public string PatternMatching_EntrySwitch_Exists() => PatternMatchingEntrySwitch(ExistingKey);
+
+    [Benchmark]
+    public string PatternMatching_EntrySwitch_NotExists() => PatternMatchingEntrySwitch(NewKey);
 
     [Benchmark]
     public void DifferentActions_Traditional_Exists() => DifferentActionsTraditional(ExistingKey);
@@ -84,8 +116,14 @@ public class PatternMatchingBenchmarks : BenchmarkBase
     public void DifferentActions_Traditional_NotExists() => DifferentActionsTraditional(NewKey);
 
     [Benchmark]
-    public void DifferentActions_Entry_Exists() => DifferentActionsEntry(ExistingKey);
+    public void DifferentActions_EntryMatch_Exists() => DifferentActionsEntryMatch(ExistingKey);
 
     [Benchmark]
-    public void DifferentActions_Entry_NotExists() => DifferentActionsEntry(NewKey);
+    public void DifferentActions_EntryMatch_NotExists() => DifferentActionsEntryMatch(NewKey);
+
+    [Benchmark]
+    public void DifferentActions_EntrySwitch_Exists() => DifferentActionsEntrySwitch(ExistingKey);
+
+    [Benchmark]
+    public void DifferentActions_EntrySwitch_NotExists() => DifferentActionsEntrySwitch(NewKey);
 }

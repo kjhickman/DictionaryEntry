@@ -19,11 +19,11 @@ public class DictionaryContainsBenchmarks : BenchmarkBase
     public bool TryGetValue_Found() => _dictionary.TryGetValue(ExistingKey, out _);
 
     [Benchmark]
-    public bool Entry_IsOccupied_Found() => _dictionary.Entry(ExistingKey).IsOccupied();
+    public bool Entry_IsOccupied_Found() => _dictionary.Entry(ExistingKey).IsOccupied;
 
     [Benchmark]
     public bool TryGetValue_NotFound() => _dictionary.TryGetValue(MissingKey, out _);
 
     [Benchmark]
-    public bool Entry_IsOccupied_NotFound() => _dictionary.Entry(MissingKey).IsOccupied();
+    public bool Entry_IsOccupied_NotFound() => _dictionary.Entry(MissingKey).IsOccupied;
 }
