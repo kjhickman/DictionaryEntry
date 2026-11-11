@@ -57,6 +57,13 @@ public class EdgeCaseTests
     }
 
     [Fact]
+    public void DefaultEntry_ToOccupied_ThrowsInvalidOperationException()
+    {
+        var ex = Assert.Throws<InvalidOperationException>(() => default(Entry<string, int>).ToOccupied());
+        Assert.Contains("not associated with a dictionary", ex.Message);
+    }
+
+    [Fact]
     public void DefaultEntry_ToVacant_ThrowsInvalidOperationException()
     {
         // Act & Assert (ref structs can't be captured by lambdas, so the default is created inside)
@@ -89,18 +96,47 @@ public class EdgeCaseTests
     }
 
     [Fact]
-    public void DefaultEntry_AndModify_IsNoOp()
+    public void DefaultEntry_AndModify_ThrowsWithoutInvokingCallback()
     {
         // Arrange
-        Entry<string, int> entry = default;
         var invoked = false;
 
-        // Act
-        var result = entry.AndModify(v => { invoked = true; return v; });
-
-        // Assert
+        // Act & Assert
+        var ex = Assert.Throws<InvalidOperationException>(() =>
+            default(Entry<string, int>).AndModify(v => { invoked = true; return v; }));
+        Assert.Contains("not associated with a dictionary", ex.Message);
         Assert.False(invoked);
-        Assert.True(result is null);
+    }
+
+    [Fact]
+    public void DefaultEntry_InsertionMethods_ThrowInvalidOperationExceptionWithoutInvokingFactories()
+    {
+        var factoryInvoked = false;
+
+        Assert.Throws<InvalidOperationException>(() => default(Entry<string, int>).OrInsert(1));
+        Assert.Throws<InvalidOperationException>(() => default(Entry<string, int>).OrDefault());
+        Assert.Throws<InvalidOperationException>(() => default(Entry<string, int>).InsertEntry(1));
+
+        Assert.Throws<InvalidOperationException>(() =>
+            default(Entry<string, int>).OrInsertWith(() => { factoryInvoked = true; return 1; }));
+        Assert.Throws<InvalidOperationException>(() =>
+            default(Entry<string, int>).OrInsertWithKey(_ => { factoryInvoked = true; return 1; }));
+
+        Assert.False(factoryInvoked);
+    }
+
+    [Fact]
+    public void DefaultOccupiedAndVacantEntries_MutatingMethods_ThrowInvalidOperationException()
+    {
+        OccupiedEntry<string, int> defaultOccupied = default;
+        VacantEntry<string, int> defaultVacant = default;
+
+        Assert.Throws<InvalidOperationException>(() => defaultOccupied.Insert(1));
+        Assert.Throws<InvalidOperationException>(() => defaultOccupied.Remove());
+        Assert.Throws<InvalidOperationException>(() => defaultOccupied.RemoveEntry());
+
+        Assert.Throws<InvalidOperationException>(() => defaultVacant.Insert(1));
+        Assert.Throws<InvalidOperationException>(() => defaultVacant.InsertEntry(1));
     }
 
     [Fact]
@@ -228,5 +264,186 @@ public class EdgeCaseTests
 
         Assert.IsType<ArgumentException>(thrown);
         Assert.Equal(1, dict["key"]);
+    }
+
+    [Fact]
+    public void Entry_WithNullKey_ThrowsArgumentNullException()
+    {
+        // Arrange
+        var dict = new Dictionary<string, int>();
+
+        // Act & Assert
+        Assert.Throws<ArgumentNullException>(() => dict.Entry(null!));
+    }
+
+    [Fact]
+    public void AndModify_WhenUpdateFuncThrows_PreservesExistingValue()
+    {
+        // Arrange
+        var dict = new Dictionary<string, int> { ["key"] = 42 };
+
+        // Act & Assert
+        Assert.Throws<InvalidOperationException>(() =>
+            dict.Entry("key").AndModify(_ => throw new InvalidOperationException("update failed")));
+        Assert.Equal(42, dict["key"]);
+    }
+
+    [Fact]
+    public void CustomComparer_CaseInsensitiveKeys_RespectComparerAcrossOperations()
+    {
+        // Arrange
+        var dict = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["PlayerOne"] = 10
+        };
+
+        // Act & Assert: lookup with different casing finds the existing entry
+        Assert.True(dict.Entry("playerone").IsOccupied);
+        Assert.False(dict.Entry("playerone").IsVacant);
+
+        var matched = dict.Entry("PLAYERONE") switch
+        {
+            OccupiedEntry<string, int> o => o.Value,
+            VacantEntry<string, int> => -1,
+        };
+        Assert.Equal(10, matched);
+
+        // AndModify and OrInsert update/read the existing slot without altering the stored key casing
+        dict.Entry("playerone").AndModify(v => v + 5).OrInsert(0);
+        Assert.Equal(15, dict["PlayerOne"]);
+        Assert.Equal("PlayerOne", Assert.Single(dict.Keys));
+
+        // OccupiedEntry.Insert, implicit union conversion, and Remove respect the comparer
+        var occupied = dict.Entry("PLAYERONE").ToOccupied();
+        occupied.Insert(99);
+        Entry<string, int> convertedOccupied = occupied;
+        Assert.True(convertedOccupied is OccupiedEntry<string, int> { Value: 99 });
+        Assert.Equal("PlayerOne", Assert.Single(dict.Keys));
+
+        Assert.Equal(99, occupied.Remove());
+        Assert.Empty(dict);
+
+        // VacantEntry insertion also uses the dictionary's comparer
+        var vacant = dict.Entry("NewKey").ToVacant();
+        vacant.Insert(7);
+        Assert.True(dict.Entry("newkey") is OccupiedEntry<string, int> { Value: 7 });
+    }
+
+    [Fact]
+    public void ValueTypeKeys_GuidAndRecordStruct_SupportFluentAndUnionOperations()
+    {
+        var id = Guid.NewGuid();
+        var byGuid = new Dictionary<Guid, string>();
+
+        byGuid.Entry(id).OrInsert("alice");
+        var name = byGuid.Entry(id) switch
+        {
+            OccupiedEntry<Guid, string> occupied => occupied.Value,
+            VacantEntry<Guid, string> => "none",
+        };
+        Assert.Equal("alice", name);
+
+        var coordDict = new Dictionary<GridCoord, int>();
+        var origin = new GridCoord(0, 0);
+        coordDict.Entry(origin).OrDefault() = 5;
+        coordDict.Entry(origin).AndModify(v => v + 10);
+        Assert.Equal(15, coordDict[origin]);
+    }
+
+    [Fact]
+    public void MutableStructValue_RefReturns_MutateFieldsInPlaceWithoutCopy()
+    {
+        var dict = new Dictionary<int, PlayerStats>();
+
+        ref var p1 = ref dict.Entry(1).OrInsert(new PlayerStats { Score = 10, Visits = 1 });
+        p1.Score += 25;
+        p1.Visits++;
+        Assert.Equal(new PlayerStats { Score = 35, Visits = 2 }, dict[1]);
+
+        ref var p2 = ref dict.Entry(2).OrDefault();
+        p2.Score = 5;
+        p2.Visits = 1;
+        Assert.Equal(new PlayerStats { Score = 5, Visits = 1 }, dict[2]);
+
+        ref var p3 = ref dict.Entry(3).OrInsertWith(() => new PlayerStats { Score = 1, Visits = 1 });
+        p3.Visits += 4;
+        Assert.Equal(new PlayerStats { Score = 1, Visits = 5 }, dict[3]);
+
+        ref var p4 = ref dict.Entry(4).OrInsertWithKey(id => new PlayerStats { Score = id * 10, Visits = 1 });
+        p4.Score += 2;
+        Assert.Equal(new PlayerStats { Score = 42, Visits = 1 }, dict[4]);
+    }
+
+    [Fact]
+    public void HashCollisions_MultipleKeysInSameBucket_IsolateEntriesAndRemovals()
+    {
+        var dict = new Dictionary<CollidingKey, int>();
+        var k1 = new CollidingKey(1);
+        var k2 = new CollidingKey(2);
+        var k3 = new CollidingKey(3);
+        var k4 = new CollidingKey(4);
+
+        dict.Entry(k1).OrInsert(10);
+        dict.Entry(k2).OrInsert(20);
+        dict.Entry(k3).OrInsert(30);
+
+        // Remove middle element in the collision chain, then probe/modify past it
+        Assert.Equal(20, dict.Entry(k2).ToOccupied().Remove());
+        Assert.True(dict.Entry(k2) is VacantEntry<CollidingKey, int>);
+
+        dict.Entry(k3).AndModify(v => v + 5);
+        dict.Entry(k4).OrInsert(40);
+
+        Assert.Equal(10, dict[k1]);
+        Assert.False(dict.ContainsKey(k2));
+        Assert.Equal(35, dict[k3]);
+        Assert.Equal(40, dict[k4]);
+    }
+
+    [Fact]
+    public void OrInsertVariants_WhenInsertionTriggersResize_ReturnedRefPointsAtLiveStorage()
+    {
+        AssertRefSurvivesResize((dict, key) => ref dict.Entry(key).OrInsert(1));
+        AssertRefSurvivesResize((dict, key) => ref dict.Entry(key).OrInsertWith(() => 1));
+        AssertRefSurvivesResize((dict, key) => ref dict.Entry(key).OrInsertWithKey(_ => 1));
+        AssertRefSurvivesResize((dict, key) =>
+        {
+            ref var slot = ref dict.Entry(key).OrDefault();
+            slot = 1;
+            return ref slot;
+        });
+
+        static void AssertRefSurvivesResize(RefInserter inserter)
+        {
+            var dict = new Dictionary<int, int>(capacity: 3);
+            for (var i = 0; i < 64; i++)
+            {
+                ref var valueRef = ref inserter(dict, i);
+                valueRef = i * 10;
+            }
+
+            for (var i = 0; i < 64; i++)
+            {
+                Assert.Equal(i * 10, dict[i]);
+            }
+        }
+    }
+
+    private delegate ref int RefInserter(Dictionary<int, int> dict, int key);
+
+    private readonly record struct GridCoord(int X, int Y);
+
+    private struct PlayerStats
+    {
+        public int Score;
+        public int Visits;
+    }
+
+    private readonly struct CollidingKey(int id) : IEquatable<CollidingKey>
+    {
+        public int Id { get; } = id;
+        public bool Equals(CollidingKey other) => Id == other.Id;
+        public override bool Equals(object? obj) => obj is CollidingKey other && Equals(other);
+        public override int GetHashCode() => 0;
     }
 }

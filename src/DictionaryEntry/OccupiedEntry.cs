@@ -62,12 +62,18 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
     /// </summary>
     /// <param name="newValue">The new value to set.</param>
     /// <returns>The newly set value.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
     /// <remarks>
     /// <see cref="Value"/> is a snapshot and is not updated by this method.
     /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public TValue Insert(TValue newValue)
     {
+        if (_dictionary is null)
+        {
+            ThrowDefaultEntry();
+        }
+
         _dictionary[_key] = newValue;
         return newValue;
     }
@@ -79,10 +85,16 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
     /// The value that was actually removed from the dictionary, which reflects any changes made since the entry
     /// was obtained (for example via <see cref="Insert"/>), and may therefore differ from <see cref="Value"/>.
     /// </returns>
+    /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
     /// <exception cref="KeyNotFoundException">Thrown if the key is no longer present in the dictionary.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public TValue Remove()
     {
+        if (_dictionary is null)
+        {
+            ThrowDefaultEntry();
+        }
+
         if (!_dictionary.Remove(_key, out var value))
         {
             ThrowKeyNotFound(_key);
@@ -98,10 +110,16 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
     /// A tuple containing the key and the value that was actually removed from the dictionary, which reflects any
     /// changes made since the entry was obtained and may therefore differ from <see cref="Value"/>.
     /// </returns>
+    /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
     /// <exception cref="KeyNotFoundException">Thrown if the key is no longer present in the dictionary.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public (TKey, TValue) RemoveEntry()
     {
+        if (_dictionary is null)
+        {
+            ThrowDefaultEntry();
+        }
+
         if (!_dictionary.Remove(_key, out var value))
         {
             ThrowKeyNotFound(_key);
@@ -109,6 +127,12 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
 
         return (_key, value);
     }
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ThrowDefaultEntry() =>
+        throw new InvalidOperationException(
+            "The occupied entry is not associated with a dictionary. Obtain entries with Dictionary.Entry(key) rather than default.");
 
     [DoesNotReturn]
     [MethodImpl(MethodImplOptions.NoInlining)]
