@@ -150,7 +150,7 @@ Apple M1 Pro, 1 CPU, 8 logical and 8 physical cores
 .NET SDK 11.0.100
   [Host] : .NET 11.0.0 (11.0.0, 11.0.26.53018), Arm64 RyuJIT armv8.0-a
 
-InvocationCount=100000000  IterationCount=15  WarmupCount=10
+InvocationCount=250000  OperationsPerInvoke=256  IterationCount=15  WarmupCount=10
 ```
 
 Get-or-Add (`OrInsert`):
@@ -158,40 +158,42 @@ Get-or-Add (`OrInsert`):
 ```text
 | Method                         | Mean     | Allocated |
 |------------------------------- |---------:|----------:|
-| GetOrAdd_Traditional_Exists    | 2.494 ns |         - |
-| GetOrAdd_Traditional_NotExists | 2.489 ns |         - |
-| GetOrAdd_Entry_Exists          | 2.579 ns |         - |
-| GetOrAdd_Entry_NotExists       | 2.513 ns |         - |
+| GetOrAdd_Traditional_Exists    | 1.837 ns |         - |
+| GetOrAdd_Traditional_NotExists | 5.235 ns |         - |
+| GetOrAdd_Entry_Exists          | 2.044 ns |         - |
+| GetOrAdd_Entry_NotExists       | 5.779 ns |         - |
 ```
 
 Get-or-Default (`OrDefault`):
 
 ```text
-| Method                              | Mean     | Allocated |
-|------------------------------------ |---------:|----------:|
-| DefaultValue_Traditional_Exists     | 3.372 ns |         - |
-| DefaultValue_Traditional_NotExists  | 7.541 ns |         - |
-| DefaultValue_Entry_Exists           | 3.362 ns |         - |
-| DefaultValue_Entry_NotExists        | 3.088 ns |         - |
+| Method                                   | Mean      | Allocated |
+|----------------------------------------- |----------:|----------:|
+| DefaultValue_Traditional_Exists          |  4.148 ns |         - |
+| DefaultValue_Traditional_NotExists       | 11.818 ns |         - |
+| DefaultValue_Entry_Exists                |  4.380 ns |         - |
+| DefaultValue_Entry_NotExists             | 12.601 ns |         - |
+| DefaultValue_TraditionalString_NotExists | 10.581 ns |         - |
+| DefaultValue_EntryString_NotExists       |  9.834 ns |         - |
 ```
 
 Pattern Matching (`.Match(...)` vs. `switch`):
 
 ```text
-| Method                                   | Mean      | Allocated |
-|----------------------------------------- |----------:|----------:|
-| PatternMatching_Traditional_Exists       |  3.556 ns |         - |
-| PatternMatching_Traditional_NotExists    |  2.204 ns |         - |
-| PatternMatching_EntryMatch_Exists        |  4.294 ns |         - |
-| PatternMatching_EntryMatch_NotExists     |  3.983 ns |         - |
-| PatternMatching_EntrySwitch_Exists       |  3.726 ns |         - |
-| PatternMatching_EntrySwitch_NotExists    |  2.970 ns |         - |
-| DifferentActions_Traditional_Exists      |  7.111 ns |         - |
-| DifferentActions_Traditional_NotExists   |  6.634 ns |         - |
-| DifferentActions_EntryMatch_Exists       | 10.449 ns |         - |
-| DifferentActions_EntryMatch_NotExists    |  9.595 ns |         - |
-| DifferentActions_EntrySwitch_Exists      |  9.108 ns |         - |
-| DifferentActions_EntrySwitch_NotExists   |  8.297 ns |         - |
+| Method                                 | Mean      | Allocated |
+|--------------------------------------- |----------:|----------:|
+| PatternMatching_Traditional_Exists     |  4.413 ns |         - |
+| PatternMatching_Traditional_NotExists  |  3.372 ns |         - |
+| PatternMatching_EntryMatch_Exists      |  5.084 ns |         - |
+| PatternMatching_EntryMatch_NotExists   |  4.393 ns |         - |
+| PatternMatching_EntrySwitch_Exists     |  4.501 ns |         - |
+| PatternMatching_EntrySwitch_NotExists  |  3.545 ns |         - |
+| DifferentActions_Traditional_Exists    |  9.555 ns |         - |
+| DifferentActions_Traditional_NotExists | 11.662 ns |         - |
+| DifferentActions_EntryMatch_Exists     | 11.711 ns |         - |
+| DifferentActions_EntryMatch_NotExists  | 13.499 ns |         - |
+| DifferentActions_EntrySwitch_Exists    |  9.202 ns |         - |
+| DifferentActions_EntrySwitch_NotExists | 12.202 ns |         - |
 ```
 
 Increment Counter (`AndModify` vs. `AndModify(state, ...)` vs. `switch`):
@@ -199,31 +201,31 @@ Increment Counter (`AndModify` vs. `AndModify(state, ...)` vs. `switch`):
 ```text
 | Method                                          | Mean      | Allocated |
 |------------------------------------------------ |----------:|----------:|
-| IncrementCounter_Traditional_Exists             |  7.124 ns |         - |
-| IncrementCounter_Traditional_NotExists          |  6.639 ns |         - |
-| IncrementCounter_EntryAndModify_Exists          |  9.528 ns |         - |
-| IncrementCounter_EntryAndModify_NotExists       |  8.646 ns |         - |
-| IncrementByAmount_Traditional_Exists            |  7.160 ns |         - |
-| IncrementByAmount_Traditional_NotExists         |  6.626 ns |         - |
-| IncrementByAmount_EntryAndModify_Exists         | 13.216 ns |      24 B |
-| IncrementByAmount_EntryAndModify_NotExists      | 12.339 ns |      24 B |
-| IncrementByAmount_EntryAndModifyState_Exists    |  9.478 ns |         - |
-| IncrementByAmount_EntryAndModifyState_NotExists |  8.657 ns |         - |
-| IncrementByAmount_EntrySwitch_Exists            |  9.712 ns |         - |
-| IncrementByAmount_EntrySwitch_NotExists         |  9.101 ns |         - |
+| IncrementCounter_Traditional_Exists             |  9.976 ns |         - |
+| IncrementCounter_Traditional_NotExists          | 11.660 ns |         - |
+| IncrementCounter_EntryAndModify_Exists          | 10.807 ns |         - |
+| IncrementCounter_EntryAndModify_NotExists       | 12.819 ns |         - |
+| IncrementByAmount_Traditional_Exists            |  9.099 ns |         - |
+| IncrementByAmount_Traditional_NotExists         | 11.792 ns |         - |
+| IncrementByAmount_EntryAndModify_Exists         | 25.839 ns |      80 B |
+| IncrementByAmount_EntryAndModify_NotExists      | 24.216 ns |      80 B |
+| IncrementByAmount_EntryAndModifyState_Exists    |  9.824 ns |         - |
+| IncrementByAmount_EntryAndModifyState_NotExists | 12.688 ns |         - |
+| IncrementByAmount_EntrySwitch_Exists            |  9.174 ns |         - |
+| IncrementByAmount_EntrySwitch_NotExists         | 12.258 ns |         - |
 ```
 
 Stateful Factory (`OrInsertWithKey` capturing vs. `TState` overload):
 
 ```text
-| Method                                   | Mean     | Allocated |
-|----------------------------------------- |---------:|----------:|
-| StatefulFactory_Traditional_Exists       | 3.388 ns |         - |
-| StatefulFactory_Traditional_NotExists    | 3.090 ns |         - |
-| StatefulFactory_EntryCapturing_Exists    | 7.726 ns |      24 B |
-| StatefulFactory_EntryCapturing_NotExists | 7.378 ns |      24 B |
-| StatefulFactory_EntryState_Exists        | 3.512 ns |         - |
-| StatefulFactory_EntryState_NotExists     | 3.205 ns |         - |
+| Method                                   | Mean      | Allocated |
+|----------------------------------------- |----------:|----------:|
+| StatefulFactory_Traditional_Exists       |  4.148 ns |         - |
+| StatefulFactory_Traditional_NotExists    | 11.844 ns |         - |
+| StatefulFactory_EntryCapturing_Exists    | 17.090 ns |      80 B |
+| StatefulFactory_EntryCapturing_NotExists | 28.775 ns |      80 B |
+| StatefulFactory_EntryState_Exists        |  4.497 ns |         - |
+| StatefulFactory_EntryState_NotExists     | 13.575 ns |         - |
 ```
 
 To run the benchmarks yourself:
@@ -239,10 +241,10 @@ dotnet run -c Release
 
 Methods that accept delegates (`AndModify`, `OrInsertWith`, `OrInsertWithKey`, and `Match`) are zero-allocation when passed a non-capturing lambda or `static` method group, because C# caches a singleton delegate instance.
 
-When a lambda **captures local variables or `this`**, C# allocates a closure object on the heap—even on cache hits before the method is called (`24 B` on .NET 10/11 where the delegate itself is stack-allocated by JIT escape analysis, and `88 B` on .NET 8/9):
+When a lambda **captures local variables or `this`**, C# allocates a closure object on the heap—even on cache hits before the method is called (`24 B` outside loops on .NET 10/11 when JIT escape analysis stack-allocates the delegate, and up to `80–88 B` inside loops or on .NET 8/9 when the `64 B` delegate is also heap-allocated):
 
 ```csharp
-// Captures 'amount' -> allocates a 24 B closure on .NET 10/11 (88 B on .NET 8/9)
+// Captures 'amount' -> allocates a closure + delegate inside loops (24-88 B)
 private void IncrementByAmountCapturing(string key, int amount)
 {
     _dictionary.Entry(key).AndModify(count => count + amount).OrInsert(amount);

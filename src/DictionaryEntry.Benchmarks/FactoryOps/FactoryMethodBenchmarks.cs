@@ -5,14 +5,22 @@ namespace DictionaryEntry.Benchmarks.FactoryOps;
 [BenchmarkCategory("FactoryOps")]
 public class FactoryMethodBenchmarks : BenchmarkBase
 {
-    private Dictionary<string, int> _dictionary = null!;
-    private const string ExistingKey = "existing";
-    private const string NewKey = "new";
+    private Dictionary<string, int> _existingDictionary = null!;
+    private Dictionary<string, int> _emptyDictionary = null!;
+    private string[] _keys = null!;
 
-    [IterationSetup]
+    [GlobalSetup]
     public void Setup()
     {
-        _dictionary = new Dictionary<string, int> { { ExistingKey, 10 } };
+        _existingDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
+        _emptyDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
+        _keys = new string[BatchSize];
+        for (var i = 0; i < BatchSize; i++)
+        {
+            var key = $"key_{i}";
+            _keys[i] = key;
+            _existingDictionary[key] = 10;
+        }
     }
 
     private static int ComputeExpensiveValue()
@@ -25,98 +33,231 @@ public class FactoryMethodBenchmarks : BenchmarkBase
         return key.Length * 10;
     }
 
-    private int FactoryMethodTraditional(string key)
+    private static int FactoryMethodTraditional(Dictionary<string, int> dict, string key)
     {
-        if (!_dictionary.TryGetValue(key, out var value))
+        if (!dict.TryGetValue(key, out var value))
         {
             value = ComputeExpensiveValue();
-            _dictionary[key] = value;
+            dict[key] = value;
         }
 
         return value;
     }
 
-    private int KeyBasedFactoryTraditional(string key)
+    private static int KeyBasedFactoryTraditional(Dictionary<string, int> dict, string key)
     {
-        if (!_dictionary.TryGetValue(key, out var value))
+        if (!dict.TryGetValue(key, out var value))
         {
             value = ComputeFromKey(key);
-            _dictionary[key] = value;
+            dict[key] = value;
         }
 
         return value;
     }
 
-    private int FactoryMethodEntry(string key)
+    private static int FactoryMethodEntry(Dictionary<string, int> dict, string key)
     {
-        return _dictionary.Entry(key).OrInsertWith(ComputeExpensiveValue);
+        return dict.Entry(key).OrInsertWith(ComputeExpensiveValue);
     }
 
-    private int KeyBasedFactoryEntry(string key)
+    private static int KeyBasedFactoryEntry(Dictionary<string, int> dict, string key)
     {
-        return _dictionary.Entry(key).OrInsertWithKey(ComputeFromKey);
+        return dict.Entry(key).OrInsertWithKey(ComputeFromKey);
     }
 
-    private int StatefulFactoryTraditional(string key, int multiplier)
+    private static int StatefulFactoryTraditional(Dictionary<string, int> dict, string key, int multiplier)
     {
-        if (!_dictionary.TryGetValue(key, out var value))
+        if (!dict.TryGetValue(key, out var value))
         {
             value = key.Length * multiplier;
-            _dictionary[key] = value;
+            dict[key] = value;
         }
 
         return value;
     }
 
-    private int StatefulFactoryCapturingEntry(string key, int multiplier)
+    private static int StatefulFactoryCapturingEntry(Dictionary<string, int> dict, string key, int multiplier)
     {
-        return _dictionary.Entry(key).OrInsertWithKey(k => k.Length * multiplier);
+        return dict.Entry(key).OrInsertWithKey(k => k.Length * multiplier);
     }
 
-    private int StatefulFactoryStateEntry(string key, int multiplier)
+    private static int StatefulFactoryStateEntry(Dictionary<string, int> dict, string key, int multiplier)
     {
-        return _dictionary.Entry(key).OrInsertWithKey(multiplier, static (k, mult) => k.Length * mult);
+        return dict.Entry(key).OrInsertWithKey(multiplier, static (k, mult) => k.Length * mult);
     }
 
-    [Benchmark(Baseline = true)]
-    public int FactoryMethod_Traditional_Exists() => FactoryMethodTraditional(ExistingKey);
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize)]
+    public int FactoryMethod_Traditional_Exists()
+    {
+        var sum = 0;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            sum += FactoryMethodTraditional(_existingDictionary, _keys[i]);
+        }
 
-    [Benchmark]
-    public int FactoryMethod_Traditional_NotExists() => FactoryMethodTraditional(NewKey);
+        return sum;
+    }
 
-    [Benchmark]
-    public int FactoryMethod_Entry_Exists() => FactoryMethodEntry(ExistingKey);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public int FactoryMethod_Traditional_NotExists()
+    {
+        _emptyDictionary.Clear();
+        var sum = 0;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            sum += FactoryMethodTraditional(_emptyDictionary, _keys[i]);
+        }
 
-    [Benchmark]
-    public int FactoryMethod_Entry_NotExists() => FactoryMethodEntry(NewKey);
+        return sum;
+    }
 
-    [Benchmark]
-    public int KeyBasedFactory_Traditional_Exists() => KeyBasedFactoryTraditional(ExistingKey);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public int FactoryMethod_Entry_Exists()
+    {
+        var sum = 0;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            sum += FactoryMethodEntry(_existingDictionary, _keys[i]);
+        }
 
-    [Benchmark]
-    public int KeyBasedFactory_Traditional_NotExists() => KeyBasedFactoryTraditional(NewKey);
+        return sum;
+    }
 
-    [Benchmark]
-    public int KeyBasedFactory_Entry_Exists() => KeyBasedFactoryEntry(ExistingKey);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public int FactoryMethod_Entry_NotExists()
+    {
+        _emptyDictionary.Clear();
+        var sum = 0;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            sum += FactoryMethodEntry(_emptyDictionary, _keys[i]);
+        }
 
-    [Benchmark]
-    public int KeyBasedFactory_Entry_NotExists() => KeyBasedFactoryEntry(NewKey);
+        return sum;
+    }
 
-    [Benchmark]
-    public int StatefulFactory_Traditional_Exists() => StatefulFactoryTraditional(ExistingKey, 10);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public int KeyBasedFactory_Traditional_Exists()
+    {
+        var sum = 0;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            sum += KeyBasedFactoryTraditional(_existingDictionary, _keys[i]);
+        }
 
-    [Benchmark]
-    public int StatefulFactory_Traditional_NotExists() => StatefulFactoryTraditional(NewKey, 10);
+        return sum;
+    }
 
-    [Benchmark]
-    public int StatefulFactory_EntryCapturing_Exists() => StatefulFactoryCapturingEntry(ExistingKey, 10);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public int KeyBasedFactory_Traditional_NotExists()
+    {
+        _emptyDictionary.Clear();
+        var sum = 0;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            sum += KeyBasedFactoryTraditional(_emptyDictionary, _keys[i]);
+        }
 
-    [Benchmark]
-    public int StatefulFactory_EntryCapturing_NotExists() => StatefulFactoryCapturingEntry(NewKey, 10);
+        return sum;
+    }
 
-    [Benchmark]
-    public int StatefulFactory_EntryState_Exists() => StatefulFactoryStateEntry(ExistingKey, 10);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public int KeyBasedFactory_Entry_Exists()
+    {
+        var sum = 0;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            sum += KeyBasedFactoryEntry(_existingDictionary, _keys[i]);
+        }
 
-    [Benchmark]
-    public int StatefulFactory_EntryState_NotExists() => StatefulFactoryStateEntry(NewKey, 10);
+        return sum;
+    }
+
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public int KeyBasedFactory_Entry_NotExists()
+    {
+        _emptyDictionary.Clear();
+        var sum = 0;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            sum += KeyBasedFactoryEntry(_emptyDictionary, _keys[i]);
+        }
+
+        return sum;
+    }
+
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public int StatefulFactory_Traditional_Exists()
+    {
+        var sum = 0;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            sum += StatefulFactoryTraditional(_existingDictionary, _keys[i], 10);
+        }
+
+        return sum;
+    }
+
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public int StatefulFactory_Traditional_NotExists()
+    {
+        _emptyDictionary.Clear();
+        var sum = 0;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            sum += StatefulFactoryTraditional(_emptyDictionary, _keys[i], 10);
+        }
+
+        return sum;
+    }
+
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public int StatefulFactory_EntryCapturing_Exists()
+    {
+        var sum = 0;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            sum += StatefulFactoryCapturingEntry(_existingDictionary, _keys[i], 10);
+        }
+
+        return sum;
+    }
+
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public int StatefulFactory_EntryCapturing_NotExists()
+    {
+        _emptyDictionary.Clear();
+        var sum = 0;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            sum += StatefulFactoryCapturingEntry(_emptyDictionary, _keys[i], 10);
+        }
+
+        return sum;
+    }
+
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public int StatefulFactory_EntryState_Exists()
+    {
+        var sum = 0;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            sum += StatefulFactoryStateEntry(_existingDictionary, _keys[i], 10);
+        }
+
+        return sum;
+    }
+
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public int StatefulFactory_EntryState_NotExists()
+    {
+        _emptyDictionary.Clear();
+        var sum = 0;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            sum += StatefulFactoryStateEntry(_emptyDictionary, _keys[i], 10);
+        }
+
+        return sum;
+    }
 }

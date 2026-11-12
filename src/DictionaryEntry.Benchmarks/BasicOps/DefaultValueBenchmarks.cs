@@ -5,66 +5,131 @@ namespace DictionaryEntry.Benchmarks.BasicOps;
 [BenchmarkCategory("BasicOps")]
 public class DefaultValueBenchmarks : BenchmarkBase
 {
-    private Dictionary<string, int> _dictionary = null!;
-    private Dictionary<string, string?> _stringDictionary = null!;
-    private const string ExistingKey = "existing";
-    private const string ExistingStringKey = "existingString";
-    private const string NewKey = "new";
+    private Dictionary<string, int> _existingDictionary = null!;
+    private Dictionary<string, int> _emptyDictionary = null!;
+    private Dictionary<string, string?> _emptyStringDictionary = null!;
+    private string[] _keys = null!;
 
-    [IterationSetup]
-    public void Setup()
+    [GlobalSetup]
+    public void GlobalSetup()
     {
-        _dictionary = new Dictionary<string, int> { { ExistingKey, 10 } };
-        _stringDictionary = new Dictionary<string, string?> { { ExistingStringKey, "value" } };
+        _existingDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
+        _emptyDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
+        _emptyStringDictionary = new Dictionary<string, string?>(capacity: BatchSize * 2);
+        _keys = new string[BatchSize];
+        for (var i = 0; i < BatchSize; i++)
+        {
+            var key = $"key_{i}";
+            _keys[i] = key;
+            _existingDictionary[key] = 10;
+        }
     }
 
-    private int DefaultValueTraditional(string key)
+    private static int DefaultValueTraditional(Dictionary<string, int> dict, string key)
     {
-        if (!_dictionary.TryGetValue(key, out var value))
+        if (!dict.TryGetValue(key, out var value))
         {
             value = default;
-            _dictionary[key] = value;
+            dict[key] = value;
         }
 
         return value;
     }
 
-    private string? DefaultValueTraditionalString(string key)
+    private static string? DefaultValueTraditionalString(Dictionary<string, string?> dict, string key)
     {
-        if (!_stringDictionary.TryGetValue(key, out var value))
+        if (!dict.TryGetValue(key, out var value))
         {
             value = default;
-            _stringDictionary[key] = value;
+            dict[key] = value;
         }
 
         return value;
     }
 
-    private int DefaultValueEntry(string key)
+    private static int DefaultValueEntry(Dictionary<string, int> dict, string key)
     {
-        return _dictionary.Entry(key).OrDefault();
+        return dict.Entry(key).OrDefault();
     }
 
-    private string? DefaultValueEntryString(string key)
+    private static string? DefaultValueEntryString(Dictionary<string, string?> dict, string key)
     {
-        return _stringDictionary.Entry(key).OrDefault();
+        return dict.Entry(key).OrDefault();
     }
 
-    [Benchmark(Baseline = true)]
-    public int DefaultValue_Traditional_Exists() => DefaultValueTraditional(ExistingKey);
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize)]
+    public int DefaultValue_Traditional_Exists()
+    {
+        var sum = 0;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            sum += DefaultValueTraditional(_existingDictionary, _keys[i]);
+        }
 
-    [Benchmark]
-    public int DefaultValue_Traditional_NotExists() => DefaultValueTraditional(NewKey);
+        return sum;
+    }
 
-    [Benchmark]
-    public int DefaultValue_Entry_Exists() => DefaultValueEntry(ExistingKey);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public int DefaultValue_Traditional_NotExists()
+    {
+        _emptyDictionary.Clear();
+        var sum = 0;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            sum += DefaultValueTraditional(_emptyDictionary, _keys[i]);
+        }
 
-    [Benchmark]
-    public int DefaultValue_Entry_NotExists() => DefaultValueEntry(NewKey);
+        return sum;
+    }
 
-    [Benchmark]
-    public string? DefaultValue_TraditionalString_NotExists() => DefaultValueTraditionalString(NewKey);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public int DefaultValue_Entry_Exists()
+    {
+        var sum = 0;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            sum += DefaultValueEntry(_existingDictionary, _keys[i]);
+        }
 
-    [Benchmark]
-    public string? DefaultValue_EntryString_NotExists() => DefaultValueEntryString(NewKey);
+        return sum;
+    }
+
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public int DefaultValue_Entry_NotExists()
+    {
+        _emptyDictionary.Clear();
+        var sum = 0;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            sum += DefaultValueEntry(_emptyDictionary, _keys[i]);
+        }
+
+        return sum;
+    }
+
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public string? DefaultValue_TraditionalString_NotExists()
+    {
+        _emptyStringDictionary.Clear();
+        string? last = null;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            last = DefaultValueTraditionalString(_emptyStringDictionary, _keys[i]);
+        }
+
+        return last;
+    }
+
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public string? DefaultValue_EntryString_NotExists()
+    {
+        _emptyStringDictionary.Clear();
+        string? last = null;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            last = DefaultValueEntryString(_emptyStringDictionary, _keys[i]);
+        }
+
+        return last;
+    }
 }

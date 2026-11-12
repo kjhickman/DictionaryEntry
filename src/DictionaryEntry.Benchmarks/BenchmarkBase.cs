@@ -13,6 +13,8 @@ namespace DictionaryEntry.Benchmarks;
 [CategoriesColumn]
 public abstract class BenchmarkBase
 {
+    protected const int BatchSize = 256;
+
     private sealed class BenchmarkConfig : ManualConfig
     {
         public BenchmarkConfig()
@@ -21,7 +23,7 @@ public abstract class BenchmarkBase
                 .WithStrategy(RunStrategy.Throughput)
                 .WithIterationCount(15)
                 .WithWarmupCount(10)
-                .WithInvocationCount(100_000_000)
+                .WithInvocationCount(250_000)
                 .WithToolchain(InProcessNoEmitToolchain.Instance));
         }
     }
