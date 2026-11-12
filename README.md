@@ -35,7 +35,10 @@ else
 // Using DictionaryEntry (fluent)
 scores.Entry(player).AndModify(score => score + points).OrInsert(points);
 
-// Or zero-closure via ref return
+// Zero-allocation fluent with TState + static lambda
+scores.Entry(player).AndModify(points, static (score, pts) => score + pts).OrInsert(points);
+
+// Or via ref return
 scores.Entry(player).OrDefault() += points;
 ```
 
@@ -191,21 +194,36 @@ Pattern Matching (`.Match(...)` vs. `switch`):
 | DifferentActions_EntrySwitch_NotExists   |  8.297 ns |         - |
 ```
 
-Increment Counter (`AndModify` vs. `switch`):
+Increment Counter (`AndModify` vs. `AndModify(state, ...)` vs. `switch`):
 
 ```text
-| Method                                       | Mean      | Allocated |
-|--------------------------------------------- |----------:|----------:|
-| IncrementCounter_Traditional_Exists          |  7.124 ns |         - |
-| IncrementCounter_Traditional_NotExists       |  6.639 ns |         - |
-| IncrementCounter_EntryAndModify_Exists       |  9.528 ns |         - |
-| IncrementCounter_EntryAndModify_NotExists    |  8.646 ns |         - |
-| IncrementByAmount_Traditional_Exists         |  8.592 ns |         - |
-| IncrementByAmount_Traditional_NotExists      |  7.923 ns |         - |
-| IncrementByAmount_EntryAndModify_Exists      | 15.548 ns |      24 B |
-| IncrementByAmount_EntryAndModify_NotExists   | 14.390 ns |      24 B |
-| IncrementByAmount_EntrySwitch_Exists         |  9.713 ns |         - |
-| IncrementByAmount_EntrySwitch_NotExists      |  8.928 ns |         - |
+| Method                                          | Mean      | Allocated |
+|------------------------------------------------ |----------:|----------:|
+| IncrementCounter_Traditional_Exists             |  7.124 ns |         - |
+| IncrementCounter_Traditional_NotExists          |  6.639 ns |         - |
+| IncrementCounter_EntryAndModify_Exists          |  9.528 ns |         - |
+| IncrementCounter_EntryAndModify_NotExists       |  8.646 ns |         - |
+| IncrementByAmount_Traditional_Exists            |  7.160 ns |         - |
+| IncrementByAmount_Traditional_NotExists         |  6.626 ns |         - |
+| IncrementByAmount_EntryAndModify_Exists         | 13.216 ns |      24 B |
+| IncrementByAmount_EntryAndModify_NotExists      | 12.339 ns |      24 B |
+| IncrementByAmount_EntryAndModifyState_Exists    |  9.478 ns |         - |
+| IncrementByAmount_EntryAndModifyState_NotExists |  8.657 ns |         - |
+| IncrementByAmount_EntrySwitch_Exists            |  9.712 ns |         - |
+| IncrementByAmount_EntrySwitch_NotExists         |  9.101 ns |         - |
+```
+
+Stateful Factory (`OrInsertWithKey` capturing vs. `TState` overload):
+
+```text
+| Method                                   | Mean     | Allocated |
+|----------------------------------------- |---------:|----------:|
+| StatefulFactory_Traditional_Exists       | 3.388 ns |         - |
+| StatefulFactory_Traditional_NotExists    | 3.090 ns |         - |
+| StatefulFactory_EntryCapturing_Exists    | 7.726 ns |      24 B |
+| StatefulFactory_EntryCapturing_NotExists | 7.378 ns |      24 B |
+| StatefulFactory_EntryState_Exists        | 3.512 ns |         - |
+| StatefulFactory_EntryState_NotExists     | 3.205 ns |         - |
 ```
 
 To run the benchmarks yourself:
@@ -221,25 +239,31 @@ dotnet run -c Release
 
 Methods that accept delegates (`AndModify`, `OrInsertWith`, `OrInsertWithKey`, and `Match`) are zero-allocation when passed a non-capturing lambda or `static` method group, because C# caches a singleton delegate instance.
 
-When a lambda **captures local variables or `this`**, C# allocates a closure object on the heap (`24 B` on 64-bit; on .NET 8/9 the delegate allocation adds another `64 B` for `88 B` total, while .NET 10/11 JIT escape analysis typically stack-allocates the delegate and leaves only the `24 B` closure):
+When a lambda **captures local variables or `this`**, C# allocates a closure object on the heap—even on cache hits before the method is called (`24 B` on .NET 10/11 where the delegate itself is stack-allocated by JIT escape analysis, and `88 B` on .NET 8/9):
 
 ```csharp
 // Captures 'amount' -> allocates a 24 B closure on .NET 10/11 (88 B on .NET 8/9)
-private void IncrementByAmountFluent(string key, int amount)
+private void IncrementByAmountCapturing(string key, int amount)
 {
     _dictionary.Entry(key).AndModify(count => count + amount).OrInsert(amount);
 }
-
-// Non-capturing lambda -> 0 B allocated
-private void IncrementByOneFluent(string key)
-{
-    _dictionary.Entry(key).AndModify(count => count + 1).OrInsert(1);
-}
 ```
 
-On hot paths that need local state without closure allocations, use either a **`switch` / `is` pattern** or **`ref` returns**:
+On hot paths that need local state without closure allocations, use the **`TState` overloads** with `static` lambdas, a **union `switch`**, or **`ref` returns**:
 
 ```csharp
+// Zero-allocation with TState overload + static lambda (also supports Span/ReadOnlySpan state on .NET 9+)
+private void IncrementByAmountState(string key, int amount)
+{
+    _dictionary.Entry(key).AndModify(amount, static (count, amt) => count + amt).OrInsert(amount);
+}
+
+// Zero-allocation lazy factory with TState (passes value tuples or ReadOnlySpan<T> on .NET 9+)
+private int GetOrComputeScaled(string key, int multiplier)
+{
+    return _dictionary.Entry(key).OrInsertWithKey(multiplier, static (k, mult) => k.Length * mult);
+}
+
 // Zero-allocation with switch (no delegates or closures)
 private void IncrementByAmountSwitch(string key, int amount)
 {
@@ -301,7 +325,7 @@ private void IncrementByAmountRef(string key, int amount)
 ## Potential Features
 
 - Support for `ConcurrentDictionary<TKey, TValue>` and other dictionary-like collections
-- Specialized overloads (e.g., `TState` state-passing overloads on `AndModify` / `OrInsertWith`) to avoid closure allocations without needing `switch`
+- `Dictionary<TKey, TValue>.AlternateLookup<TAlternateKey>` support for span-based lookups
 
 ## License
 

@@ -91,6 +91,34 @@ public class PatternMatchingBenchmarks : BenchmarkBase
         }
     }
 
+    private void StatefulActionsEntryMatchCapturing(string key, int factor)
+    {
+        _dictionary.Entry(key).Match(
+            occupied => occupied.Insert(occupied.Value * factor),
+            vacant => vacant.Insert(factor));
+    }
+
+    private void StatefulActionsEntryMatchState(string key, int factor)
+    {
+        _dictionary.Entry(key).Match(
+            factor,
+            static (occupied, f) => occupied.Insert(occupied.Value * f),
+            static (vacant, f) => vacant.Insert(f));
+    }
+
+    private void StatefulActionsEntrySwitch(string key, int factor)
+    {
+        switch (_dictionary.Entry(key))
+        {
+            case OccupiedEntry<string, int> occupied:
+                occupied.Insert(occupied.Value * factor);
+                break;
+            case VacantEntry<string, int> vacant:
+                vacant.Insert(factor);
+                break;
+        }
+    }
+
     [Benchmark(Baseline = true)]
     public string PatternMatching_Traditional_Exists() => PatternMatchingTraditional(ExistingKey);
 
@@ -126,4 +154,22 @@ public class PatternMatchingBenchmarks : BenchmarkBase
 
     [Benchmark]
     public void DifferentActions_EntrySwitch_NotExists() => DifferentActionsEntrySwitch(NewKey);
+
+    [Benchmark]
+    public void StatefulActions_EntryMatchCapturing_Exists() => StatefulActionsEntryMatchCapturing(ExistingKey, 2);
+
+    [Benchmark]
+    public void StatefulActions_EntryMatchCapturing_NotExists() => StatefulActionsEntryMatchCapturing(NewKey, 2);
+
+    [Benchmark]
+    public void StatefulActions_EntryMatchState_Exists() => StatefulActionsEntryMatchState(ExistingKey, 2);
+
+    [Benchmark]
+    public void StatefulActions_EntryMatchState_NotExists() => StatefulActionsEntryMatchState(NewKey, 2);
+
+    [Benchmark]
+    public void StatefulActions_EntrySwitch_Exists() => StatefulActionsEntrySwitch(ExistingKey, 2);
+
+    [Benchmark]
+    public void StatefulActions_EntrySwitch_NotExists() => StatefulActionsEntrySwitch(NewKey, 2);
 }

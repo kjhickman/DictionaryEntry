@@ -57,6 +57,27 @@ public class FactoryMethodBenchmarks : BenchmarkBase
         return _dictionary.Entry(key).OrInsertWithKey(ComputeFromKey);
     }
 
+    private int StatefulFactoryTraditional(string key, int multiplier)
+    {
+        if (!_dictionary.TryGetValue(key, out var value))
+        {
+            value = key.Length * multiplier;
+            _dictionary[key] = value;
+        }
+
+        return value;
+    }
+
+    private int StatefulFactoryCapturingEntry(string key, int multiplier)
+    {
+        return _dictionary.Entry(key).OrInsertWithKey(k => k.Length * multiplier);
+    }
+
+    private int StatefulFactoryStateEntry(string key, int multiplier)
+    {
+        return _dictionary.Entry(key).OrInsertWithKey(multiplier, static (k, mult) => k.Length * mult);
+    }
+
     [Benchmark(Baseline = true)]
     public int FactoryMethod_Traditional_Exists() => FactoryMethodTraditional(ExistingKey);
 
@@ -80,4 +101,22 @@ public class FactoryMethodBenchmarks : BenchmarkBase
 
     [Benchmark]
     public int KeyBasedFactory_Entry_NotExists() => KeyBasedFactoryEntry(NewKey);
+
+    [Benchmark]
+    public int StatefulFactory_Traditional_Exists() => StatefulFactoryTraditional(ExistingKey, 10);
+
+    [Benchmark]
+    public int StatefulFactory_Traditional_NotExists() => StatefulFactoryTraditional(NewKey, 10);
+
+    [Benchmark]
+    public int StatefulFactory_EntryCapturing_Exists() => StatefulFactoryCapturingEntry(ExistingKey, 10);
+
+    [Benchmark]
+    public int StatefulFactory_EntryCapturing_NotExists() => StatefulFactoryCapturingEntry(NewKey, 10);
+
+    [Benchmark]
+    public int StatefulFactory_EntryState_Exists() => StatefulFactoryStateEntry(ExistingKey, 10);
+
+    [Benchmark]
+    public int StatefulFactory_EntryState_NotExists() => StatefulFactoryStateEntry(NewKey, 10);
 }
