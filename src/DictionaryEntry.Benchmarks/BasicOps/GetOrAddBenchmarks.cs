@@ -5,49 +5,84 @@ namespace DictionaryEntry.Benchmarks.BasicOps;
 [BenchmarkCategory("BasicOps")]
 public class GetOrAddBenchmarks : BenchmarkBase
 {
-    private Dictionary<int, int> _dictionary = null!;
-    private const int ExistingKey = 42;
-    private const int NewKey = 123;
+    private Dictionary<int, int> _existingDictionary = null!;
+    private Dictionary<int, int> _emptyDictionary = null!;
 
     [GlobalSetup]
-    public void Setup()
+    public void GlobalSetup()
     {
-        _dictionary = new Dictionary<int, int> { { ExistingKey, 10 } };
+        _existingDictionary = new Dictionary<int, int>(capacity: BatchSize * 2);
+        _emptyDictionary = new Dictionary<int, int>(capacity: BatchSize * 2);
+        for (var i = 0; i < BatchSize; i++)
+        {
+            _existingDictionary[i] = 10;
+        }
     }
 
-    [IterationCleanup]
-    public void Cleanup()
+    private static int GetOrAddTraditional(Dictionary<int, int> dict, int key)
     {
-        _dictionary.Clear();
-        _dictionary[ExistingKey] = 10;
-    }
-
-    private int GetOrAddTraditional(int key)
-    {
-        if (_dictionary.TryGetValue(key, out var value))
+        if (dict.TryGetValue(key, out var value))
         {
             return value;
         }
 
         value = 1;
-        _dictionary[key] = value;
+        dict[key] = value;
         return value;
     }
 
-    private int GetOrAddEntry(int key)
+    private static int GetOrAddEntry(Dictionary<int, int> dict, int key)
     {
-        return _dictionary.Entry(key).OrInsert(1);
+        return dict.Entry(key).OrInsert(1);
     }
 
-    [Benchmark(Baseline = true)]
-    public int GetOrAdd_Traditional_Exists() => GetOrAddTraditional(ExistingKey);
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize)]
+    public int GetOrAdd_Traditional_Exists()
+    {
+        var sum = 0;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            sum += GetOrAddTraditional(_existingDictionary, i);
+        }
 
-    [Benchmark]
-    public int GetOrAdd_Traditional_NotExists() => GetOrAddTraditional(NewKey);
+        return sum;
+    }
 
-    [Benchmark]
-    public int GetOrAdd_Entry_Exists() => GetOrAddEntry(ExistingKey);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public int GetOrAdd_Traditional_NotExists()
+    {
+        _emptyDictionary.Clear();
+        var sum = 0;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            sum += GetOrAddTraditional(_emptyDictionary, i);
+        }
 
-    [Benchmark]
-    public int GetOrAdd_Entry_NotExists() => GetOrAddEntry(NewKey);
+        return sum;
+    }
+
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public int GetOrAdd_Entry_Exists()
+    {
+        var sum = 0;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            sum += GetOrAddEntry(_existingDictionary, i);
+        }
+
+        return sum;
+    }
+
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public int GetOrAdd_Entry_NotExists()
+    {
+        _emptyDictionary.Clear();
+        var sum = 0;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            sum += GetOrAddEntry(_emptyDictionary, i);
+        }
+
+        return sum;
+    }
 }

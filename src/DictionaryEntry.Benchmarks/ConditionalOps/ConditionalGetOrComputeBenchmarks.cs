@@ -5,14 +5,22 @@ namespace DictionaryEntry.Benchmarks.ConditionalOps;
 [BenchmarkCategory("ConditionalOps")]
 public class ConditionalGetOrComputeBenchmarks : BenchmarkBase
 {
-    private Dictionary<string, int> _dictionary = null!;
-    private const string ExistingKey = "existing";
-    private const string NewKey = "new";
+    private Dictionary<string, int> _existingDictionary = null!;
+    private Dictionary<string, int> _emptyDictionary = null!;
+    private string[] _keys = null!;
 
-    [IterationSetup]
+    [GlobalSetup]
     public void Setup()
     {
-        _dictionary = new Dictionary<string, int> { { ExistingKey, 10 } };
+        _existingDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
+        _emptyDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
+        _keys = new string[BatchSize];
+        for (var i = 0; i < BatchSize; i++)
+        {
+            var key = $"key_{i}";
+            _keys[i] = key;
+            _existingDictionary[key] = 10;
+        }
     }
 
     private static int ComputeValue()
@@ -25,61 +33,137 @@ public class ConditionalGetOrComputeBenchmarks : BenchmarkBase
         return key.Length;
     }
 
-    private int GetOrComputeTraditional(string key)
+    private static int GetOrComputeTraditional(Dictionary<string, int> dict, string key)
     {
-        if (_dictionary.TryGetValue(key, out var value))
+        if (dict.TryGetValue(key, out var value))
         {
             return value;
         }
 
         value = ComputeValue();
-        _dictionary[key] = value;
+        dict[key] = value;
         return value;
     }
 
-    private int GetOrComputeTraditionalUsingKey(string key)
+    private static int GetOrComputeTraditionalUsingKey(Dictionary<string, int> dict, string key)
     {
-        if (_dictionary.TryGetValue(key, out var value))
+        if (dict.TryGetValue(key, out var value))
         {
             return value;
         }
 
         value = ComputeValueFromString(key);
-        _dictionary[key] = value;
+        dict[key] = value;
         return value;
     }
 
-    private int GetOrComputeEntry(string key)
+    private static int GetOrComputeEntry(Dictionary<string, int> dict, string key)
     {
-        return _dictionary.Entry(key).OrInsertWith(ComputeValue);
+        return dict.Entry(key).OrInsertWith(ComputeValue);
     }
 
-    private int GetOrComputeEntryUsingKey(string key)
+    private static int GetOrComputeEntryUsingKey(Dictionary<string, int> dict, string key)
     {
-        return _dictionary.Entry(key).OrInsertWith(() => ComputeValueFromString(key));
+        return dict.Entry(key).OrInsertWith(() => ComputeValueFromString(key));
     }
 
-    [Benchmark(Baseline = true)]
-    public int GetOrCompute_Traditional_Exists() => GetOrComputeTraditional(ExistingKey);
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize)]
+    public int GetOrCompute_Traditional_Exists()
+    {
+        var sum = 0;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            sum += GetOrComputeTraditional(_existingDictionary, _keys[i]);
+        }
 
-    [Benchmark]
-    public int GetOrCompute_Traditional_NotExists() => GetOrComputeTraditional(NewKey);
+        return sum;
+    }
 
-    [Benchmark]
-    public int GetOrCompute_Entry_Exists() => GetOrComputeEntry(ExistingKey);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public int GetOrCompute_Traditional_NotExists()
+    {
+        _emptyDictionary.Clear();
+        var sum = 0;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            sum += GetOrComputeTraditional(_emptyDictionary, _keys[i]);
+        }
 
-    [Benchmark]
-    public int GetOrCompute_Entry_NotExists() => GetOrComputeEntry(NewKey);
+        return sum;
+    }
 
-    [Benchmark]
-    public int GetOrCompute_Extra_Traditional_Exists() => GetOrComputeTraditionalUsingKey(ExistingKey);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public int GetOrCompute_Entry_Exists()
+    {
+        var sum = 0;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            sum += GetOrComputeEntry(_existingDictionary, _keys[i]);
+        }
 
-    [Benchmark]
-    public int GetOrCompute_Extra_Traditional_NotExists() => GetOrComputeTraditionalUsingKey(NewKey);
+        return sum;
+    }
 
-    [Benchmark]
-    public int GetOrCompute_Extra_Entry_Exists() => GetOrComputeEntryUsingKey(ExistingKey);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public int GetOrCompute_Entry_NotExists()
+    {
+        _emptyDictionary.Clear();
+        var sum = 0;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            sum += GetOrComputeEntry(_emptyDictionary, _keys[i]);
+        }
 
-    [Benchmark]
-    public int GetOrCompute_Extra_Entry_NotExists() => GetOrComputeEntryUsingKey(NewKey);
+        return sum;
+    }
+
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public int GetOrCompute_Extra_Traditional_Exists()
+    {
+        var sum = 0;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            sum += GetOrComputeTraditionalUsingKey(_existingDictionary, _keys[i]);
+        }
+
+        return sum;
+    }
+
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public int GetOrCompute_Extra_Traditional_NotExists()
+    {
+        _emptyDictionary.Clear();
+        var sum = 0;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            sum += GetOrComputeTraditionalUsingKey(_emptyDictionary, _keys[i]);
+        }
+
+        return sum;
+    }
+
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public int GetOrCompute_Extra_Entry_Exists()
+    {
+        var sum = 0;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            sum += GetOrComputeEntryUsingKey(_existingDictionary, _keys[i]);
+        }
+
+        return sum;
+    }
+
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public int GetOrCompute_Extra_Entry_NotExists()
+    {
+        _emptyDictionary.Clear();
+        var sum = 0;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            sum += GetOrComputeEntryUsingKey(_emptyDictionary, _keys[i]);
+        }
+
+        return sum;
+    }
 }

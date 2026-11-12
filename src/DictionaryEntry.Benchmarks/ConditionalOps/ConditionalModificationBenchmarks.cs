@@ -5,39 +5,47 @@ namespace DictionaryEntry.Benchmarks.ConditionalOps;
 [BenchmarkCategory("ConditionalOps")]
 public class ConditionalModificationBenchmarks : BenchmarkBase
 {
-    private Dictionary<string, int> _dictionary = null!;
-    private const string ExistingKey = "existing";
-    private const string NewKey = "new";
+    private Dictionary<string, int> _existingDictionary = null!;
+    private Dictionary<string, int> _emptyDictionary = null!;
+    private string[] _keys = null!;
     private const int Threshold = 5;
 
-    [IterationSetup]
+    [GlobalSetup]
     public void Setup()
     {
-        _dictionary = new Dictionary<string, int> { { ExistingKey, 10 } };
+        _existingDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
+        _emptyDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
+        _keys = new string[BatchSize];
+        for (var i = 0; i < BatchSize; i++)
+        {
+            var key = $"key_{i}";
+            _keys[i] = key;
+            _existingDictionary[key] = 10;
+        }
     }
 
-    private void ConditionalModifyTraditional(string key)
+    private static void ConditionalModifyTraditional(Dictionary<string, int> dict, string key)
     {
-        if (_dictionary.TryGetValue(key, out var value))
+        if (dict.TryGetValue(key, out var value))
         {
             if (value > Threshold)
             {
-                _dictionary[key] = value * 2;
+                dict[key] = value * 2;
             }
             else
             {
-                _dictionary[key] = value + 1;
+                dict[key] = value + 1;
             }
         }
         else
         {
-            _dictionary[key] = 1;
+            dict[key] = 1;
         }
     }
 
-    private void ConditionalModifyEntry(string key)
+    private static void ConditionalModifyEntry(Dictionary<string, int> dict, string key)
     {
-        _dictionary.Entry(key).Match(
+        dict.Entry(key).Match(
             occupied =>
             {
                 var value = occupied.Value;
@@ -53,15 +61,41 @@ public class ConditionalModificationBenchmarks : BenchmarkBase
             vacant => vacant.Insert(1));
     }
 
-    [Benchmark(Baseline = true)]
-    public void ConditionalModify_Traditional_Exists() => ConditionalModifyTraditional(ExistingKey);
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize)]
+    public void ConditionalModify_Traditional_Exists()
+    {
+        for (var i = 0; i < BatchSize; i++)
+        {
+            ConditionalModifyTraditional(_existingDictionary, _keys[i]);
+        }
+    }
 
-    [Benchmark]
-    public void ConditionalModify_Traditional_NotExists() => ConditionalModifyTraditional(NewKey);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void ConditionalModify_Traditional_NotExists()
+    {
+        _emptyDictionary.Clear();
+        for (var i = 0; i < BatchSize; i++)
+        {
+            ConditionalModifyTraditional(_emptyDictionary, _keys[i]);
+        }
+    }
 
-    [Benchmark]
-    public void ConditionalModify_Entry_Exists() => ConditionalModifyEntry(ExistingKey);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void ConditionalModify_Entry_Exists()
+    {
+        for (var i = 0; i < BatchSize; i++)
+        {
+            ConditionalModifyEntry(_existingDictionary, _keys[i]);
+        }
+    }
 
-    [Benchmark]
-    public void ConditionalModify_Entry_NotExists() => ConditionalModifyEntry(NewKey);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void ConditionalModify_Entry_NotExists()
+    {
+        _emptyDictionary.Clear();
+        for (var i = 0; i < BatchSize; i++)
+        {
+            ConditionalModifyEntry(_emptyDictionary, _keys[i]);
+        }
+    }
 }

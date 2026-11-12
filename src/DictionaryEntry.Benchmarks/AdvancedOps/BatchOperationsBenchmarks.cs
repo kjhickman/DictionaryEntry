@@ -5,35 +5,43 @@ namespace DictionaryEntry.Benchmarks.AdvancedOps;
 [BenchmarkCategory("AdvancedOps")]
 public class BatchOperationsBenchmarks : BenchmarkBase
 {
-    private Dictionary<string, int> _dictionary = null!;
-    private const string ExistingKey = "existing";
-    private const string NewKey = "new";
+    private Dictionary<string, int> _existingDictionary = null!;
+    private Dictionary<string, int> _emptyDictionary = null!;
+    private string[] _keys = null!;
 
-    [IterationSetup]
+    [GlobalSetup]
     public void Setup()
     {
-        _dictionary = new Dictionary<string, int> { { ExistingKey, 10 } };
+        _existingDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
+        _emptyDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
+        _keys = new string[BatchSize];
+        for (var i = 0; i < BatchSize; i++)
+        {
+            var key = $"key_{i}";
+            _keys[i] = key;
+            _existingDictionary[key] = 10;
+        }
     }
 
-    private void BatchOperationsTraditional(string key)
+    private static void BatchOperationsTraditional(Dictionary<string, int> dict, string key)
     {
-        if (_dictionary.TryGetValue(key, out var value))
+        if (dict.TryGetValue(key, out var value))
         {
             value *= 2;
             value = Math.Max(0, value);
             value += 5;
             value = Math.Min(100, value);
-            _dictionary[key] = value;
+            dict[key] = value;
         }
         else
         {
-            _dictionary[key] = 5;
+            dict[key] = 5;
         }
     }
 
-    private void BatchOperationsEntry(string key)
+    private static void BatchOperationsEntry(Dictionary<string, int> dict, string key)
     {
-        _dictionary.Entry(key).Match(
+        dict.Entry(key).Match(
             occupied =>
             {
                 var value = occupied.Value;
@@ -46,15 +54,41 @@ public class BatchOperationsBenchmarks : BenchmarkBase
             vacant => vacant.Insert(5));
     }
 
-    [Benchmark(Baseline = true)]
-    public void BatchOperations_Traditional_Exists() => BatchOperationsTraditional(ExistingKey);
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize)]
+    public void BatchOperations_Traditional_Exists()
+    {
+        for (var i = 0; i < BatchSize; i++)
+        {
+            BatchOperationsTraditional(_existingDictionary, _keys[i]);
+        }
+    }
 
-    [Benchmark]
-    public void BatchOperations_Traditional_NotExists() => BatchOperationsTraditional(NewKey);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void BatchOperations_Traditional_NotExists()
+    {
+        _emptyDictionary.Clear();
+        for (var i = 0; i < BatchSize; i++)
+        {
+            BatchOperationsTraditional(_emptyDictionary, _keys[i]);
+        }
+    }
 
-    [Benchmark]
-    public void BatchOperations_Entry_Exists() => BatchOperationsEntry(ExistingKey);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void BatchOperations_Entry_Exists()
+    {
+        for (var i = 0; i < BatchSize; i++)
+        {
+            BatchOperationsEntry(_existingDictionary, _keys[i]);
+        }
+    }
 
-    [Benchmark]
-    public void BatchOperations_Entry_NotExists() => BatchOperationsEntry(NewKey);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void BatchOperations_Entry_NotExists()
+    {
+        _emptyDictionary.Clear();
+        for (var i = 0; i < BatchSize; i++)
+        {
+            BatchOperationsEntry(_emptyDictionary, _keys[i]);
+        }
+    }
 }

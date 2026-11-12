@@ -5,43 +5,77 @@ namespace DictionaryEntry.Benchmarks.ConditionalOps;
 [BenchmarkCategory("ConditionalOps")]
 public class InsertOrUpdateBenchmarks : BenchmarkBase
 {
-    private Dictionary<string, int> _dictionary = null!;
-    private const string ExistingKey = "existing";
-    private const string NewKey = "new";
+    private Dictionary<string, int> _existingDictionary = null!;
+    private Dictionary<string, int> _emptyDictionary = null!;
+    private string[] _keys = null!;
 
-    [IterationSetup]
+    [GlobalSetup]
     public void Setup()
     {
-        _dictionary = new Dictionary<string, int> { { ExistingKey, 10 } };
+        _existingDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
+        _emptyDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
+        _keys = new string[BatchSize];
+        for (var i = 0; i < BatchSize; i++)
+        {
+            var key = $"key_{i}";
+            _keys[i] = key;
+            _existingDictionary[key] = 10;
+        }
     }
 
-    private void InsertOrUpdateTraditional(string key)
+    private static void InsertOrUpdateTraditional(Dictionary<string, int> dict, string key)
     {
-        if (_dictionary.TryGetValue(key, out var value))
+        if (dict.TryGetValue(key, out var value))
         {
             value *= 2;
-            _dictionary[key] = value;
+            dict[key] = value;
         }
         else
         {
-            _dictionary[key] = 1;
+            dict[key] = 1;
         }
     }
 
-    private void InsertOrUpdateEntry(string key)
+    private static void InsertOrUpdateEntry(Dictionary<string, int> dict, string key)
     {
-        _dictionary.Entry(key).AndModify(x => x * 2).OrInsert(1);
+        dict.Entry(key).AndModify(x => x * 2).OrInsert(1);
     }
 
-    [Benchmark(Baseline = true)]
-    public void InsertOrUpdate_Traditional_Exists() => InsertOrUpdateTraditional(ExistingKey);
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize)]
+    public void InsertOrUpdate_Traditional_Exists()
+    {
+        for (var i = 0; i < BatchSize; i++)
+        {
+            InsertOrUpdateTraditional(_existingDictionary, _keys[i]);
+        }
+    }
 
-    [Benchmark]
-    public void InsertOrUpdate_Traditional_NotExists() => InsertOrUpdateTraditional(NewKey);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void InsertOrUpdate_Traditional_NotExists()
+    {
+        _emptyDictionary.Clear();
+        for (var i = 0; i < BatchSize; i++)
+        {
+            InsertOrUpdateTraditional(_emptyDictionary, _keys[i]);
+        }
+    }
 
-    [Benchmark]
-    public void InsertOrUpdate_Entry_Exists() => InsertOrUpdateEntry(ExistingKey);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void InsertOrUpdate_Entry_Exists()
+    {
+        for (var i = 0; i < BatchSize; i++)
+        {
+            InsertOrUpdateEntry(_existingDictionary, _keys[i]);
+        }
+    }
 
-    [Benchmark]
-    public void InsertOrUpdate_Entry_NotExists() => InsertOrUpdateEntry(NewKey);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void InsertOrUpdate_Entry_NotExists()
+    {
+        _emptyDictionary.Clear();
+        for (var i = 0; i < BatchSize; i++)
+        {
+            InsertOrUpdateEntry(_emptyDictionary, _keys[i]);
+        }
+    }
 }

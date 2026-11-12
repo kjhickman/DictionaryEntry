@@ -5,19 +5,27 @@ namespace DictionaryEntry.Benchmarks.AdvancedOps;
 [BenchmarkCategory("AdvancedOps")]
 public class PatternMatchingBenchmarks : BenchmarkBase
 {
-    private Dictionary<string, int> _dictionary = null!;
-    private const string ExistingKey = "existing";
-    private const string NewKey = "new";
+    private Dictionary<string, int> _existingDictionary = null!;
+    private Dictionary<string, int> _emptyDictionary = null!;
+    private string[] _keys = null!;
 
-    [IterationSetup]
+    [GlobalSetup]
     public void Setup()
     {
-        _dictionary = new Dictionary<string, int> { { ExistingKey, 10 } };
+        _existingDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
+        _emptyDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
+        _keys = new string[BatchSize];
+        for (var i = 0; i < BatchSize; i++)
+        {
+            var key = $"key_{i}";
+            _keys[i] = key;
+            _existingDictionary[key] = 10;
+        }
     }
 
-    private string PatternMatchingTraditional(string key)
+    private static string PatternMatchingTraditional(Dictionary<string, int> dict, string key)
     {
-        if (_dictionary.TryGetValue(key, out var value))
+        if (dict.TryGetValue(key, out var value))
         {
             return value switch
             {
@@ -32,9 +40,9 @@ public class PatternMatchingBenchmarks : BenchmarkBase
         return "Not found";
     }
 
-    private string PatternMatchingEntryMatch(string key)
+    private static string PatternMatchingEntryMatch(Dictionary<string, int> dict, string key)
     {
-        return _dictionary.Entry(key).Match(
+        return dict.Entry(key).Match(
             occupied => occupied.Value switch
             {
                 > 100 => "Very large",
@@ -46,9 +54,9 @@ public class PatternMatchingBenchmarks : BenchmarkBase
             _ => "Not found");
     }
 
-    private string PatternMatchingEntrySwitch(string key)
+    private static string PatternMatchingEntrySwitch(Dictionary<string, int> dict, string key)
     {
-        return _dictionary.Entry(key) switch
+        return dict.Entry(key) switch
         {
             OccupiedEntry<string, int> { Value: > 100 } => "Very large",
             OccupiedEntry<string, int> { Value: > 50 } => "Large",
@@ -59,28 +67,28 @@ public class PatternMatchingBenchmarks : BenchmarkBase
         };
     }
 
-    private void DifferentActionsTraditional(string key)
+    private static void DifferentActionsTraditional(Dictionary<string, int> dict, string key)
     {
-        if (_dictionary.TryGetValue(key, out var value))
+        if (dict.TryGetValue(key, out var value))
         {
-            _dictionary[key] = value * 2;
+            dict[key] = value * 2;
         }
         else
         {
-            _dictionary[key] = 1;
+            dict[key] = 1;
         }
     }
 
-    private void DifferentActionsEntryMatch(string key)
+    private static void DifferentActionsEntryMatch(Dictionary<string, int> dict, string key)
     {
-        _dictionary.Entry(key).Match(
+        dict.Entry(key).Match(
             occupied => occupied.Insert(occupied.Value * 2),
             vacant => vacant.Insert(1));
     }
 
-    private void DifferentActionsEntrySwitch(string key)
+    private static void DifferentActionsEntrySwitch(Dictionary<string, int> dict, string key)
     {
-        switch (_dictionary.Entry(key))
+        switch (dict.Entry(key))
         {
             case OccupiedEntry<string, int> occupied:
                 occupied.Insert(occupied.Value * 2);
@@ -91,24 +99,24 @@ public class PatternMatchingBenchmarks : BenchmarkBase
         }
     }
 
-    private void StatefulActionsEntryMatchCapturing(string key, int factor)
+    private static void StatefulActionsEntryMatchCapturing(Dictionary<string, int> dict, string key, int factor)
     {
-        _dictionary.Entry(key).Match(
+        dict.Entry(key).Match(
             occupied => occupied.Insert(occupied.Value * factor),
             vacant => vacant.Insert(factor));
     }
 
-    private void StatefulActionsEntryMatchState(string key, int factor)
+    private static void StatefulActionsEntryMatchState(Dictionary<string, int> dict, string key, int factor)
     {
-        _dictionary.Entry(key).Match(
+        dict.Entry(key).Match(
             factor,
             static (occupied, f) => occupied.Insert(occupied.Value * f),
             static (vacant, f) => vacant.Insert(f));
     }
 
-    private void StatefulActionsEntrySwitch(string key, int factor)
+    private static void StatefulActionsEntrySwitch(Dictionary<string, int> dict, string key, int factor)
     {
-        switch (_dictionary.Entry(key))
+        switch (dict.Entry(key))
         {
             case OccupiedEntry<string, int> occupied:
                 occupied.Insert(occupied.Value * factor);
@@ -119,57 +127,189 @@ public class PatternMatchingBenchmarks : BenchmarkBase
         }
     }
 
-    [Benchmark(Baseline = true)]
-    public string PatternMatching_Traditional_Exists() => PatternMatchingTraditional(ExistingKey);
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize)]
+    public string PatternMatching_Traditional_Exists()
+    {
+        var last = "";
+        for (var i = 0; i < BatchSize; i++)
+        {
+            last = PatternMatchingTraditional(_existingDictionary, _keys[i]);
+        }
 
-    [Benchmark]
-    public string PatternMatching_Traditional_NotExists() => PatternMatchingTraditional(NewKey);
+        return last;
+    }
 
-    [Benchmark]
-    public string PatternMatching_EntryMatch_Exists() => PatternMatchingEntryMatch(ExistingKey);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public string PatternMatching_Traditional_NotExists()
+    {
+        var last = "";
+        for (var i = 0; i < BatchSize; i++)
+        {
+            last = PatternMatchingTraditional(_emptyDictionary, _keys[i]);
+        }
 
-    [Benchmark]
-    public string PatternMatching_EntryMatch_NotExists() => PatternMatchingEntryMatch(NewKey);
+        return last;
+    }
 
-    [Benchmark]
-    public string PatternMatching_EntrySwitch_Exists() => PatternMatchingEntrySwitch(ExistingKey);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public string PatternMatching_EntryMatch_Exists()
+    {
+        var last = "";
+        for (var i = 0; i < BatchSize; i++)
+        {
+            last = PatternMatchingEntryMatch(_existingDictionary, _keys[i]);
+        }
 
-    [Benchmark]
-    public string PatternMatching_EntrySwitch_NotExists() => PatternMatchingEntrySwitch(NewKey);
+        return last;
+    }
 
-    [Benchmark]
-    public void DifferentActions_Traditional_Exists() => DifferentActionsTraditional(ExistingKey);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public string PatternMatching_EntryMatch_NotExists()
+    {
+        var last = "";
+        for (var i = 0; i < BatchSize; i++)
+        {
+            last = PatternMatchingEntryMatch(_emptyDictionary, _keys[i]);
+        }
 
-    [Benchmark]
-    public void DifferentActions_Traditional_NotExists() => DifferentActionsTraditional(NewKey);
+        return last;
+    }
 
-    [Benchmark]
-    public void DifferentActions_EntryMatch_Exists() => DifferentActionsEntryMatch(ExistingKey);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public string PatternMatching_EntrySwitch_Exists()
+    {
+        var last = "";
+        for (var i = 0; i < BatchSize; i++)
+        {
+            last = PatternMatchingEntrySwitch(_existingDictionary, _keys[i]);
+        }
 
-    [Benchmark]
-    public void DifferentActions_EntryMatch_NotExists() => DifferentActionsEntryMatch(NewKey);
+        return last;
+    }
 
-    [Benchmark]
-    public void DifferentActions_EntrySwitch_Exists() => DifferentActionsEntrySwitch(ExistingKey);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public string PatternMatching_EntrySwitch_NotExists()
+    {
+        var last = "";
+        for (var i = 0; i < BatchSize; i++)
+        {
+            last = PatternMatchingEntrySwitch(_emptyDictionary, _keys[i]);
+        }
 
-    [Benchmark]
-    public void DifferentActions_EntrySwitch_NotExists() => DifferentActionsEntrySwitch(NewKey);
+        return last;
+    }
 
-    [Benchmark]
-    public void StatefulActions_EntryMatchCapturing_Exists() => StatefulActionsEntryMatchCapturing(ExistingKey, 2);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void DifferentActions_Traditional_Exists()
+    {
+        for (var i = 0; i < BatchSize; i++)
+        {
+            DifferentActionsTraditional(_existingDictionary, _keys[i]);
+        }
+    }
 
-    [Benchmark]
-    public void StatefulActions_EntryMatchCapturing_NotExists() => StatefulActionsEntryMatchCapturing(NewKey, 2);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void DifferentActions_Traditional_NotExists()
+    {
+        _emptyDictionary.Clear();
+        for (var i = 0; i < BatchSize; i++)
+        {
+            DifferentActionsTraditional(_emptyDictionary, _keys[i]);
+        }
+    }
 
-    [Benchmark]
-    public void StatefulActions_EntryMatchState_Exists() => StatefulActionsEntryMatchState(ExistingKey, 2);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void DifferentActions_EntryMatch_Exists()
+    {
+        for (var i = 0; i < BatchSize; i++)
+        {
+            DifferentActionsEntryMatch(_existingDictionary, _keys[i]);
+        }
+    }
 
-    [Benchmark]
-    public void StatefulActions_EntryMatchState_NotExists() => StatefulActionsEntryMatchState(NewKey, 2);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void DifferentActions_EntryMatch_NotExists()
+    {
+        _emptyDictionary.Clear();
+        for (var i = 0; i < BatchSize; i++)
+        {
+            DifferentActionsEntryMatch(_emptyDictionary, _keys[i]);
+        }
+    }
 
-    [Benchmark]
-    public void StatefulActions_EntrySwitch_Exists() => StatefulActionsEntrySwitch(ExistingKey, 2);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void DifferentActions_EntrySwitch_Exists()
+    {
+        for (var i = 0; i < BatchSize; i++)
+        {
+            DifferentActionsEntrySwitch(_existingDictionary, _keys[i]);
+        }
+    }
 
-    [Benchmark]
-    public void StatefulActions_EntrySwitch_NotExists() => StatefulActionsEntrySwitch(NewKey, 2);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void DifferentActions_EntrySwitch_NotExists()
+    {
+        _emptyDictionary.Clear();
+        for (var i = 0; i < BatchSize; i++)
+        {
+            DifferentActionsEntrySwitch(_emptyDictionary, _keys[i]);
+        }
+    }
+
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void StatefulActions_EntryMatchCapturing_Exists()
+    {
+        for (var i = 0; i < BatchSize; i++)
+        {
+            StatefulActionsEntryMatchCapturing(_existingDictionary, _keys[i], 2);
+        }
+    }
+
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void StatefulActions_EntryMatchCapturing_NotExists()
+    {
+        _emptyDictionary.Clear();
+        for (var i = 0; i < BatchSize; i++)
+        {
+            StatefulActionsEntryMatchCapturing(_emptyDictionary, _keys[i], 2);
+        }
+    }
+
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void StatefulActions_EntryMatchState_Exists()
+    {
+        for (var i = 0; i < BatchSize; i++)
+        {
+            StatefulActionsEntryMatchState(_existingDictionary, _keys[i], 2);
+        }
+    }
+
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void StatefulActions_EntryMatchState_NotExists()
+    {
+        _emptyDictionary.Clear();
+        for (var i = 0; i < BatchSize; i++)
+        {
+            StatefulActionsEntryMatchState(_emptyDictionary, _keys[i], 2);
+        }
+    }
+
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void StatefulActions_EntrySwitch_Exists()
+    {
+        for (var i = 0; i < BatchSize; i++)
+        {
+            StatefulActionsEntrySwitch(_existingDictionary, _keys[i], 2);
+        }
+    }
+
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void StatefulActions_EntrySwitch_NotExists()
+    {
+        _emptyDictionary.Clear();
+        for (var i = 0; i < BatchSize; i++)
+        {
+            StatefulActionsEntrySwitch(_emptyDictionary, _keys[i], 2);
+        }
+    }
 }

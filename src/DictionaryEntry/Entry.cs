@@ -141,8 +141,14 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
             ThrowDefaultEntry();
         }
 
-        _dictionary.Add(_key, defaultValue);
-        _valueRef = ref CollectionsMarshal.GetValueRefOrNullRef(_dictionary, _key);
+        ref var slot = ref CollectionsMarshal.GetValueRefOrAddDefault(_dictionary, _key, out var existed);
+        if (existed)
+        {
+            ThrowKeyAlreadyAdded(_key);
+        }
+
+        slot = defaultValue;
+        _valueRef = ref slot!;
         _exists = true;
         return ref _valueRef;
     }
@@ -166,8 +172,14 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         }
 
         var value = valueFactory();
-        _dictionary.Add(_key, value);
-        _valueRef = ref CollectionsMarshal.GetValueRefOrNullRef(_dictionary, _key);
+        ref var slot = ref CollectionsMarshal.GetValueRefOrAddDefault(_dictionary, _key, out var existed);
+        if (existed)
+        {
+            ThrowKeyAlreadyAdded(_key);
+        }
+
+        slot = value;
+        _valueRef = ref slot!;
         _exists = true;
         return ref _valueRef;
     }
@@ -197,8 +209,14 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         }
 
         var value = valueFactory(state);
-        _dictionary.Add(_key, value);
-        _valueRef = ref CollectionsMarshal.GetValueRefOrNullRef(_dictionary, _key);
+        ref var slot = ref CollectionsMarshal.GetValueRefOrAddDefault(_dictionary, _key, out var existed);
+        if (existed)
+        {
+            ThrowKeyAlreadyAdded(_key);
+        }
+
+        slot = value;
+        _valueRef = ref slot!;
         _exists = true;
         return ref _valueRef;
     }
@@ -222,8 +240,14 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         }
 
         var value = valueFactory(_key);
-        _dictionary.Add(_key, value);
-        _valueRef = ref CollectionsMarshal.GetValueRefOrNullRef(_dictionary, _key);
+        ref var slot = ref CollectionsMarshal.GetValueRefOrAddDefault(_dictionary, _key, out var existed);
+        if (existed)
+        {
+            ThrowKeyAlreadyAdded(_key);
+        }
+
+        slot = value;
+        _valueRef = ref slot!;
         _exists = true;
         return ref _valueRef;
     }
@@ -253,8 +277,14 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         }
 
         var value = valueFactory(_key, state);
-        _dictionary.Add(_key, value);
-        _valueRef = ref CollectionsMarshal.GetValueRefOrNullRef(_dictionary, _key);
+        ref var slot = ref CollectionsMarshal.GetValueRefOrAddDefault(_dictionary, _key, out var existed);
+        if (existed)
+        {
+            ThrowKeyAlreadyAdded(_key);
+        }
+
+        slot = value;
+        _valueRef = ref slot!;
         _exists = true;
         return ref _valueRef;
     }
@@ -279,8 +309,13 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
             ThrowDefaultEntry();
         }
 
-        _dictionary.Add(_key, default!);
-        _valueRef = ref CollectionsMarshal.GetValueRefOrNullRef(_dictionary, _key);
+        ref var slot = ref CollectionsMarshal.GetValueRefOrAddDefault(_dictionary, _key, out var existed);
+        if (existed)
+        {
+            ThrowKeyAlreadyAdded(_key);
+        }
+
+        _valueRef = ref slot!;
         _exists = true;
         return ref _valueRef;
     }
@@ -298,7 +333,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     {
         if (_exists)
         {
-            _dictionary[_key] = value;
+            _valueRef = value;
             return new OccupiedEntry<TKey, TValue>(_dictionary, _key, value);
         }
 
@@ -307,10 +342,16 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
             ThrowDefaultEntry();
         }
 
-        _dictionary.Add(_key, value);
-        _valueRef = ref CollectionsMarshal.GetValueRefOrNullRef(_dictionary, _key);
+        ref var slot = ref CollectionsMarshal.GetValueRefOrAddDefault(_dictionary, _key, out var existed);
+        if (existed)
+        {
+            ThrowKeyAlreadyAdded(_key);
+        }
+
+        slot = value;
+        _valueRef = ref slot!;
         _exists = true;
-        return new OccupiedEntry<TKey, TValue>(_dictionary, _key, _valueRef);
+        return new OccupiedEntry<TKey, TValue>(_dictionary, _key, value);
     }
 
     /// <summary>
@@ -481,6 +522,11 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static void ThrowKeyAlreadyExists(TKey key) =>
         throw new InvalidOperationException($"The key '{key}' already exists in the dictionary.");
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ThrowKeyAlreadyAdded(TKey key) =>
+        throw new ArgumentException($"An item with the same key has already been added. Key: {key}");
 
     /// <summary>
     /// Tries to get an occupied entry if the key exists in the dictionary.

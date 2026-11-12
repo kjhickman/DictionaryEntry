@@ -5,25 +5,65 @@ namespace DictionaryEntry.Benchmarks.BasicOps;
 [BenchmarkCategory("BasicOps")]
 public class DictionaryContainsBenchmarks : BenchmarkBase
 {
-    private Dictionary<int, int> _dictionary = null!;
-    private const int ExistingKey = 42;
-    private const int MissingKey = 21;
+    private Dictionary<int, int> _existingDictionary = null!;
+    private Dictionary<int, int> _emptyDictionary = null!;
 
     [GlobalSetup]
     public void Setup()
     {
-        _dictionary = new Dictionary<int, int> { { ExistingKey, 1 } };
+        _existingDictionary = new Dictionary<int, int>(capacity: BatchSize * 2);
+        _emptyDictionary = new Dictionary<int, int>(capacity: BatchSize * 2);
+        for (var i = 0; i < BatchSize; i++)
+        {
+            _existingDictionary[i] = 1;
+        }
     }
 
-    [Benchmark(Baseline = true)]
-    public bool TryGetValue_Found() => _dictionary.TryGetValue(ExistingKey, out _);
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize)]
+    public int TryGetValue_Found()
+    {
+        var count = 0;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            if (_existingDictionary.TryGetValue(i, out _)) count++;
+        }
 
-    [Benchmark]
-    public bool Entry_IsOccupied_Found() => _dictionary.Entry(ExistingKey).IsOccupied;
+        return count;
+    }
 
-    [Benchmark]
-    public bool TryGetValue_NotFound() => _dictionary.TryGetValue(MissingKey, out _);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public int Entry_IsOccupied_Found()
+    {
+        var count = 0;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            if (_existingDictionary.Entry(i).IsOccupied) count++;
+        }
 
-    [Benchmark]
-    public bool Entry_IsOccupied_NotFound() => _dictionary.Entry(MissingKey).IsOccupied;
+        return count;
+    }
+
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public int TryGetValue_NotFound()
+    {
+        var count = 0;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            if (_emptyDictionary.TryGetValue(i, out _)) count++;
+        }
+
+        return count;
+    }
+
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public int Entry_IsOccupied_NotFound()
+    {
+        var count = 0;
+        for (var i = 0; i < BatchSize; i++)
+        {
+            if (_emptyDictionary.Entry(i).IsOccupied) count++;
+        }
+
+        return count;
+    }
 }

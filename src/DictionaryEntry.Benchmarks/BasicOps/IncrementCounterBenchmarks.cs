@@ -5,58 +5,66 @@ namespace DictionaryEntry.Benchmarks.BasicOps;
 [BenchmarkCategory("BasicOps")]
 public class IncrementCounterBenchmarks : BenchmarkBase
 {
-    private Dictionary<string, int> _dictionary = null!;
-    private const string ExistingKey = "existing";
-    private const string NewKey = "new";
+    private Dictionary<string, int> _existingDictionary = null!;
+    private Dictionary<string, int> _emptyDictionary = null!;
+    private string[] _keys = null!;
 
-    [IterationSetup]
+    [GlobalSetup]
     public void Setup()
     {
-        _dictionary = new Dictionary<string, int> { { ExistingKey, 10 } };
+        _existingDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
+        _emptyDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
+        _keys = new string[BatchSize];
+        for (var i = 0; i < BatchSize; i++)
+        {
+            var key = $"key_{i}";
+            _keys[i] = key;
+            _existingDictionary[key] = 10;
+        }
     }
 
-    private void IncrementCounterTraditional(string key)
+    private static void IncrementCounterTraditional(Dictionary<string, int> dict, string key)
     {
-        if (_dictionary.TryGetValue(key, out var count))
+        if (dict.TryGetValue(key, out var count))
         {
-            _dictionary[key] = count + 1;
+            dict[key] = count + 1;
         }
         else
         {
-            _dictionary[key] = 1;
+            dict[key] = 1;
         }
     }
 
-    private void IncrementCounterEntryAndModify(string key)
+    private static void IncrementCounterEntryAndModify(Dictionary<string, int> dict, string key)
     {
-        _dictionary.Entry(key).AndModify(count => count + 1).OrInsert(1);
+        dict.Entry(key).AndModify(count => count + 1).OrInsert(1);
     }
 
-    private void IncrementByAmountTraditional(string key, int amount)
+    private static void IncrementByAmountTraditional(Dictionary<string, int> dict, string key, int amount)
     {
-        if (_dictionary.TryGetValue(key, out var count))
+        if (dict.TryGetValue(key, out var count))
         {
-            _dictionary[key] = count + amount;
+            dict[key] = count + amount;
         }
         else
         {
-            _dictionary[key] = amount;
+            dict[key] = amount;
         }
     }
 
-    private void IncrementByAmountEntryAndModify(string key, int amount)
+    private static void IncrementByAmountEntryAndModify(Dictionary<string, int> dict, string key, int amount)
     {
-        _dictionary.Entry(key).AndModify(count => count + amount).OrInsert(amount);
+        dict.Entry(key).AndModify(count => count + amount).OrInsert(amount);
     }
 
-    private void IncrementByAmountEntryAndModifyState(string key, int amount)
+    private static void IncrementByAmountEntryAndModifyState(Dictionary<string, int> dict, string key, int amount)
     {
-        _dictionary.Entry(key).AndModify(amount, static (count, amt) => count + amt).OrInsert(amount);
+        dict.Entry(key).AndModify(amount, static (count, amt) => count + amt).OrInsert(amount);
     }
 
-    private void IncrementByAmountEntrySwitch(string key, int amount)
+    private static void IncrementByAmountEntrySwitch(Dictionary<string, int> dict, string key, int amount)
     {
-        switch (_dictionary.Entry(key))
+        switch (dict.Entry(key))
         {
             case OccupiedEntry<string, int> occupied:
                 occupied.Insert(occupied.Value + amount);
@@ -67,39 +75,117 @@ public class IncrementCounterBenchmarks : BenchmarkBase
         }
     }
 
-    [Benchmark(Baseline = true)]
-    public void IncrementCounter_Traditional_Exists() => IncrementCounterTraditional(ExistingKey);
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize)]
+    public void IncrementCounter_Traditional_Exists()
+    {
+        for (var i = 0; i < BatchSize; i++)
+        {
+            IncrementCounterTraditional(_existingDictionary, _keys[i]);
+        }
+    }
 
-    [Benchmark]
-    public void IncrementCounter_Traditional_NotExists() => IncrementCounterTraditional(NewKey);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void IncrementCounter_Traditional_NotExists()
+    {
+        _emptyDictionary.Clear();
+        for (var i = 0; i < BatchSize; i++)
+        {
+            IncrementCounterTraditional(_emptyDictionary, _keys[i]);
+        }
+    }
 
-    [Benchmark]
-    public void IncrementCounter_EntryAndModify_Exists() => IncrementCounterEntryAndModify(ExistingKey);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void IncrementCounter_EntryAndModify_Exists()
+    {
+        for (var i = 0; i < BatchSize; i++)
+        {
+            IncrementCounterEntryAndModify(_existingDictionary, _keys[i]);
+        }
+    }
 
-    [Benchmark]
-    public void IncrementCounter_EntryAndModify_NotExists() => IncrementCounterEntryAndModify(NewKey);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void IncrementCounter_EntryAndModify_NotExists()
+    {
+        _emptyDictionary.Clear();
+        for (var i = 0; i < BatchSize; i++)
+        {
+            IncrementCounterEntryAndModify(_emptyDictionary, _keys[i]);
+        }
+    }
 
-    [Benchmark]
-    public void IncrementByAmount_Traditional_Exists() => IncrementByAmountTraditional(ExistingKey, 5);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void IncrementByAmount_Traditional_Exists()
+    {
+        for (var i = 0; i < BatchSize; i++)
+        {
+            IncrementByAmountTraditional(_existingDictionary, _keys[i], 5);
+        }
+    }
 
-    [Benchmark]
-    public void IncrementByAmount_Traditional_NotExists() => IncrementByAmountTraditional(NewKey, 5);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void IncrementByAmount_Traditional_NotExists()
+    {
+        _emptyDictionary.Clear();
+        for (var i = 0; i < BatchSize; i++)
+        {
+            IncrementByAmountTraditional(_emptyDictionary, _keys[i], 5);
+        }
+    }
 
-    [Benchmark]
-    public void IncrementByAmount_EntryAndModify_Exists() => IncrementByAmountEntryAndModify(ExistingKey, 5);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void IncrementByAmount_EntryAndModify_Exists()
+    {
+        for (var i = 0; i < BatchSize; i++)
+        {
+            IncrementByAmountEntryAndModify(_existingDictionary, _keys[i], 5);
+        }
+    }
 
-    [Benchmark]
-    public void IncrementByAmount_EntryAndModify_NotExists() => IncrementByAmountEntryAndModify(NewKey, 5);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void IncrementByAmount_EntryAndModify_NotExists()
+    {
+        _emptyDictionary.Clear();
+        for (var i = 0; i < BatchSize; i++)
+        {
+            IncrementByAmountEntryAndModify(_emptyDictionary, _keys[i], 5);
+        }
+    }
 
-    [Benchmark]
-    public void IncrementByAmount_EntryAndModifyState_Exists() => IncrementByAmountEntryAndModifyState(ExistingKey, 5);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void IncrementByAmount_EntryAndModifyState_Exists()
+    {
+        for (var i = 0; i < BatchSize; i++)
+        {
+            IncrementByAmountEntryAndModifyState(_existingDictionary, _keys[i], 5);
+        }
+    }
 
-    [Benchmark]
-    public void IncrementByAmount_EntryAndModifyState_NotExists() => IncrementByAmountEntryAndModifyState(NewKey, 5);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void IncrementByAmount_EntryAndModifyState_NotExists()
+    {
+        _emptyDictionary.Clear();
+        for (var i = 0; i < BatchSize; i++)
+        {
+            IncrementByAmountEntryAndModifyState(_emptyDictionary, _keys[i], 5);
+        }
+    }
 
-    [Benchmark]
-    public void IncrementByAmount_EntrySwitch_Exists() => IncrementByAmountEntrySwitch(ExistingKey, 5);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void IncrementByAmount_EntrySwitch_Exists()
+    {
+        for (var i = 0; i < BatchSize; i++)
+        {
+            IncrementByAmountEntrySwitch(_existingDictionary, _keys[i], 5);
+        }
+    }
 
-    [Benchmark]
-    public void IncrementByAmount_EntrySwitch_NotExists() => IncrementByAmountEntrySwitch(NewKey, 5);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void IncrementByAmount_EntrySwitch_NotExists()
+    {
+        _emptyDictionary.Clear();
+        for (var i = 0; i < BatchSize; i++)
+        {
+            IncrementByAmountEntrySwitch(_emptyDictionary, _keys[i], 5);
+        }
+    }
 }

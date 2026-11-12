@@ -5,35 +5,69 @@ namespace DictionaryEntry.Benchmarks.ConditionalOps;
 [BenchmarkCategory("ConditionalOps")]
 public class UpsertBenchmarks : BenchmarkBase
 {
-    private Dictionary<string, int> _dictionary = null!;
-    private const string ExistingKey = "existing";
-    private const string NewKey = "new";
+    private Dictionary<string, int> _existingDictionary = null!;
+    private Dictionary<string, int> _emptyDictionary = null!;
+    private string[] _keys = null!;
 
-    [IterationSetup]
+    [GlobalSetup]
     public void Setup()
     {
-        _dictionary = new Dictionary<string, int> { { ExistingKey, 10 } };
+        _existingDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
+        _emptyDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
+        _keys = new string[BatchSize];
+        for (var i = 0; i < BatchSize; i++)
+        {
+            var key = $"key_{i}";
+            _keys[i] = key;
+            _existingDictionary[key] = 10;
+        }
     }
 
-    private void UpsertTraditional(string key)
+    private static void UpsertTraditional(Dictionary<string, int> dict, string key)
     {
-        _dictionary[key] = 15;
+        dict[key] = 15;
     }
 
-    private void UpsertEntry(string key)
+    private static void UpsertEntry(Dictionary<string, int> dict, string key)
     {
-        _dictionary.Entry(key).InsertEntry(15);
+        dict.Entry(key).InsertEntry(15);
     }
 
-    [Benchmark(Baseline = true)]
-    public void Upsert_Traditional_Exists() => UpsertTraditional(ExistingKey);
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize)]
+    public void Upsert_Traditional_Exists()
+    {
+        for (var i = 0; i < BatchSize; i++)
+        {
+            UpsertTraditional(_existingDictionary, _keys[i]);
+        }
+    }
 
-    [Benchmark]
-    public void Upsert_Traditional_NotExists() => UpsertTraditional(NewKey);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void Upsert_Traditional_NotExists()
+    {
+        _emptyDictionary.Clear();
+        for (var i = 0; i < BatchSize; i++)
+        {
+            UpsertTraditional(_emptyDictionary, _keys[i]);
+        }
+    }
 
-    [Benchmark]
-    public void Upsert_Entry_Exists() => UpsertEntry(ExistingKey);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void Upsert_Entry_Exists()
+    {
+        for (var i = 0; i < BatchSize; i++)
+        {
+            UpsertEntry(_existingDictionary, _keys[i]);
+        }
+    }
 
-    [Benchmark]
-    public void Upsert_Entry_NotExists() => UpsertEntry(NewKey);
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void Upsert_Entry_NotExists()
+    {
+        _emptyDictionary.Clear();
+        for (var i = 0; i < BatchSize; i++)
+        {
+            UpsertEntry(_emptyDictionary, _keys[i]);
+        }
+    }
 }
