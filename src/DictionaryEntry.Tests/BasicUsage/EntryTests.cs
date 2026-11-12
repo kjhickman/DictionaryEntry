@@ -44,6 +44,34 @@ public class EntryTests
     }
 
     [Fact]
+    public void ValueRef_WhenOccupied_ReturnsMutableReference()
+    {
+        // Arrange
+        var dict = new Dictionary<string, int> { ["key"] = 42 };
+
+        // Act
+        if (dict.Entry("key") is { IsOccupied: true } entry)
+        {
+            entry.ValueRef += 8;
+        }
+
+        // Assert
+        Assert.Equal(50, dict["key"]);
+    }
+
+    [Fact]
+    public void ValueRef_WhenVacant_ThrowsKeyNotFoundException()
+    {
+        // Arrange
+        var dict = new Dictionary<string, int>();
+
+        // Act & Assert
+        var ex = Assert.Throws<KeyNotFoundException>(() => _ = dict.Entry("missing").ValueRef);
+        Assert.Contains("'missing'", ex.Message);
+        Assert.Empty(dict);
+    }
+
+    [Fact]
     public void AndModify_WhenExists_UpdatesValue()
     {
         // Arrange

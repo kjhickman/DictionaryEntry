@@ -64,6 +64,13 @@ public class EdgeCaseTests
     }
 
     [Fact]
+    public void DefaultEntry_ValueRef_ThrowsInvalidOperationException()
+    {
+        var ex = Assert.Throws<InvalidOperationException>(() => _ = default(Entry<string, int>).ValueRef);
+        Assert.Contains("not associated with a dictionary", ex.Message);
+    }
+
+    [Fact]
     public void DefaultEntry_ToVacant_ThrowsInvalidOperationException()
     {
         // Act & Assert (ref structs can't be captured by lambdas, so the default is created inside)
@@ -372,6 +379,56 @@ public class EdgeCaseTests
         ref var p4 = ref dict.Entry(4).OrInsertWithKey(id => new PlayerStats { Score = id * 10, Visits = 1 });
         p4.Score += 2;
         Assert.Equal(new PlayerStats { Score = 42, Visits = 1 }, dict[4]);
+    }
+
+    [Fact]
+    public void ValueRef_UpdateOnlyInPlaceStructMutation_UpdatesExistingAndSkipsMissing()
+    {
+        var dict = new Dictionary<int, PlayerStats>
+        {
+            [1] = new PlayerStats { Score = 10, Visits = 1 }
+        };
+
+        // Existing key: mutates struct fields directly in dictionary storage
+        if (dict.Entry(1) is { IsOccupied: true } existing)
+        {
+            ref var stats = ref existing.ValueRef;
+            stats.Score += 25;
+            stats.Visits++;
+        }
+
+        // Missing key: skipped without inserting a default entry
+        if (dict.Entry(99) is { IsOccupied: true } missing)
+        {
+            missing.ValueRef.Visits++;
+        }
+
+        Assert.Equal(new PlayerStats { Score = 35, Visits = 2 }, dict[1]);
+        Assert.False(dict.ContainsKey(99));
+        Assert.Single(dict);
+    }
+
+    [Fact]
+    public void ValueRef_AfterTransitionOrResize_PointsAtLiveStorage()
+    {
+        var dict = new Dictionary<string, int>();
+
+        var entry = dict.Entry("a");
+        entry.InsertEntry(10);
+        entry.ValueRef += 5;
+        Assert.Equal(15, dict["a"]);
+
+        var resized = dict.Entry("a").AndModify(v =>
+        {
+            for (var i = 0; i < 100; i++)
+            {
+                dict[$"filler{i}"] = i;
+            }
+
+            return v + 5;
+        });
+        resized.ValueRef *= 2;
+        Assert.Equal(40, dict["a"]);
     }
 
     [Fact]
