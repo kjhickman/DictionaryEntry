@@ -130,10 +130,18 @@ if (dict.Entry(key).TryGetOccupied(out var occupied))
 ### Reference Semantics
 
 ```csharp
-// Modify value in-place
+// Get-or-insert and modify value in-place
 ref var user = ref users.Entry(userId).OrInsert(new User());
 user.LastLoginDate = DateTime.UtcNow;
 user.LoginCount++;
+
+// Update in-place ONLY if the key already exists (1 lookup, 0 struct copies)
+if (playerStats.Entry(playerId) is { IsOccupied: true } entry)
+{
+    ref var stats = ref entry.ValueRef;
+    stats.HitsLanded++;
+    stats.TotalDamage += damage;
+}
 
 // No need to write back to the dictionary!
 ```
@@ -226,6 +234,19 @@ Stateful Factory (`OrInsertWithKey` capturing vs. `TState` overload):
 | StatefulFactory_EntryCapturing_NotExists | 28.775 ns |      80 B |
 | StatefulFactory_EntryState_Exists        |  4.497 ns |         - |
 | StatefulFactory_EntryState_NotExists     | 13.575 ns |         - |
+```
+
+Update Existing Only (`TryGetValue` + indexer vs. `AndModify` vs. `ValueRef`):
+
+```text
+| Method                         | Mean      | Allocated |
+|------------------------------- |----------:|----------:|
+| Update_Traditional_Exists      |  9.960 ns |         - |
+| Update_Traditional_NotExists   |  3.130 ns |         - |
+| Update_Entry_Exists            | 10.553 ns |         - |
+| Update_Entry_NotExists         |  3.565 ns |         - |
+| Update_EntryValueRef_Exists    |  4.381 ns |         - |
+| Update_EntryValueRef_NotExists |  3.362 ns |         - |
 ```
 
 To run the benchmarks yourself:

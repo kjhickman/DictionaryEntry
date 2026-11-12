@@ -37,6 +37,14 @@ public class UpdateExistingBenchmarks : BenchmarkBase
         dict.Entry(key).AndModify(x => x * 2);
     }
 
+    private static void UpdateEntryValueRef(Dictionary<string, int> dict, string key)
+    {
+        if (dict.Entry(key) is { IsOccupied: true } entry)
+        {
+            entry.ValueRef *= 2;
+        }
+    }
+
     [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize)]
     public void Update_Traditional_Exists()
     {
@@ -70,6 +78,24 @@ public class UpdateExistingBenchmarks : BenchmarkBase
         for (var i = 0; i < BatchSize; i++)
         {
             UpdateEntry(_emptyDictionary, _keys[i]);
+        }
+    }
+
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void Update_EntryValueRef_Exists()
+    {
+        for (var i = 0; i < BatchSize; i++)
+        {
+            UpdateEntryValueRef(_existingDictionary, _keys[i]);
+        }
+    }
+
+    [Benchmark(OperationsPerInvoke = BatchSize)]
+    public void Update_EntryValueRef_NotExists()
+    {
+        for (var i = 0; i < BatchSize; i++)
+        {
+            UpdateEntryValueRef(_emptyDictionary, _keys[i]);
         }
     }
 }

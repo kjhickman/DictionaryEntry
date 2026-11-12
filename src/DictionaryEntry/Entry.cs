@@ -60,6 +60,35 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     }
 
     /// <summary>
+    /// Gets a reference to the value associated with this entry in the dictionary.
+    /// </summary>
+    /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
+    /// <exception cref="KeyNotFoundException">Thrown if the entry does not exist in the dictionary.</exception>
+    /// <remarks>
+    /// Check <see cref="IsOccupied"/> before accessing this property to mutate an existing entry in place
+    /// without copying the value or inserting when absent. Do not mutate or resize the dictionary externally
+    /// while holding the returned reference.
+    /// </remarks>
+    public ref TValue ValueRef
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get
+        {
+            if (!_exists)
+            {
+                if (_dictionary is null)
+                {
+                    ThrowDefaultEntry();
+                }
+
+                ThrowKeyNotFound(_key);
+            }
+
+            return ref _valueRef;
+        }
+    }
+
+    /// <summary>
     /// Applies a modification function to the value if the entry exists in the dictionary.
     /// </summary>
     /// <param name="updateFunc">A function that takes the current value and returns the new value. This function is only called if the entry exists.</param>
