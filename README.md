@@ -161,7 +161,7 @@ Apple M1 Pro, 1 CPU, 8 logical and 8 physical cores
 InvocationCount=250000  OperationsPerInvoke=256  IterationCount=15  WarmupCount=10
 ```
 
-Get-or-Add (`OrInsert`):
+Get-or-Add (`OrInsert` on `Dictionary<int, int>`):
 
 ```text
 | Method                         | Mean     | Allocated |
@@ -172,7 +172,7 @@ Get-or-Add (`OrInsert`):
 | GetOrAdd_Entry_NotExists       | 5.779 ns |         - |
 ```
 
-Get-or-Default (`OrDefault`):
+Get-or-Default (`OrDefault` on `Dictionary<string, int>` / `Dictionary<string, string?>`):
 
 ```text
 | Method                                   | Mean      | Allocated |
@@ -185,68 +185,68 @@ Get-or-Default (`OrDefault`):
 | DefaultValue_EntryString_NotExists       |  9.834 ns |         - |
 ```
 
-Pattern Matching (`.Match(...)` vs. `switch`):
+Pattern Matching (`.Match(...)` vs. `switch` on `Dictionary<string, int>`):
 
 ```text
 | Method                                 | Mean      | Allocated |
 |--------------------------------------- |----------:|----------:|
-| PatternMatching_Traditional_Exists     |  4.413 ns |         - |
-| PatternMatching_Traditional_NotExists  |  3.372 ns |         - |
-| PatternMatching_EntryMatch_Exists      |  5.084 ns |         - |
-| PatternMatching_EntryMatch_NotExists   |  4.393 ns |         - |
-| PatternMatching_EntrySwitch_Exists     |  4.501 ns |         - |
-| PatternMatching_EntrySwitch_NotExists  |  3.545 ns |         - |
-| DifferentActions_Traditional_Exists    |  9.555 ns |         - |
-| DifferentActions_Traditional_NotExists | 11.662 ns |         - |
-| DifferentActions_EntryMatch_Exists     | 11.711 ns |         - |
-| DifferentActions_EntryMatch_NotExists  | 13.499 ns |         - |
-| DifferentActions_EntrySwitch_Exists    |  9.202 ns |         - |
-| DifferentActions_EntrySwitch_NotExists | 12.202 ns |         - |
+| PatternMatching_Traditional_Exists     |  4.569 ns |         - |
+| PatternMatching_Traditional_NotExists  |  3.300 ns |         - |
+| PatternMatching_EntryMatch_Exists      |  5.328 ns |         - |
+| PatternMatching_EntryMatch_NotExists   |  4.362 ns |         - |
+| PatternMatching_EntrySwitch_Exists     |  4.835 ns |         - |
+| PatternMatching_EntrySwitch_NotExists  |  3.518 ns |         - |
+| DifferentActions_Traditional_Exists    |  9.908 ns |         - |
+| DifferentActions_Traditional_NotExists | 11.587 ns |         - |
+| DifferentActions_EntryMatch_Exists     | 11.736 ns |         - |
+| DifferentActions_EntryMatch_NotExists  | 13.665 ns |         - |
+| DifferentActions_EntrySwitch_Exists    |  9.167 ns |         - |
+| DifferentActions_EntrySwitch_NotExists | 12.129 ns |         - |
 ```
 
-Increment Counter (`AndModify` vs. `AndModify(state, ...)` vs. `switch`):
+Increment Counter (`AndModify` vs. `AndModify(state, ...)` vs. `switch` on `Dictionary<string, int>`):
 
 ```text
 | Method                                          | Mean      | Allocated |
 |------------------------------------------------ |----------:|----------:|
-| IncrementCounter_Traditional_Exists             |  9.976 ns |         - |
-| IncrementCounter_Traditional_NotExists          | 11.660 ns |         - |
-| IncrementCounter_EntryAndModify_Exists          | 10.807 ns |         - |
-| IncrementCounter_EntryAndModify_NotExists       | 12.819 ns |         - |
-| IncrementByAmount_Traditional_Exists            |  9.099 ns |         - |
-| IncrementByAmount_Traditional_NotExists         | 11.792 ns |         - |
-| IncrementByAmount_EntryAndModify_Exists         | 25.839 ns |      80 B |
-| IncrementByAmount_EntryAndModify_NotExists      | 24.216 ns |      80 B |
-| IncrementByAmount_EntryAndModifyState_Exists    |  9.824 ns |         - |
-| IncrementByAmount_EntryAndModifyState_NotExists | 12.688 ns |         - |
-| IncrementByAmount_EntrySwitch_Exists            |  9.174 ns |         - |
-| IncrementByAmount_EntrySwitch_NotExists         | 12.258 ns |         - |
+| IncrementCounter_Traditional_Exists             |  9.996 ns |         - |
+| IncrementCounter_Traditional_NotExists          | 11.639 ns |         - |
+| IncrementCounter_EntryAndModify_Exists          | 10.804 ns |         - |
+| IncrementCounter_EntryAndModify_NotExists       | 12.808 ns |         - |
+| IncrementByAmount_Traditional_Exists            |  9.052 ns |         - |
+| IncrementByAmount_Traditional_NotExists         | 11.800 ns |         - |
+| IncrementByAmount_EntryAndModify_Exists         | 27.079 ns |      80 B |
+| IncrementByAmount_EntryAndModify_NotExists      | 24.381 ns |      80 B |
+| IncrementByAmount_EntryAndModifyState_Exists    | 10.130 ns |         - |
+| IncrementByAmount_EntryAndModifyState_NotExists | 12.719 ns |         - |
+| IncrementByAmount_EntrySwitch_Exists            |  9.225 ns |         - |
+| IncrementByAmount_EntrySwitch_NotExists         | 12.346 ns |         - |
 ```
 
-Stateful Factory (`OrInsertWithKey` capturing vs. `TState` overload):
+Stateful Factory (`OrInsertWithKey` capturing vs. `TState` overload on `Dictionary<string, int>`):
 
 ```text
 | Method                                   | Mean      | Allocated |
 |----------------------------------------- |----------:|----------:|
-| StatefulFactory_Traditional_Exists       |  4.148 ns |         - |
-| StatefulFactory_Traditional_NotExists    | 11.844 ns |         - |
-| StatefulFactory_EntryCapturing_Exists    | 17.090 ns |      80 B |
-| StatefulFactory_EntryCapturing_NotExists | 28.775 ns |      80 B |
-| StatefulFactory_EntryState_Exists        |  4.497 ns |         - |
-| StatefulFactory_EntryState_NotExists     | 13.575 ns |         - |
+| StatefulFactory_Traditional_Exists       |  4.113 ns |         - |
+| StatefulFactory_Traditional_NotExists    | 11.946 ns |         - |
+| StatefulFactory_EntryCapturing_Exists    | 17.186 ns |      80 B |
+| StatefulFactory_EntryCapturing_NotExists | 30.216 ns |      80 B |
+| StatefulFactory_EntryState_Exists        |  4.496 ns |         - |
+| StatefulFactory_EntryState_NotExists     | 13.650 ns |         - |
 ```
 
-Update Existing Only (`TryGetValue` + indexer vs. `AndModify` vs. `ValueRef`):
+Update Existing Only (`TryGetValue` + indexer vs. `AndModify` vs. `ValueRef` on `Dictionary<string, int>`):
 
 ```text
 | Method                         | Mean      | Allocated |
 |------------------------------- |----------:|----------:|
-| Update_Traditional_Exists      |  9.960 ns |         - |
+| Update_Traditional_Exists      |  9.197 ns |         - |
 | Update_Traditional_NotExists   |  3.130 ns |         - |
-| Update_Entry_Exists            | 10.553 ns |         - |
-| Update_Entry_NotExists         |  3.565 ns |         - |
-| Update_EntryValueRef_Exists    |  4.381 ns |         - |
-| Update_EntryValueRef_NotExists |  3.362 ns |         - |
+| Update_Entry_Exists            | 10.875 ns |         - |
+| Update_Entry_NotExists         |  3.485 ns |         - |
+| Update_EntryValueRef_Exists    |  4.304 ns |         - |
+| Update_EntryValueRef_NotExists |  3.373 ns |         - |
 ```
 
 To run the benchmarks yourself:

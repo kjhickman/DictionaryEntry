@@ -36,6 +36,8 @@ public class RetrieveAndRemoveBenchmarks : BenchmarkBase
         return null;
     }
 
+    // Note: Because each removal deletes the key, Exists batches re-populate the 256 keys before removing them;
+    // both Traditional and Entry pay the identical re-population cost so their relative delta reflects removal overhead.
     [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize)]
     public int GetAndRemove_Traditional_Exists()
     {

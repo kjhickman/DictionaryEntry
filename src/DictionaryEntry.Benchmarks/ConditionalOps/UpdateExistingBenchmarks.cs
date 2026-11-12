@@ -10,7 +10,7 @@ public class UpdateExistingBenchmarks : BenchmarkBase
     private string[] _keys = null!;
 
     [GlobalSetup]
-    public void Setup()
+    public void GlobalSetup()
     {
         _existingDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
         _emptyDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
@@ -23,25 +23,34 @@ public class UpdateExistingBenchmarks : BenchmarkBase
         }
     }
 
+    [IterationSetup]
+    public void IterationSetup()
+    {
+        for (var i = 0; i < BatchSize; i++)
+        {
+            _existingDictionary[_keys[i]] = 10;
+        }
+    }
+
     private static void UpdateTraditional(Dictionary<string, int> dict, string key)
     {
         if (dict.TryGetValue(key, out var value))
         {
-            value *= 2;
+            value += 3;
             dict[key] = value;
         }
     }
 
     private static void UpdateEntry(Dictionary<string, int> dict, string key)
     {
-        dict.Entry(key).AndModify(x => x * 2);
+        dict.Entry(key).AndModify(x => x + 3);
     }
 
     private static void UpdateEntryValueRef(Dictionary<string, int> dict, string key)
     {
         if (dict.Entry(key) is { IsOccupied: true } entry)
         {
-            entry.ValueRef *= 2;
+            entry.ValueRef += 3;
         }
     }
 

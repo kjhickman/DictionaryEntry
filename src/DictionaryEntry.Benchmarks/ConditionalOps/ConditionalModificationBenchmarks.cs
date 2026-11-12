@@ -11,16 +11,24 @@ public class ConditionalModificationBenchmarks : BenchmarkBase
     private const int Threshold = 5;
 
     [GlobalSetup]
-    public void Setup()
+    public void GlobalSetup()
     {
         _existingDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
         _emptyDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
         _keys = new string[BatchSize];
         for (var i = 0; i < BatchSize; i++)
         {
-            var key = $"key_{i}";
-            _keys[i] = key;
-            _existingDictionary[key] = 10;
+            _keys[i] = $"key_{i}";
+        }
+    }
+
+    [IterationSetup]
+    public void IterationSetup()
+    {
+        // Half above Threshold (10), half below Threshold (4); updates toggle 10 <-> 4 so neither overflows
+        for (var i = 0; i < BatchSize; i++)
+        {
+            _existingDictionary[_keys[i]] = (i & 1) == 0 ? 10 : 4;
         }
     }
 
@@ -30,11 +38,11 @@ public class ConditionalModificationBenchmarks : BenchmarkBase
         {
             if (value > Threshold)
             {
-                dict[key] = value * 2;
+                dict[key] = value - 6;
             }
             else
             {
-                dict[key] = value + 1;
+                dict[key] = value + 6;
             }
         }
         else
@@ -51,11 +59,11 @@ public class ConditionalModificationBenchmarks : BenchmarkBase
                 var value = occupied.Value;
                 if (value > Threshold)
                 {
-                    occupied.Insert(value * 2);
+                    occupied.Insert(value - 6);
                 }
                 else
                 {
-                    occupied.Insert(value + 1);
+                    occupied.Insert(value + 6);
                 }
             },
             vacant => vacant.Insert(1));

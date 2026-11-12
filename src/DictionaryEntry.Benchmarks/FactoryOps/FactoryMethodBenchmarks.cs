@@ -8,6 +8,7 @@ public class FactoryMethodBenchmarks : BenchmarkBase
     private Dictionary<string, int> _existingDictionary = null!;
     private Dictionary<string, int> _emptyDictionary = null!;
     private string[] _keys = null!;
+    private int _multiplier = 10;
 
     [GlobalSetup]
     public void Setup()
@@ -189,10 +190,11 @@ public class FactoryMethodBenchmarks : BenchmarkBase
     [Benchmark(OperationsPerInvoke = BatchSize)]
     public int StatefulFactory_Traditional_Exists()
     {
+        var multiplier = _multiplier;
         var sum = 0;
         for (var i = 0; i < BatchSize; i++)
         {
-            sum += StatefulFactoryTraditional(_existingDictionary, _keys[i], 10);
+            sum += StatefulFactoryTraditional(_existingDictionary, _keys[i], multiplier);
         }
 
         return sum;
@@ -202,10 +204,11 @@ public class FactoryMethodBenchmarks : BenchmarkBase
     public int StatefulFactory_Traditional_NotExists()
     {
         _emptyDictionary.Clear();
+        var multiplier = _multiplier;
         var sum = 0;
         for (var i = 0; i < BatchSize; i++)
         {
-            sum += StatefulFactoryTraditional(_emptyDictionary, _keys[i], 10);
+            sum += StatefulFactoryTraditional(_emptyDictionary, _keys[i], multiplier);
         }
 
         return sum;
@@ -214,10 +217,11 @@ public class FactoryMethodBenchmarks : BenchmarkBase
     [Benchmark(OperationsPerInvoke = BatchSize)]
     public int StatefulFactory_EntryCapturing_Exists()
     {
+        var multiplier = _multiplier;
         var sum = 0;
         for (var i = 0; i < BatchSize; i++)
         {
-            sum += StatefulFactoryCapturingEntry(_existingDictionary, _keys[i], 10);
+            sum += StatefulFactoryCapturingEntry(_existingDictionary, _keys[i], multiplier);
         }
 
         return sum;
@@ -227,10 +231,11 @@ public class FactoryMethodBenchmarks : BenchmarkBase
     public int StatefulFactory_EntryCapturing_NotExists()
     {
         _emptyDictionary.Clear();
+        var multiplier = _multiplier;
         var sum = 0;
         for (var i = 0; i < BatchSize; i++)
         {
-            sum += StatefulFactoryCapturingEntry(_emptyDictionary, _keys[i], 10);
+            sum += StatefulFactoryCapturingEntry(_emptyDictionary, _keys[i], multiplier);
         }
 
         return sum;
@@ -239,10 +244,11 @@ public class FactoryMethodBenchmarks : BenchmarkBase
     [Benchmark(OperationsPerInvoke = BatchSize)]
     public int StatefulFactory_EntryState_Exists()
     {
+        var multiplier = _multiplier;
         var sum = 0;
         for (var i = 0; i < BatchSize; i++)
         {
-            sum += StatefulFactoryStateEntry(_existingDictionary, _keys[i], 10);
+            sum += StatefulFactoryStateEntry(_existingDictionary, _keys[i], multiplier);
         }
 
         return sum;
@@ -252,10 +258,11 @@ public class FactoryMethodBenchmarks : BenchmarkBase
     public int StatefulFactory_EntryState_NotExists()
     {
         _emptyDictionary.Clear();
+        var multiplier = _multiplier;
         var sum = 0;
         for (var i = 0; i < BatchSize; i++)
         {
-            sum += StatefulFactoryStateEntry(_emptyDictionary, _keys[i], 10);
+            sum += StatefulFactoryStateEntry(_emptyDictionary, _keys[i], multiplier);
         }
 
         return sum;
