@@ -93,6 +93,37 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     }
 
     /// <summary>
+    /// Applies a modification function using the provided state to the value if the entry exists in the dictionary,
+    /// avoiding closure allocations when paired with a <c>static</c> lambda.
+    /// </summary>
+    /// <typeparam name="TState">The type of the state value passed to <paramref name="updateFunc"/>.</typeparam>
+    /// <param name="state">State passed through to <paramref name="updateFunc"/>.</param>
+    /// <param name="updateFunc">A function that takes the current value and <paramref name="state"/> and returns the new value. This function is only called if the entry exists.</param>
+    /// <returns>The entry instance to allow for method chaining.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
+    public Entry<TKey, TValue> AndModify<TState>(TState state, Func<TValue, TState, TValue> updateFunc)
+#if NET9_0_OR_GREATER
+        where TState : allows ref struct
+#endif
+    {
+        if (!_exists)
+        {
+            if (_dictionary is null)
+            {
+                ThrowDefaultEntry();
+            }
+
+            return this;
+        }
+
+        var newValue = updateFunc(_valueRef, state);
+
+        _valueRef = ref CollectionsMarshal.GetValueRefOrAddDefault(_dictionary, _key, out _)!;
+        _valueRef = newValue;
+        return this;
+    }
+
+    /// <summary>
     /// Gets a reference to the value in the dictionary if it exists, or inserts the specified value if it doesn't.
     /// </summary>
     /// <param name="defaultValue">The value to insert if the entry does not exist.</param>
@@ -142,6 +173,37 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     }
 
     /// <summary>
+    /// Gets a reference to the value in the dictionary if it exists, or computes and inserts a new value using the provided state if it doesn't,
+    /// avoiding closure allocations when paired with a <c>static</c> lambda.
+    /// </summary>
+    /// <typeparam name="TState">The type of the state value passed to <paramref name="valueFactory"/>.</typeparam>
+    /// <param name="state">State passed through to <paramref name="valueFactory"/>.</param>
+    /// <param name="valueFactory">A function that takes <paramref name="state"/> and computes the value to insert if the entry does not exist.</param>
+    /// <returns>A reference to the value in the dictionary.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
+    public ref TValue OrInsertWith<TState>(TState state, Func<TState, TValue> valueFactory)
+#if NET9_0_OR_GREATER
+        where TState : allows ref struct
+#endif
+    {
+        if (_exists)
+        {
+            return ref _valueRef;
+        }
+
+        if (_dictionary is null)
+        {
+            ThrowDefaultEntry();
+        }
+
+        var value = valueFactory(state);
+        _dictionary.Add(_key, value);
+        _valueRef = ref CollectionsMarshal.GetValueRefOrNullRef(_dictionary, _key);
+        _exists = true;
+        return ref _valueRef;
+    }
+
+    /// <summary>
     /// Gets a reference to the value in the dictionary if it exists, or computes and inserts a new value based on the key if it doesn't.
     /// </summary>
     /// <param name="valueFactory">A function that takes the key and computes the value to insert if the entry does not exist.</param>
@@ -160,6 +222,37 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         }
 
         var value = valueFactory(_key);
+        _dictionary.Add(_key, value);
+        _valueRef = ref CollectionsMarshal.GetValueRefOrNullRef(_dictionary, _key);
+        _exists = true;
+        return ref _valueRef;
+    }
+
+    /// <summary>
+    /// Gets a reference to the value in the dictionary if it exists, or computes and inserts a new value based on the key and provided state if it doesn't,
+    /// avoiding closure allocations when paired with a <c>static</c> lambda.
+    /// </summary>
+    /// <typeparam name="TState">The type of the state value passed to <paramref name="valueFactory"/>.</typeparam>
+    /// <param name="state">State passed through to <paramref name="valueFactory"/>.</param>
+    /// <param name="valueFactory">A function that takes the key and <paramref name="state"/> and computes the value to insert if the entry does not exist.</param>
+    /// <returns>A reference to the value in the dictionary.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
+    public ref TValue OrInsertWithKey<TState>(TState state, Func<TKey, TState, TValue> valueFactory)
+#if NET9_0_OR_GREATER
+        where TState : allows ref struct
+#endif
+    {
+        if (_exists)
+        {
+            return ref _valueRef;
+        }
+
+        if (_dictionary is null)
+        {
+            ThrowDefaultEntry();
+        }
+
+        var value = valueFactory(_key, state);
         _dictionary.Add(_key, value);
         _valueRef = ref CollectionsMarshal.GetValueRefOrNullRef(_dictionary, _key);
         _exists = true;
@@ -286,6 +379,38 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     }
 
     /// <summary>
+    /// Performs pattern matching on the entry using the provided state, executing different actions based on whether the entry exists
+    /// and avoiding closure allocations when paired with <c>static</c> lambdas.
+    /// </summary>
+    /// <typeparam name="TState">The type of the state value passed to the branch actions.</typeparam>
+    /// <param name="state">State passed through to <paramref name="occupiedAction"/> or <paramref name="vacantAction"/>.</param>
+    /// <param name="occupiedAction">The action to execute if the entry exists.</param>
+    /// <param name="vacantAction">The action to execute if the entry does not exist.</param>
+    /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
+    public void Match<TState>(
+        TState state,
+        Action<OccupiedEntry<TKey, TValue>, TState> occupiedAction,
+        Action<VacantEntry<TKey, TValue>, TState> vacantAction)
+#if NET9_0_OR_GREATER
+        where TState : allows ref struct
+#endif
+    {
+        if (_exists)
+        {
+            occupiedAction(new OccupiedEntry<TKey, TValue>(_dictionary, _key, _valueRef), state);
+        }
+        else
+        {
+            if (_dictionary is null)
+            {
+                ThrowDefaultEntry();
+            }
+
+            vacantAction(new VacantEntry<TKey, TValue>(_dictionary, _key), state);
+        }
+    }
+
+    /// <summary>
     /// Performs pattern matching on the entry, executing different functions based on whether the entry exists and returning a result.
     /// </summary>
     /// <typeparam name="TResult">The type of the result.</typeparam>
@@ -307,6 +432,38 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         }
 
         return vacantFunc(new VacantEntry<TKey, TValue>(_dictionary, _key));
+    }
+
+    /// <summary>
+    /// Performs pattern matching on the entry using the provided state, executing different functions based on whether the entry exists,
+    /// returning a result, and avoiding closure allocations when paired with <c>static</c> lambdas.
+    /// </summary>
+    /// <typeparam name="TState">The type of the state value passed to the branch functions.</typeparam>
+    /// <typeparam name="TResult">The type of the result.</typeparam>
+    /// <param name="state">State passed through to <paramref name="occupiedFunc"/> or <paramref name="vacantFunc"/>.</param>
+    /// <param name="occupiedFunc">The function to execute if the entry exists.</param>
+    /// <param name="vacantFunc">The function to execute if the entry does not exist.</param>
+    /// <returns>The result of the executed function.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
+    public TResult Match<TState, TResult>(
+        TState state,
+        Func<OccupiedEntry<TKey, TValue>, TState, TResult> occupiedFunc,
+        Func<VacantEntry<TKey, TValue>, TState, TResult> vacantFunc)
+#if NET9_0_OR_GREATER
+        where TState : allows ref struct
+#endif
+    {
+        if (_exists)
+        {
+            return occupiedFunc(new OccupiedEntry<TKey, TValue>(_dictionary, _key, _valueRef), state);
+        }
+
+        if (_dictionary is null)
+        {
+            ThrowDefaultEntry();
+        }
+
+        return vacantFunc(new VacantEntry<TKey, TValue>(_dictionary, _key), state);
     }
 
     [DoesNotReturn]

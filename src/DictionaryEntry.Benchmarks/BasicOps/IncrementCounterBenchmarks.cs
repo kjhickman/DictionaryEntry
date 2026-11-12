@@ -49,6 +49,11 @@ public class IncrementCounterBenchmarks : BenchmarkBase
         _dictionary.Entry(key).AndModify(count => count + amount).OrInsert(amount);
     }
 
+    private void IncrementByAmountEntryAndModifyState(string key, int amount)
+    {
+        _dictionary.Entry(key).AndModify(amount, static (count, amt) => count + amt).OrInsert(amount);
+    }
+
     private void IncrementByAmountEntrySwitch(string key, int amount)
     {
         switch (_dictionary.Entry(key))
@@ -85,6 +90,12 @@ public class IncrementCounterBenchmarks : BenchmarkBase
 
     [Benchmark]
     public void IncrementByAmount_EntryAndModify_NotExists() => IncrementByAmountEntryAndModify(NewKey, 5);
+
+    [Benchmark]
+    public void IncrementByAmount_EntryAndModifyState_Exists() => IncrementByAmountEntryAndModifyState(ExistingKey, 5);
+
+    [Benchmark]
+    public void IncrementByAmount_EntryAndModifyState_NotExists() => IncrementByAmountEntryAndModifyState(NewKey, 5);
 
     [Benchmark]
     public void IncrementByAmount_EntrySwitch_Exists() => IncrementByAmountEntrySwitch(ExistingKey, 5);
