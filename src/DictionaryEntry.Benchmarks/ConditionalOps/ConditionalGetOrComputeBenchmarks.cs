@@ -64,7 +64,7 @@ public class ConditionalGetOrComputeBenchmarks : BenchmarkBase
 
     private static int GetOrComputeEntryUsingKey(Dictionary<string, int> dict, string key)
     {
-        return dict.Entry(key).OrInsertWith(() => ComputeValueFromString(key));
+        return dict.Entry(key).OrInsertWithKey(ComputeValueFromString);
     }
 
     [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize)]
