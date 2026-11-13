@@ -155,6 +155,22 @@ playerStats.Entry(playerId)
 // No need to write back to the dictionary!
 ```
 
+### Span & `AlternateLookup` (.NET 9+)
+
+On .NET 9+, `AlternateLookup<TAlternateKey>.Entry(key)` provides the same fluent API over `ReadOnlySpan<char>`, `ReadOnlySpan<byte>`, or any custom `IAlternateEqualityComparer<TAlternateKey, TKey>`—allocating zero strings on cache hits and materializing the `TKey` only once when inserting a missing key:
+
+```csharp
+var counts = new Dictionary<string, int>(StringComparer.Ordinal);
+var lookup = counts.GetAlternateLookup<ReadOnlySpan<char>>();
+
+ReadOnlySpan<char> csv = "apple,banana,apple,cherry";
+foreach (var range in csv.Split(','))
+{
+    ReadOnlySpan<char> word = csv[range];
+    lookup.Entry(word).AndModify(static c => c + 1).OrInsert(1);
+}
+```
+
 ## Benchmarks
 
 The library is designed around single-lookup access and zero-boxing structs. Because `Entry<TKey, TValue>` implements C# 15's non-boxing union access pattern (`TryGetValue` / `HasValue` via explicit `IUnionMembers`) rather than `object`-backed union storage, union `switch` and `is` operations never box `OccupiedEntry` or `VacantEntry`.
@@ -350,6 +366,14 @@ private void IncrementByAmountRef(string key, int amount)
   ```
 - **Do not mutate the dictionary externally while holding an `Entry` local (or inside `AndModify` callbacks):** Because `Entry<TKey, TValue>` caches a `CollectionsMarshal` value reference, mutating or resizing the same `Dictionary<TKey, TValue>` directly (outside the `Entry`'s own methods, including inside an `AndModify` callback) invalidates that `Entry` instance.
 
+### `AlternateEntry` (`AlternateLookup` on .NET 9+)
+
+Because `TAlternateKey` supports `ref struct` keys such as `ReadOnlySpan<char>`, `AlternateEntry<TKey, TValue, TAlternateKey>`, `AlternateOccupiedEntry<TKey, TValue, TAlternateKey>`, and `AlternateVacantEntry<TKey, TValue, TAlternateKey>` are all `ref struct`s:
+
+- **Not a C# 15 `[Union]`:** C# 15 union case types must be convertible to `object` and cannot be `ref struct`s (`CS8121`), so `switch` / `is` type patterns on `AlternateOccupiedEntry` and `AlternateVacantEntry` are not supported. Use fluent methods, untyped property patterns (e.g. `if (lookup.Entry(span) is { IsOccupied: true } e)`), `TryGetOccupied`, `TryGetVacant`, or synchronous `Match` instead.
+- **No `async` / `await` across `AlternateOccupiedEntry` or `AlternateVacantEntry`:** Unlike `OccupiedEntry` and `VacantEntry` (which are regular `struct`s), alternate case types hold a `ref struct` key and cannot cross `await` / `yield return` boundaries, be boxed, or be captured in `async` lambdas.
+- **Requires .NET 9+:** `Dictionary<TKey, TValue>.AlternateLookup<TAlternateKey>` is only available on `net9.0` and later.
+
 ### Thread Safety
 
 `Dictionary<TKey, TValue>` is not thread-safe. In concurrent scenarios, protect access with synchronization or use a concurrent collection.
@@ -357,7 +381,6 @@ private void IncrementByAmountRef(string key, int amount)
 ## Potential Features
 
 - Support for `ConcurrentDictionary<TKey, TValue>` and other dictionary-like collections
-- `Dictionary<TKey, TValue>.AlternateLookup<TAlternateKey>` support for span-based lookups
 
 ## License
 

@@ -31,4 +31,36 @@ public static class DictionaryExtensions
     {
         return new Entry<TKey, TValue>(dictionary, key);
     }
+
+#if NET9_0_OR_GREATER
+    /// <summary>
+    /// Gets an entry for the specified alternate key in the dictionary lookup, whether the key exists or not.
+    /// </summary>
+    /// <typeparam name="TKey">The type of keys in the dictionary.</typeparam>
+    /// <typeparam name="TValue">The type of values in the dictionary.</typeparam>
+    /// <typeparam name="TAlternateKey">The type of the alternate key used for lookup (for example, <see cref="ReadOnlySpan{T}"/>).</typeparam>
+    /// <param name="lookup">The alternate lookup obtained from <see cref="Dictionary{TKey, TValue}.GetAlternateLookup{TAlternateKey}"/>.</param>
+    /// <param name="key">The alternate key to look up in the dictionary.</param>
+    /// <returns>An <see cref="AlternateEntry{TKey, TValue, TAlternateKey}"/> that can be used to manipulate the dictionary without allocating <typeparamref name="TKey"/> on hits.</returns>
+    /// <remarks>
+    /// This method performs a single dictionary lookup using the alternate key and only materializes a
+    /// <typeparamref name="TKey"/> instance if an insertion occurs on a missing key.
+    /// </remarks>
+    /// <example>
+    /// <code>
+    /// var dict = new Dictionary&lt;string, int&gt;(StringComparer.Ordinal);
+    /// var lookup = dict.GetAlternateLookup&lt;ReadOnlySpan&lt;char&gt;&gt;();
+    /// lookup.Entry("key".AsSpan()).OrInsert(42);
+    /// </code>
+    /// </example>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static AlternateEntry<TKey, TValue, TAlternateKey> Entry<TKey, TValue, TAlternateKey>(
+        this Dictionary<TKey, TValue>.AlternateLookup<TAlternateKey> lookup,
+        TAlternateKey key)
+        where TKey : notnull
+        where TAlternateKey : notnull, allows ref struct
+    {
+        return new AlternateEntry<TKey, TValue, TAlternateKey>(lookup, key);
+    }
+#endif
 }
