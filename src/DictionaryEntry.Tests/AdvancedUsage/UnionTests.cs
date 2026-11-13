@@ -269,7 +269,6 @@ public class UnionTests
         Assert.True(nullableDict.Entry("nullValue") is object boxedNullValueOccupied
                     && boxedNullValueOccupied is OccupiedEntry<string, string?> { Key: "nullValue", Value: null });
 
-#if NET9_0_OR_GREATER
         // Also verify direct IUnionMembers.Value access (including the defaultEntry -> null branch)
         Assert.IsType<OccupiedEntry<string, int>>(
             GetUnionValue<string, int, Entry<string, int>>(dict.Entry("existing")));
@@ -283,7 +282,6 @@ public class UnionTests
             where TKey : notnull
             where TUnion : Entry<TKey, TValue>.IUnionMembers, allows ref struct
             => union.Value;
-#endif
     }
 
     [Fact]

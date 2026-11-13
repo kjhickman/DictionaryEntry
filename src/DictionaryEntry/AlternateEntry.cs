@@ -1,4 +1,3 @@
-#if NET9_0_OR_GREATER
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -668,4 +667,3 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
         throw new ArgumentException("An item with the same key has already been added.");
     }
 }
-#endif

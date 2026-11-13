@@ -32,7 +32,6 @@ public static class DictionaryExtensions
         return new Entry<TKey, TValue>(dictionary, key);
     }
 
-#if NET9_0_OR_GREATER
     /// <summary>
     /// Gets an entry for the specified alternate key in the dictionary lookup, whether the key exists or not.
     /// </summary>
@@ -62,5 +61,4 @@ public static class DictionaryExtensions
     {
         return new AlternateEntry<TKey, TValue, TAlternateKey>(lookup, key);
     }
-#endif
 }

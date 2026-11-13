@@ -123,9 +123,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly Entry<TKey, TValue> AndModify<TState>(TState state, Func<TValue, TState, TValue> updateFunc)
-#if NET9_0_OR_GREATER
         where TState : allows ref struct
-#endif
     {
         if (Unsafe.IsNullRef(ref _valueRef))
         {
@@ -185,9 +183,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// </remarks>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public readonly Entry<TKey, TValue> AndModify<TState>(TState state, RefAction<TValue, TState> updateAction)
-#if NET9_0_OR_GREATER
         where TState : allows ref struct
-#endif
     {
         if (Unsafe.IsNullRef(ref _valueRef))
         {
@@ -275,9 +271,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ref TValue OrInsertWith<TState>(TState state, Func<TState, TValue> valueFactory)
-#if NET9_0_OR_GREATER
         where TState : allows ref struct
-#endif
     {
         if (!Unsafe.IsNullRef(ref _valueRef))
         {
@@ -343,9 +337,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ref TValue OrInsertWithKey<TState>(TState state, Func<TKey, TState, TValue> valueFactory)
-#if NET9_0_OR_GREATER
         where TState : allows ref struct
-#endif
     {
         if (!Unsafe.IsNullRef(ref _valueRef))
         {
@@ -506,9 +498,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         TState state,
         Action<OccupiedEntry<TKey, TValue>, TState> occupiedAction,
         Action<VacantEntry<TKey, TValue>, TState> vacantAction)
-#if NET9_0_OR_GREATER
         where TState : allows ref struct
-#endif
     {
         if (!Unsafe.IsNullRef(ref _valueRef))
         {
@@ -566,9 +556,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         TState state,
         Func<OccupiedEntry<TKey, TValue>, TState, TResult> occupiedFunc,
         Func<VacantEntry<TKey, TValue>, TState, TResult> vacantFunc)
-#if NET9_0_OR_GREATER
         where TState : allows ref struct
-#endif
     {
         if (!Unsafe.IsNullRef(ref _valueRef))
         {

@@ -1,4 +1,3 @@
-#if NET9_0_OR_GREATER
 using System.Runtime.CompilerServices;
 using System.Text;
 
@@ -437,4 +436,3 @@ public class AlternateEntryTests
         public string Create(ReadOnlySpan<byte> alternate) => Encoding.UTF8.GetString(alternate);
     }
 }
-#endif

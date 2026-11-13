@@ -1,4 +1,3 @@
-#if NET9_0_OR_GREATER
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
@@ -83,4 +82,3 @@ public readonly ref struct AlternateVacantEntry<TKey, TValue, TAlternateKey>
         throw new InvalidOperationException(
             "The vacant entry is not associated with a dictionary. Obtain entries with AlternateLookup.Entry(key) rather than default.");
 }
-#endif

@@ -8,7 +8,7 @@ DictionaryEntry is a small library that brings Rust's "Entry" API pattern to C# 
 dotnet add package DictionaryEntry
 ```
 
-Targets `net8.0`, `net9.0`, `net10.0`, and `net11.0` (AOT-compatible).
+Targets `net9.0`, `net10.0`, and `net11.0` (AOT-compatible).
 
 ## Examples
 
@@ -155,9 +155,9 @@ playerStats.Entry(playerId)
 // No need to write back to the dictionary!
 ```
 
-### Span & `AlternateLookup` (.NET 9+)
+### Span & `AlternateLookup`
 
-On .NET 9+, `AlternateLookup<TAlternateKey>.Entry(key)` provides the same fluent API over `ReadOnlySpan<char>`, `ReadOnlySpan<byte>`, or any custom `IAlternateEqualityComparer<TAlternateKey, TKey>`—allocating zero strings on cache hits and materializing the `TKey` only once when inserting a missing key:
+`AlternateLookup<TAlternateKey>.Entry(key)` provides the same fluent API over `ReadOnlySpan<char>`, `ReadOnlySpan<byte>`, or any custom `IAlternateEqualityComparer<TAlternateKey, TKey>`—allocating zero strings on cache hits and materializing the `TKey` only once when inserting a missing key:
 
 ```csharp
 var counts = new Dictionary<string, int>(StringComparer.Ordinal);
@@ -287,7 +287,7 @@ dotnet run -c Release
 
 Methods that accept delegates (`AndModify`, `OrInsertWith`, `OrInsertWithKey`, and `Match`) are zero-allocation when passed a non-capturing lambda or `static` method group, because C# caches a singleton delegate instance.
 
-When a lambda **captures local variables or `this`**, C# allocates a closure object on the heap—even on cache hits before the method is called (`24 B` outside loops on .NET 10/11 when JIT escape analysis stack-allocates the delegate, and up to `80–88 B` inside loops or on .NET 8/9 when the `64 B` delegate is also heap-allocated):
+When a lambda **captures local variables or `this`**, C# allocates a closure object on the heap—even on cache hits before the method is called (`24 B` outside loops on .NET 10/11 when JIT escape analysis stack-allocates the delegate, and up to `80–88 B` inside loops or on .NET 9 when the `64 B` delegate is also heap-allocated):
 
 ```csharp
 // Captures 'amount' -> allocates a closure + delegate inside loops (24-88 B)
@@ -300,13 +300,13 @@ private void IncrementByAmountCapturing(string key, int amount)
 On hot paths that need local state without closure allocations, use the **`TState` overloads** with `static` lambdas, a **union `switch`**, or **`ref` returns**:
 
 ```csharp
-// Zero-allocation with TState overload + static lambda (also supports Span/ReadOnlySpan state on .NET 9+)
+// Zero-allocation with TState overload + static lambda (also supports Span/ReadOnlySpan state)
 private void IncrementByAmountState(string key, int amount)
 {
     _dictionary.Entry(key).AndModify(amount, static (count, amt) => count + amt).OrInsert(amount);
 }
 
-// Zero-allocation lazy factory with TState (passes value tuples or ReadOnlySpan<T> on .NET 9+)
+// Zero-allocation lazy factory with TState (passes value tuples or ReadOnlySpan<T>)
 private int GetOrComputeScaled(string key, int multiplier)
 {
     return _dictionary.Entry(key).OrInsertWithKey(multiplier, static (k, mult) => k.Length * mult);
@@ -337,7 +337,7 @@ private void IncrementByAmountRef(string key, int amount)
 
 ### C# 15 Union Pattern Matching
 
-- **Requires C# 15 (.NET 11 SDK):** Native union `switch` and `is` patterns require compiling with C# 15 (`net11.0` uses C# 15 by default; projects targeting `net8.0`–`net10.0` on the .NET 11 SDK can also opt in with `<LangVersion>15.0</LangVersion>` or `<LangVersion>latest</LangVersion>`). On older C# versions/SDKs, all fluent methods, `Match`, `TryGetOccupied`, and `TryGetVacant` continue to work normally.
+- **Requires C# 15 (.NET 11 SDK):** Native union `switch` and `is` patterns require compiling with C# 15 (`net11.0` uses C# 15 by default; projects targeting `net9.0` or `net10.0` on the .NET 11 SDK can also opt in with `<LangVersion>15.0</LangVersion>` or `<LangVersion>latest</LangVersion>`). On older C# versions/SDKs, all fluent methods, `Match`, `TryGetOccupied`, and `TryGetVacant` continue to work normally.
 - **`Entry` is live, cases are snapshots:** `OccupiedEntry.Value` is captured when the entry is obtained and is not updated by `Insert` or later dictionary changes. Converting an `OccupiedEntry` / `VacantEntry` back to `Entry<TKey, TValue>` (e.g. `Entry<string, int> e = occupied;`) performs a fresh lookup, so the result reflects the dictionary's *current* state and may be a different case if the dictionary changed in between. `OccupiedEntry.Remove()` / `RemoveEntry()` return the value actually removed, and throw `KeyNotFoundException` if the key is no longer present.
 - **Explicit generic type arguments in type patterns:** Because C# 15 unions are type unions rather than nominal enum variants, C# does not infer `<TKey, TValue>` in `OccupiedEntry<TKey, TValue>` / `VacantEntry<TKey, TValue>` patterns. When `<TKey, TValue>` is verbose, `TryGetOccupied(out var occupied)`, `Match(...)`, or a `using` type alias avoids repeating the type parameters.
 
@@ -366,13 +366,12 @@ private void IncrementByAmountRef(string key, int amount)
   ```
 - **Do not mutate the dictionary externally while holding an `Entry` local (or inside `AndModify` callbacks):** Because `Entry<TKey, TValue>` caches a `CollectionsMarshal` value reference, mutating or resizing the same `Dictionary<TKey, TValue>` directly (outside the `Entry`'s own methods, including inside an `AndModify` callback) invalidates that `Entry` instance.
 
-### `AlternateEntry` (`AlternateLookup` on .NET 9+)
+### `AlternateEntry` (`AlternateLookup`)
 
 Because `TAlternateKey` supports `ref struct` keys such as `ReadOnlySpan<char>`, `AlternateEntry<TKey, TValue, TAlternateKey>`, `AlternateOccupiedEntry<TKey, TValue, TAlternateKey>`, and `AlternateVacantEntry<TKey, TValue, TAlternateKey>` are all `ref struct`s:
 
 - **Not a C# 15 `[Union]`:** C# 15 union case types must be convertible to `object` and cannot be `ref struct`s (`CS8121`), so `switch` / `is` type patterns on `AlternateOccupiedEntry` and `AlternateVacantEntry` are not supported. Use fluent methods, untyped property patterns (e.g. `if (lookup.Entry(span) is { IsOccupied: true } e)`), `TryGetOccupied`, `TryGetVacant`, or synchronous `Match` instead.
 - **No `async` / `await` across `AlternateOccupiedEntry` or `AlternateVacantEntry`:** Unlike `OccupiedEntry` and `VacantEntry` (which are regular `struct`s), alternate case types hold a `ref struct` key and cannot cross `await` / `yield return` boundaries, be boxed, or be captured in `async` lambdas.
-- **Requires .NET 9+:** `Dictionary<TKey, TValue>.AlternateLookup<TAlternateKey>` is only available on `net9.0` and later.
 
 ### Thread Safety
 

@@ -277,7 +277,7 @@ public class StateOverloadTests
         }
         var statefulAllocated = GC.GetAllocatedBytesForCurrentThread() - beforeStateful;
 
-        // Even on a 100% cache hit, the capturing lambda allocates its closure (24 B/call on .NET 10+, 88 B/call on .NET 8/9)
+        // Even on a 100% cache hit, the capturing lambda allocates its closure (24 B/call on .NET 10+, 88 B/call on .NET 9)
         Assert.True(capturingAllocated >= 2_400, $"Expected closure allocations, got {capturingAllocated} bytes.");
         Assert.Equal(0, statefulAllocated);
 
@@ -290,7 +290,6 @@ public class StateOverloadTests
             d.Entry(key).OrInsertWithKey(multiplier, static (k, mult) => k.Length * mult);
     }
 
-#if NET9_0_OR_GREATER
     [Fact]
     public void RefStructState_SpansAndCustomRefStructs_WorkAcrossAllStateOverloadsWithZeroAllocation()
     {
@@ -365,7 +364,6 @@ public class StateOverloadTests
         public ReadOnlySpan<char> Digits { get; } = digits;
         public int Multiplier { get; } = Multiplier;
     }
-#endif
 
     private struct CounterStats
     {

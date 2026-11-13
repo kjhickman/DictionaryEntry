@@ -15,7 +15,4 @@ public delegate void RefAction<TValue>(ref TValue value);
 /// <param name="value">A mutable reference to the value.</param>
 /// <param name="state">State passed through to the method.</param>
 public delegate void RefAction<TValue, in TState>(ref TValue value, TState state)
-#if NET9_0_OR_GREATER
-    where TState : allows ref struct
-#endif
-    ;
+    where TState : allows ref struct;

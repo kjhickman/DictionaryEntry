@@ -1,4 +1,3 @@
-#if NET9_0_OR_GREATER
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
@@ -169,4 +168,3 @@ public readonly ref struct AlternateOccupiedEntry<TKey, TValue, TAlternateKey>
         throw new KeyNotFoundException("The given key is no longer present in the dictionary.");
     }
 }
-#endif
