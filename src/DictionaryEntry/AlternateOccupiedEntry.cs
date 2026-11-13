@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
 namespace DictionaryEntry;
 
@@ -18,16 +17,22 @@ public readonly ref struct AlternateOccupiedEntry<TKey, TValue, TAlternateKey>
     private readonly Dictionary<TKey, TValue>.AlternateLookup<TAlternateKey> _lookup;
     private readonly TAlternateKey _key;
     private readonly TValue _value;
+    private readonly nint _byteOffset;
+    private readonly ulong _stamp;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal AlternateOccupiedEntry(
         Dictionary<TKey, TValue>.AlternateLookup<TAlternateKey> lookup,
         TAlternateKey key,
-        TValue value)
+        TValue value,
+        nint byteOffset,
+        ulong stamp)
     {
         _lookup = lookup;
         _key = key;
         _value = value;
+        _byteOffset = byteOffset;
+        _stamp = stamp;
     }
 
     /// <summary>
@@ -75,15 +80,15 @@ public readonly ref struct AlternateOccupiedEntry<TKey, TValue, TAlternateKey>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public TValue Insert(TValue newValue)
     {
-        if (_lookup.Dictionary is null)
+        var dictionary = _lookup.Dictionary;
+        if (dictionary is null)
         {
             ThrowDefaultEntry();
         }
 
-        ref var valueRef = ref CollectionsMarshal.GetValueRefOrNullRef(_lookup, _key);
-        if (!Unsafe.IsNullRef(ref valueRef))
+        if (DictionaryAccess<TKey, TValue>.GetOccupiedStamp(dictionary) == _stamp)
         {
-            valueRef = newValue;
+            DictionaryAccess<TKey, TValue>.WriteOccupiedValue(dictionary, _byteOffset, newValue);
             return newValue;
         }
 

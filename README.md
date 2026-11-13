@@ -364,7 +364,7 @@ private void IncrementByAmountRef(string key, int amount)
       occupied => Task.FromResult(occupied.Value),
       async vacant => vacant.Insert(await db.LoadUserAsync(vacant.Key)));
   ```
-- **Do not mutate the dictionary externally while holding an `Entry` local (or inside `AndModify` callbacks):** Because `Entry<TKey, TValue>` caches a `CollectionsMarshal` value reference, mutating or resizing the same `Dictionary<TKey, TValue>` directly (outside the `Entry`'s own methods, including inside an `AndModify` callback) invalidates that `Entry` instance.
+- **Do not mutate the dictionary externally while holding an `Entry` local (or inside `AndModify` callbacks):** Because `Entry<TKey, TValue>` caches a direct value reference into the dictionary's entry storage, mutating or resizing the same `Dictionary<TKey, TValue>` directly (outside the `Entry`'s own methods, including inside an `AndModify` callback) invalidates that `Entry` instance.
 
 ### `AlternateEntry` (`AlternateLookup`)
 
@@ -372,6 +372,10 @@ Because `TAlternateKey` supports `ref struct` keys such as `ReadOnlySpan<char>`,
 
 - **Not a C# 15 `[Union]`:** C# 15 union case types must be convertible to `object` and cannot be `ref struct`s (`CS8121`), so `switch` / `is` type patterns on `AlternateOccupiedEntry` and `AlternateVacantEntry` are not supported. Use fluent methods, untyped property patterns (e.g. `if (lookup.Entry(span) is { IsOccupied: true } e)`), `TryGetOccupied`, `TryGetVacant`, or synchronous `Match` instead.
 - **No `async` / `await` across `AlternateOccupiedEntry` or `AlternateVacantEntry`:** Unlike `OccupiedEntry` and `VacantEntry` (which are regular `struct`s), alternate case types hold a `ref struct` key and cannot cross `await` / `yield return` boundaries, be boxed, or be captured in `async` lambdas.
+
+### Runtime Internals
+
+`DictionaryEntry` uses `[UnsafeAccessor]` to avoid rehashing keys on vacant insertions and to write directly to entry slots on `OccupiedEntry.Insert` / `AlternateOccupiedEntry.Insert`. It is verified against `Dictionary<TKey, TValue>` on .NET 9, .NET 10, and .NET 11; newer .NET releases may require an updated package version if `Dictionary<TKey, TValue>`'s internal layout changes.
 
 ### Thread Safety
 

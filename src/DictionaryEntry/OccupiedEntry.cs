@@ -1,6 +1,5 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
 namespace DictionaryEntry;
 
@@ -15,6 +14,8 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
     private readonly Dictionary<TKey, TValue> _dictionary;
     private readonly TKey _key;
     private readonly TValue _value;
+    private readonly nint _byteOffset;
+    private readonly ulong _stamp;
 
     internal Dictionary<TKey, TValue> Dictionary
     {
@@ -23,11 +24,18 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal OccupiedEntry(Dictionary<TKey, TValue> dictionary, TKey key, TValue value)
+    internal OccupiedEntry(
+        Dictionary<TKey, TValue> dictionary,
+        TKey key,
+        TValue value,
+        nint byteOffset,
+        ulong stamp)
     {
         _dictionary = dictionary;
         _key = key;
         _value = value;
+        _byteOffset = byteOffset;
+        _stamp = stamp;
     }
 
     /// <summary>
@@ -80,10 +88,9 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
             ThrowDefaultEntry();
         }
 
-        ref var valueRef = ref CollectionsMarshal.GetValueRefOrNullRef(_dictionary, _key);
-        if (!Unsafe.IsNullRef(ref valueRef))
+        if (DictionaryAccess<TKey, TValue>.GetOccupiedStamp(_dictionary) == _stamp)
         {
-            valueRef = newValue;
+            DictionaryAccess<TKey, TValue>.WriteOccupiedValue(_dictionary, _byteOffset, newValue);
             return newValue;
         }
 

@@ -16,12 +16,17 @@ public readonly ref struct AlternateVacantEntry<TKey, TValue, TAlternateKey>
 {
     private readonly Dictionary<TKey, TValue>.AlternateLookup<TAlternateKey> _lookup;
     private readonly TAlternateKey _key;
+    private readonly ulong _hashAndVersion;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal AlternateVacantEntry(Dictionary<TKey, TValue>.AlternateLookup<TAlternateKey> lookup, TAlternateKey key)
+    internal AlternateVacantEntry(
+        Dictionary<TKey, TValue>.AlternateLookup<TAlternateKey> lookup,
+        TAlternateKey key,
+        ulong hashAndVersion)
     {
         _lookup = lookup;
         _key = key;
+        _hashAndVersion = hashAndVersion;
     }
 
     /// <summary>
@@ -51,7 +56,8 @@ public readonly ref struct AlternateVacantEntry<TKey, TValue, TAlternateKey>
             ThrowDefaultEntry();
         }
 
-        _lookup[_key] = value;
+        ref TValue slot = ref DictionaryAccess<TKey, TValue>.AddAlternateVacant(_lookup, _key, _hashAndVersion, overwriteIfStale: true);
+        slot = value;
         return value;
     }
 
@@ -72,8 +78,9 @@ public readonly ref struct AlternateVacantEntry<TKey, TValue, TAlternateKey>
             ThrowDefaultEntry();
         }
 
-        _lookup[_key] = value;
-        return new AlternateOccupiedEntry<TKey, TValue, TAlternateKey>(_lookup, _key, value);
+        ref TValue slot = ref DictionaryAccess<TKey, TValue>.AddAlternateVacant(_lookup, _key, _hashAndVersion, overwriteIfStale: true);
+        slot = value;
+        return DictionaryAccess<TKey, TValue>.CreateAlternateOccupied(_lookup, _key, value, ref slot);
     }
 
     [DoesNotReturn]

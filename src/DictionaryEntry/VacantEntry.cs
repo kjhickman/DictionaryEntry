@@ -13,6 +13,7 @@ public readonly struct VacantEntry<TKey, TValue> where TKey : notnull
 {
     private readonly Dictionary<TKey, TValue> _dictionary;
     private readonly TKey _key;
+    private readonly ulong _hashAndVersion;
 
     internal Dictionary<TKey, TValue> Dictionary
     {
@@ -21,10 +22,11 @@ public readonly struct VacantEntry<TKey, TValue> where TKey : notnull
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    internal VacantEntry(Dictionary<TKey, TValue> dictionary, TKey key)
+    internal VacantEntry(Dictionary<TKey, TValue> dictionary, TKey key, ulong hashAndVersion)
     {
         _dictionary = dictionary;
         _key = key;
+        _hashAndVersion = hashAndVersion;
     }
 
     /// <summary>
@@ -54,7 +56,8 @@ public readonly struct VacantEntry<TKey, TValue> where TKey : notnull
             ThrowDefaultEntry();
         }
 
-        _dictionary[_key] = value;
+        ref TValue slot = ref DictionaryAccess<TKey, TValue>.AddVacant(_dictionary, _key, _hashAndVersion, overwriteIfStale: true);
+        slot = value;
         return value;
     }
 
@@ -76,8 +79,9 @@ public readonly struct VacantEntry<TKey, TValue> where TKey : notnull
             ThrowDefaultEntry();
         }
 
-        _dictionary[_key] = value;
-        return new OccupiedEntry<TKey, TValue>(_dictionary, _key, value);
+        ref TValue slot = ref DictionaryAccess<TKey, TValue>.AddVacant(_dictionary, _key, _hashAndVersion, overwriteIfStale: true);
+        slot = value;
+        return DictionaryAccess<TKey, TValue>.CreateOccupied(_dictionary, _key, value, ref slot);
     }
 
     [DoesNotReturn]

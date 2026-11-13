@@ -1,7 +1,6 @@
 using System.ComponentModel;
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
-using System.Runtime.InteropServices;
 
 namespace DictionaryEntry;
 
@@ -19,13 +18,14 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     private readonly Dictionary<TKey, TValue> _dictionary;
     private readonly TKey _key;
     private ref TValue _valueRef;
+    private ulong _hashAndVersion;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal Entry(Dictionary<TKey, TValue> dictionary, TKey key)
     {
         _dictionary = dictionary;
         _key = key;
-        _valueRef = ref CollectionsMarshal.GetValueRefOrNullRef(dictionary, key);
+        _valueRef = ref DictionaryAccess<TKey, TValue>.FindValue(dictionary, key, out _hashAndVersion);
     }
 
     /// <summary>
@@ -218,14 +218,9 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
             ThrowDefaultEntry();
         }
 
-        ref var slot = ref CollectionsMarshal.GetValueRefOrAddDefault(_dictionary, _key, out var existed);
-        if (existed)
-        {
-            ThrowKeyAlreadyAdded(_key);
-        }
-
+        ref TValue slot = ref DictionaryAccess<TKey, TValue>.AddVacant(_dictionary, _key, _hashAndVersion);
         slot = defaultValue;
-        _valueRef = ref slot!;
+        _valueRef = ref slot;
         return ref _valueRef;
     }
 
@@ -249,14 +244,9 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         }
 
         var value = valueFactory();
-        ref var slot = ref CollectionsMarshal.GetValueRefOrAddDefault(_dictionary, _key, out var existed);
-        if (existed)
-        {
-            ThrowKeyAlreadyAdded(_key);
-        }
-
+        ref TValue slot = ref DictionaryAccess<TKey, TValue>.AddVacant(_dictionary, _key, _hashAndVersion);
         slot = value;
-        _valueRef = ref slot!;
+        _valueRef = ref slot;
         return ref _valueRef;
     }
 
@@ -284,14 +274,9 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         }
 
         var value = valueFactory(state);
-        ref var slot = ref CollectionsMarshal.GetValueRefOrAddDefault(_dictionary, _key, out var existed);
-        if (existed)
-        {
-            ThrowKeyAlreadyAdded(_key);
-        }
-
+        ref TValue slot = ref DictionaryAccess<TKey, TValue>.AddVacant(_dictionary, _key, _hashAndVersion);
         slot = value;
-        _valueRef = ref slot!;
+        _valueRef = ref slot;
         return ref _valueRef;
     }
 
@@ -315,14 +300,9 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         }
 
         var value = valueFactory(_key);
-        ref var slot = ref CollectionsMarshal.GetValueRefOrAddDefault(_dictionary, _key, out var existed);
-        if (existed)
-        {
-            ThrowKeyAlreadyAdded(_key);
-        }
-
+        ref TValue slot = ref DictionaryAccess<TKey, TValue>.AddVacant(_dictionary, _key, _hashAndVersion);
         slot = value;
-        _valueRef = ref slot!;
+        _valueRef = ref slot;
         return ref _valueRef;
     }
 
@@ -350,14 +330,9 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         }
 
         var value = valueFactory(_key, state);
-        ref var slot = ref CollectionsMarshal.GetValueRefOrAddDefault(_dictionary, _key, out var existed);
-        if (existed)
-        {
-            ThrowKeyAlreadyAdded(_key);
-        }
-
+        ref TValue slot = ref DictionaryAccess<TKey, TValue>.AddVacant(_dictionary, _key, _hashAndVersion);
         slot = value;
-        _valueRef = ref slot!;
+        _valueRef = ref slot;
         return ref _valueRef;
     }
 
@@ -382,13 +357,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
             ThrowDefaultEntry();
         }
 
-        ref var slot = ref CollectionsMarshal.GetValueRefOrAddDefault(_dictionary, _key, out var existed);
-        if (existed)
-        {
-            ThrowKeyAlreadyAdded(_key);
-        }
-
-        _valueRef = ref slot!;
+        _valueRef = ref DictionaryAccess<TKey, TValue>.AddVacant(_dictionary, _key, _hashAndVersion);
         return ref _valueRef;
     }
 
@@ -407,7 +376,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         if (!Unsafe.IsNullRef(ref _valueRef))
         {
             _valueRef = value;
-            return new OccupiedEntry<TKey, TValue>(_dictionary, _key, value);
+            return DictionaryAccess<TKey, TValue>.CreateOccupied(_dictionary, _key, value, ref _valueRef);
         }
 
         if (_dictionary is null)
@@ -415,15 +384,10 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
             ThrowDefaultEntry();
         }
 
-        ref var slot = ref CollectionsMarshal.GetValueRefOrAddDefault(_dictionary, _key, out var existed);
-        if (existed)
-        {
-            ThrowKeyAlreadyAdded(_key);
-        }
-
+        ref TValue slot = ref DictionaryAccess<TKey, TValue>.AddVacant(_dictionary, _key, _hashAndVersion);
         slot = value;
-        _valueRef = ref slot!;
-        return new OccupiedEntry<TKey, TValue>(_dictionary, _key, value);
+        _valueRef = ref slot;
+        return DictionaryAccess<TKey, TValue>.CreateOccupied(_dictionary, _key, value, ref slot);
     }
 
     /// <summary>
@@ -440,7 +404,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
             ThrowVacantOrDefault(_dictionary, _key);
         }
 
-        return new OccupiedEntry<TKey, TValue>(_dictionary, _key, _valueRef);
+        return DictionaryAccess<TKey, TValue>.CreateOccupied(_dictionary, _key, _valueRef, ref _valueRef);
     }
 
     /// <summary>
@@ -456,7 +420,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
             ThrowOccupiedOrDefault(_dictionary, _key);
         }
 
-        return new VacantEntry<TKey, TValue>(_dictionary, _key);
+        return new VacantEntry<TKey, TValue>(_dictionary, _key, _hashAndVersion);
     }
 
     /// <summary>
@@ -471,7 +435,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     {
         if (!Unsafe.IsNullRef(ref _valueRef))
         {
-            occupiedAction(new OccupiedEntry<TKey, TValue>(_dictionary, _key, _valueRef));
+            occupiedAction(DictionaryAccess<TKey, TValue>.CreateOccupied(_dictionary, _key, _valueRef, ref _valueRef));
         }
         else
         {
@@ -480,7 +444,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
                 ThrowDefaultEntry();
             }
 
-            vacantAction(new VacantEntry<TKey, TValue>(_dictionary, _key));
+            vacantAction(new VacantEntry<TKey, TValue>(_dictionary, _key, _hashAndVersion));
         }
     }
 
@@ -502,7 +466,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     {
         if (!Unsafe.IsNullRef(ref _valueRef))
         {
-            occupiedAction(new OccupiedEntry<TKey, TValue>(_dictionary, _key, _valueRef), state);
+            occupiedAction(DictionaryAccess<TKey, TValue>.CreateOccupied(_dictionary, _key, _valueRef, ref _valueRef), state);
         }
         else
         {
@@ -511,7 +475,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
                 ThrowDefaultEntry();
             }
 
-            vacantAction(new VacantEntry<TKey, TValue>(_dictionary, _key), state);
+            vacantAction(new VacantEntry<TKey, TValue>(_dictionary, _key, _hashAndVersion), state);
         }
     }
 
@@ -529,7 +493,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     {
         if (!Unsafe.IsNullRef(ref _valueRef))
         {
-            return occupiedFunc(new OccupiedEntry<TKey, TValue>(_dictionary, _key, _valueRef));
+            return occupiedFunc(DictionaryAccess<TKey, TValue>.CreateOccupied(_dictionary, _key, _valueRef, ref _valueRef));
         }
 
         if (_dictionary is null)
@@ -537,7 +501,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
             ThrowDefaultEntry();
         }
 
-        return vacantFunc(new VacantEntry<TKey, TValue>(_dictionary, _key));
+        return vacantFunc(new VacantEntry<TKey, TValue>(_dictionary, _key, _hashAndVersion));
     }
 
     /// <summary>
@@ -560,7 +524,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     {
         if (!Unsafe.IsNullRef(ref _valueRef))
         {
-            return occupiedFunc(new OccupiedEntry<TKey, TValue>(_dictionary, _key, _valueRef), state);
+            return occupiedFunc(DictionaryAccess<TKey, TValue>.CreateOccupied(_dictionary, _key, _valueRef, ref _valueRef), state);
         }
 
         if (_dictionary is null)
@@ -568,7 +532,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
             ThrowDefaultEntry();
         }
 
-        return vacantFunc(new VacantEntry<TKey, TValue>(_dictionary, _key), state);
+        return vacantFunc(new VacantEntry<TKey, TValue>(_dictionary, _key, _hashAndVersion), state);
     }
 
     [DoesNotReturn]
@@ -601,11 +565,6 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         throw new InvalidOperationException($"The key '{key}' already exists in the dictionary.");
     }
 
-    [DoesNotReturn]
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void ThrowKeyAlreadyAdded(TKey key) =>
-        throw new ArgumentException($"An item with the same key has already been added. Key: {key}");
-
     /// <summary>
     /// Tries to get an occupied entry if the key exists in the dictionary.
     /// </summary>
@@ -616,7 +575,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     {
         if (!Unsafe.IsNullRef(ref _valueRef))
         {
-            occupied = new OccupiedEntry<TKey, TValue>(_dictionary, _key, _valueRef);
+            occupied = DictionaryAccess<TKey, TValue>.CreateOccupied(_dictionary, _key, _valueRef, ref _valueRef);
             return true;
         }
 
@@ -634,7 +593,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     {
         if (Unsafe.IsNullRef(ref _valueRef) && _dictionary is not null)
         {
-            vacant = new VacantEntry<TKey, TValue>(_dictionary, _key);
+            vacant = new VacantEntry<TKey, TValue>(_dictionary, _key, _hashAndVersion);
             return true;
         }
 
@@ -684,8 +643,8 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     readonly object? IUnionMembers.Value => _dictionary is null
         ? null
         : !Unsafe.IsNullRef(ref _valueRef)
-            ? new OccupiedEntry<TKey, TValue>(_dictionary, _key, _valueRef)
-            : new VacantEntry<TKey, TValue>(_dictionary, _key);
+            ? DictionaryAccess<TKey, TValue>.CreateOccupied(_dictionary, _key, _valueRef, ref _valueRef)
+            : new VacantEntry<TKey, TValue>(_dictionary, _key, _hashAndVersion);
 
     readonly bool IUnionMembers.HasValue
     {
@@ -698,7 +657,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     {
         if (!Unsafe.IsNullRef(ref _valueRef))
         {
-            value = new OccupiedEntry<TKey, TValue>(_dictionary, _key, _valueRef);
+            value = DictionaryAccess<TKey, TValue>.CreateOccupied(_dictionary, _key, _valueRef, ref _valueRef);
             return true;
         }
 
@@ -711,7 +670,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     {
         if (Unsafe.IsNullRef(ref _valueRef) && _dictionary is not null)
         {
-            value = new VacantEntry<TKey, TValue>(_dictionary, _key);
+            value = new VacantEntry<TKey, TValue>(_dictionary, _key, _hashAndVersion);
             return true;
         }
 
