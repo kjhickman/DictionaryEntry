@@ -118,6 +118,42 @@ public class EntryTests
     }
 
     [Fact]
+    public void AndModifyRef_WhenExists_MutatesValueInPlaceAndChains()
+    {
+        // Arrange
+        var dict = new Dictionary<string, int> { ["key"] = 42 };
+
+        // Act
+        var value = dict.Entry("key").AndModify(static (ref v) => v += 8).OrInsert(0);
+
+        // Assert
+        Assert.Equal(50, value);
+        Assert.Equal(50, dict["key"]);
+    }
+
+    [Fact]
+    public void AndModifyRef_WhenNotExists_SkipsCallbackAndChainsIntoOrInsert()
+    {
+        // Arrange
+        var dict = new Dictionary<string, int>();
+        var invoked = false;
+
+        // Act
+        var value = dict.Entry("key")
+            .AndModify((ref v) =>
+            {
+                invoked = true;
+                v += 8;
+            })
+            .OrInsert(10);
+
+        // Assert
+        Assert.False(invoked);
+        Assert.Equal(10, value);
+        Assert.Equal(10, dict["key"]);
+    }
+
+    [Fact]
     public void OrInsert_WhenNotExists_InsertsValue()
     {
         // Arrange

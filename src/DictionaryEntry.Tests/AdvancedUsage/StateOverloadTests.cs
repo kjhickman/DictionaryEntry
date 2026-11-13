@@ -25,6 +25,36 @@ public class StateOverloadTests
     }
 
     [Fact]
+    public void AndModifyRef_WithState_MutatesStructFieldsInPlaceAndSkipsVacant()
+    {
+        var dict = new Dictionary<string, CounterStats>
+        {
+            ["existing"] = new CounterStats { Hits = 2, TotalDamage = 15 }
+        };
+        var invokedOnVacant = false;
+
+        dict.Entry("existing")
+            .AndModify(10, static (ref stats, dmg) =>
+            {
+                stats.Hits++;
+                stats.TotalDamage += dmg;
+            })
+            .OrDefault();
+
+        dict.Entry("missing")
+            .AndModify(10, (ref stats, dmg) =>
+            {
+                invokedOnVacant = true;
+                stats.TotalDamage += dmg;
+            })
+            .OrInsert(new CounterStats { Hits = 1, TotalDamage = 10 });
+
+        Assert.Equal(new CounterStats { Hits = 3, TotalDamage = 25 }, dict["existing"]);
+        Assert.False(invokedOnVacant);
+        Assert.Equal(new CounterStats { Hits = 1, TotalDamage = 10 }, dict["missing"]);
+    }
+
+    [Fact]
     public void OrInsertWith_WithState_InsertsUsingStateOrReturnsExistingWithoutCallingFactory()
     {
         var dict = new Dictionary<string, int> { ["existing"] = 42 };
@@ -145,6 +175,10 @@ public class StateOverloadTests
         Assert.Throws<InvalidOperationException>(() =>
             default(Entry<string, int>).AndModify(1, (v, s) => { invoked = true; return v + s; }));
         Assert.Throws<InvalidOperationException>(() =>
+            default(Entry<string, int>).AndModify((ref v) => { invoked = true; v++; }));
+        Assert.Throws<InvalidOperationException>(() =>
+            default(Entry<string, int>).AndModify(1, (ref v, s) => { invoked = true; v += s; }));
+        Assert.Throws<InvalidOperationException>(() =>
             default(Entry<string, int>).OrInsertWith(1, s => { invoked = true; return s; }));
         Assert.Throws<InvalidOperationException>(() =>
             default(Entry<string, int>).OrInsertWithKey(1, (_, s) => { invoked = true; return s; }));
@@ -185,6 +219,10 @@ public class StateOverloadTests
             {
                 d.Entry("existing")
                     .AndModify(amount, static (v, amt) => v + amt)
+                    .OrInsert(amount);
+
+                d.Entry("existing")
+                    .AndModify(amount, static (ref v, amt) => v += amt)
                     .OrInsert(amount);
 
                 acc += d.Entry("existing")
@@ -260,9 +298,11 @@ public class StateOverloadTests
         ReadOnlySpan<char> charSpan = "hello-world".AsSpan(0, 5);
         ReadOnlySpan<byte> utf8Bytes = "42"u8;
 
-        // 1. AndModify with ReadOnlySpan<char>
+        // 1. AndModify (Func and RefAction) with ReadOnlySpan<char>
         dict.Entry("alpha").AndModify(charSpan, static (v, span) => v + span.Length);
         Assert.Equal(15, dict["alpha"]);
+        dict.Entry("alpha").AndModify(charSpan, static (ref v, span) => v += span.Length);
+        Assert.Equal(20, dict["alpha"]);
 
         // 2. OrInsertWith with ReadOnlySpan<byte>
         var parsed = dict.Entry("beta").OrInsertWith(utf8Bytes, static bytes => int.Parse(Encoding.UTF8.GetString(bytes)));
@@ -280,13 +320,13 @@ public class StateOverloadTests
             charSpan,
             static (occ, span) => occ.Insert(occ.Value + span.Length),
             static (vac, span) => vac.Insert(span.Length));
-        Assert.Equal(20, dict["alpha"]);
+        Assert.Equal(25, dict["alpha"]);
 
         var matched = dict.Entry("alpha").Match(
             charSpan,
             static (occ, span) => occ.Value + span.Length,
             static (_, _) => 0);
-        Assert.Equal(25, matched);
+        Assert.Equal(30, matched);
 
         // 5. Verify 0 bytes allocated when passing ReadOnlySpan<char> in a hot loop
         for (var i = 0; i < 200; i++)
@@ -308,6 +348,7 @@ public class StateOverloadTests
             for (var i = 0; i < 500; i++)
             {
                 d.Entry("alpha").AndModify(span, static (v, s) => v + s.Length);
+                d.Entry("alpha").AndModify(span, static (ref v, s) => v += s.Length);
                 sum += d.Entry("alpha").OrInsertWith(span, static s => s.Length);
                 sum += d.Entry("alpha").Match(
                     span,
@@ -325,4 +366,10 @@ public class StateOverloadTests
         public int Multiplier { get; } = Multiplier;
     }
 #endif
+
+    private struct CounterStats
+    {
+        public int Hits;
+        public int TotalDamage;
+    }
 }

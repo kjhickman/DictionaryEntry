@@ -142,6 +142,68 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     }
 
     /// <summary>
+    /// Applies an in-place modification action to a reference to the value if the entry exists in the dictionary.
+    /// </summary>
+    /// <param name="updateAction">An action that mutates the existing value by reference. This action is only called if the entry exists.</param>
+    /// <returns>The entry instance to allow for method chaining.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
+    /// <remarks>
+    /// If the entry does not exist, this method does nothing and returns the unchanged entry.
+    /// Prefer this overload when <typeparamref name="TValue"/> is a value type to mutate fields in place without copying the struct.
+    /// Do not mutate or resize the dictionary inside <paramref name="updateAction"/>.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly Entry<TKey, TValue> AndModify(RefAction<TValue> updateAction)
+    {
+        if (Unsafe.IsNullRef(ref _valueRef))
+        {
+            if (_dictionary is null)
+            {
+                ThrowDefaultEntry();
+            }
+
+            return this;
+        }
+
+        updateAction(ref _valueRef);
+        return this;
+    }
+
+    /// <summary>
+    /// Applies an in-place modification action using the provided state to a reference to the value if the entry exists in the dictionary,
+    /// avoiding struct copies and closure allocations when paired with a <c>static</c> lambda.
+    /// </summary>
+    /// <typeparam name="TState">The type of the state value passed to <paramref name="updateAction"/>.</typeparam>
+    /// <param name="state">State passed through to <paramref name="updateAction"/>.</param>
+    /// <param name="updateAction">An action that mutates the existing value by reference using <paramref name="state"/>. This action is only called if the entry exists.</param>
+    /// <returns>The entry instance to allow for method chaining.</returns>
+    /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
+    /// <remarks>
+    /// If the entry does not exist, this method does nothing and returns the unchanged entry.
+    /// Prefer this overload when <typeparamref name="TValue"/> is a value type to mutate fields in place without copying the struct.
+    /// Do not mutate or resize the dictionary inside <paramref name="updateAction"/>.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly Entry<TKey, TValue> AndModify<TState>(TState state, RefAction<TValue, TState> updateAction)
+#if NET9_0_OR_GREATER
+        where TState : allows ref struct
+#endif
+    {
+        if (Unsafe.IsNullRef(ref _valueRef))
+        {
+            if (_dictionary is null)
+            {
+                ThrowDefaultEntry();
+            }
+
+            return this;
+        }
+
+        updateAction(ref _valueRef, state);
+        return this;
+    }
+
+    /// <summary>
     /// Gets a reference to the value in the dictionary if it exists, or inserts the specified value if it doesn't.
     /// </summary>
     /// <param name="defaultValue">The value to insert if the entry does not exist.</param>

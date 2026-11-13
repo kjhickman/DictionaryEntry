@@ -143,6 +143,15 @@ if (playerStats.Entry(playerId) is { IsOccupied: true } entry)
     stats.TotalDamage += damage;
 }
 
+// Or fluently mutate struct fields in-place with RefAction + OrInsert (1 lookup, 0 struct copies)
+playerStats.Entry(playerId)
+    .AndModify(damage, static (ref stats, dmg) =>
+    {
+        stats.HitsLanded++;
+        stats.TotalDamage += dmg;
+    })
+    .OrInsert(new PlayerStats { HitsLanded = 1, TotalDamage = damage });
+
 // No need to write back to the dictionary!
 ```
 
