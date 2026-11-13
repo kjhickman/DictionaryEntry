@@ -134,18 +134,17 @@ Benchmarked with BenchmarkDotNet v0.15.8 on `.NET 11.0` (Apple M1 Pro Arm64, Ryu
 
 | Scenario | Key / Value | Hand-Written | `DictionaryEntry` | vs. Hand-Written | Allocated |
 |---|---|---:|---:|---:|---:|
-| **Get-or-Add (Hit)** | `int, int` | `1.84 ns` | **`1.88 ns`** | ~1.0x (parity) | `0 B` |
-| **Get-or-Add (Miss)** | `int, int` | `5.26 ns` | **`3.78 ns`** | **1.39x faster** | `0 B` |
-| **Get-or-Default (Hit)** | `string, string?` | `4.25 ns` | **`4.37 ns`** | ~1.0x (parity) | `0 B` |
-| **Get-or-Default (Miss)** | `string, string?` | `11.04 ns` | **`7.36 ns`** | **1.50x faster** | `0 B` |
-| **Lazy Factory (Miss)** | `string, List<int>` | `11.89 ns` | **`8.83 ns`** | **1.35x faster** | `0 B`* |
-| **Update Existing (Hit)** | `string, int` | `9.20 ns` | **`4.30 ns`** | **2.14x faster** | `0 B` |
-| **Increment / Upsert (Hit)** | `string, int` | `10.03 ns` | **`4.61 ns`** | **2.18x faster** | `0 B` |
-| **Union `switch` Upsert (Hit)** | `string, int` | `10.03 ns` | **`5.24 ns`** | **1.92x faster** | `0 B` |
-| **Union `switch` Upsert (Miss)** | `string, int` | `11.70 ns` | **`8.79 ns`** | **1.33x faster** | `0 B` |
-| **Span Lookup (Hit)** | `ReadOnlySpan<char>` | `12.40 ns` (`ToString`) | **`4.50 ns`** | **2.75x faster** | **`0 B`** vs `32 B` |
-
-*\*Excludes the `List<int>` intentionally created by the caller's factory.*
+| **Get-or-Add (Hit)** | `int, int` | `1.81 ns` | **`1.85 ns`** | ~1.0x (parity) | `0 B` |
+| **Get-or-Add (Miss)** | `int, int` | `5.17 ns` | **`3.72 ns`** | **1.39x faster** | `0 B` |
+| **Get-or-Default (Hit)** | `string, int` | `4.10 ns` | **`4.16 ns`** | ~1.0x (parity) | `0 B` |
+| **Get-or-Default (Miss)** | `string, string?` | `11.80 ns` | **`7.19 ns`** | **1.64x faster** | `0 B` |
+| **Stateful Factory (Miss)** | `string, int` | `11.95 ns` | **`9.66 ns`** | **1.24x faster** | `0 B` |
+| **Update Existing (Hit)** | `string, int` | `8.13 ns` | **`4.14 ns`** | **1.96x faster** | `0 B` |
+| **Increment Counter (Hit)** | `string, int` | `8.94 ns` | **`4.57 ns`** | **1.96x faster** | `0 B` |
+| **Increment Counter (Miss)** | `string, int` | `11.57 ns` | **`8.63 ns`** | **1.34x faster** | `0 B` |
+| **Union `switch` Upsert (Hit)** | `string, int` | `8.97 ns` | **`5.12 ns`** | **1.75x faster** | `0 B` |
+| **Union `switch` Upsert (Miss)** | `string, int` | `11.73 ns` | **`8.60 ns`** | **1.36x faster** | `0 B` |
+| **Span Lookup (Hit)** | `ReadOnlySpan<char>` | `18.82 ns` (`ToString`) | **`8.92 ns`** | **2.11x faster** | **`0 B`** vs `53 B` |
 
 Why is `DictionaryEntry` faster on misses and mutations?
 - **Single key hash & bucket probe:** `TryGetValue` followed by `dict[key] = value` hashes the key and walks the bucket chain twice. `Entry` caches the slot reference on hits and the computed hash code on misses.
