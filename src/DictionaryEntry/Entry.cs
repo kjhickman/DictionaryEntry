@@ -13,6 +13,9 @@ namespace DictionaryEntry;
 /// <typeparam name="TValue">The type of the value in the dictionary.</typeparam>
 [Union]
 public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
+#if NET11_0_OR_GREATER
+    , IUnion
+#endif
     where TKey : notnull
 {
     private readonly Dictionary<TKey, TValue> _dictionary;
@@ -640,11 +643,17 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         bool TryGetValue(out VacantEntry<TKey, TValue> value);
     }
 
-    readonly object? IUnionMembers.Value => _dictionary is null
+    private readonly object? GetBoxedValue() => _dictionary is null
         ? null
         : !Unsafe.IsNullRef(ref _valueRef)
             ? DictionaryAccess<TKey, TValue>.CreateOccupied(_dictionary, _key, _valueRef, ref _valueRef)
             : new VacantEntry<TKey, TValue>(_dictionary, _key, _hashAndVersion);
+
+    readonly object? IUnionMembers.Value => GetBoxedValue();
+
+#if NET11_0_OR_GREATER
+    readonly object? IUnion.Value => GetBoxedValue();
+#endif
 
     readonly bool IUnionMembers.HasValue
     {

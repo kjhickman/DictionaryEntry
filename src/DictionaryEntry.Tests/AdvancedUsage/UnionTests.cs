@@ -437,4 +437,29 @@ public class UnionTests
             false => vacant,
         };
     }
+
+#if NET11_0_OR_GREATER
+    [Fact]
+    public void Entry_SatisfiesStandardIUnionGenericConstraint()
+    {
+        var dict = new Dictionary<string, int> { ["existing"] = 42 };
+        Entry<string, int> defaultEntry = default;
+
+        var occupiedBoxed = ExtractUnionValue(dict.Entry("existing"));
+        Assert.True(occupiedBoxed is OccupiedEntry<string, int> { Key: "existing", Value: 42 });
+
+        var vacantBoxed = ExtractUnionValue(dict.Entry("missing"));
+        Assert.True(vacantBoxed is VacantEntry<string, int> { Key: "missing" });
+
+        Assert.Null(ExtractUnionValue(defaultEntry));
+
+        var nullableDict = new Dictionary<string, string?> { ["nullValue"] = null };
+        var nullValueOccupied = ExtractUnionValue(nullableDict.Entry("nullValue"));
+        Assert.True(nullValueOccupied is OccupiedEntry<string, string?> { Key: "nullValue", Value: null });
+
+        static object? ExtractUnionValue<TUnion>(TUnion union)
+            where TUnion : IUnion, allows ref struct
+            => union.Value;
+    }
+#endif
 }

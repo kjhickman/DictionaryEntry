@@ -74,7 +74,7 @@ return cache.Entry(key).OrInsertWithKey(ComputeExpensiveValue);
 
 ### Pattern Matching (C# 15 Unions)
 
-`Entry<TKey, TValue>` implements C# 15's custom non-boxing `[Union]` pattern over `OccupiedEntry<TKey, TValue>` and `VacantEntry<TKey, TValue>`, enabling zero-allocation, compiler-verified exhaustive `switch` expressions and `is` patterns:
+`Entry<TKey, TValue>` implements C# 15's custom non-boxing `[Union]` pattern over `OccupiedEntry<TKey, TValue>` and `VacantEntry<TKey, TValue>` (as well as `System.Runtime.CompilerServices.IUnion` on .NET 11+), enabling zero-allocation, compiler-verified exhaustive `switch` expressions and `is` patterns:
 
 ```csharp
 // Exhaustive switch expression (no '_' discard arm required)
