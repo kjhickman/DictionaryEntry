@@ -1,6 +1,44 @@
 # DictionaryEntry
 
-DictionaryEntry is a small library that brings Rust's "Entry" API pattern to C# `Dictionary<TKey, TValue>`, allowing for ergonomic single-lookup dictionary operations. It combines a fluent API with **zero-boxing C# 15 union support**, matching or nearly matching hand-written `Dictionary` performance (see [benchmarks](#benchmarks)).
+`DictionaryEntry` brings Rust's [`entry()`](https://doc.rust-lang.org/std/collections/struct.HashMap.html#method.entry) API to C# `Dictionary<TKey, TValue>`, replacing multi-line `TryGetValue` + indexer boilerplate with expressive, **single-lookup** operations.
+
+Because every operation hashes and probes the dictionary only once—and avoids rehashing on inserts and updates—`DictionaryEntry` matches hand-written `Dictionary` code on cache hits and runs **25% to ~2x faster** on misses and updates, with **zero allocations**, NativeAOT compatibility, `ReadOnlySpan<char>` lookups, and zero-boxing **C# 15 `[Union]`** pattern matching.
+
+```csharp
+// Increment or initialize in 1 lookup (instead of TryGetValue + dict[key] = ...)
+scores.Entry(player).OrDefault() += points;
+
+// Lazily initialize a collection and mutate it in place
+groups.Entry(category).OrInsertWith(static () => []).Add(item);
+
+// Zero-allocation ReadOnlySpan<char> lookup on Dictionary<string, int>
+counts.Entry(line.AsSpan(0, 5)).AndModify(static c => c + 1).OrInsert(1);
+
+// Exhaustive, zero-boxing C# 15 union switch
+string label = users.Entry(userId) switch
+{
+    OccupiedEntry<Guid, User> occupied => occupied.Value.Name,
+    VacantEntry<Guid, User> => "Guest",
+};
+```
+
+## Table of Contents
+
+- [Installation](#installation)
+- [Common Use Cases](#common-use-cases)
+  - [Insert-or-Update (Counters and Accumulators)](#insert-or-update-counters-and-accumulators)
+  - [Get-or-Initialize (Caching and Grouping)](#get-or-initialize-caching-and-grouping)
+  - [In-Place Struct Mutation](#in-place-struct-mutation)
+  - [Zero-Allocation Span Lookups](#zero-allocation-span-lookups)
+- [Benchmarks](#benchmarks)
+- [Advanced Features](#advanced-features)
+  - [C# 15 Union Pattern Matching](#c-15-union-pattern-matching)
+  - [Pattern Matching Without C# 15](#pattern-matching-without-c-15)
+  - [AlternateLookup and Custom Span Keys](#alternatelookup-and-custom-span-keys)
+  - [API Quick Reference](#api-quick-reference)
+- [Performance Considerations](#performance-considerations)
+- [Limitations and Caveats](#limitations-and-caveats)
+- [License](#license)
 
 ## Installation
 
@@ -8,142 +46,58 @@ DictionaryEntry is a small library that brings Rust's "Entry" API pattern to C# 
 dotnet add package DictionaryEntry
 ```
 
-Targets `net9.0`, `net10.0`, and `net11.0` (AOT-compatible).
+Targets `net9.0`, `net10.0`, and `net11.0` (`IsAotCompatible = true`).
 
-## Examples
+## Common Use Cases
 
-The library provides three main types:
+### Insert-or-Update (Counters and Accumulators)
 
-- `Entry<TKey, TValue>`: A `ref struct` union of `OccupiedEntry<TKey, TValue>` and `VacantEntry<TKey, TValue>` returned by `.Entry(key)`
-- `OccupiedEntry<TKey, TValue>`: A `readonly struct` representing an entry for an existing key
-- `VacantEntry<TKey, TValue>`: A `readonly struct` representing an entry for a missing key
-
-### Insert-or-Update (Upsert)
+Standard C# upserts hash and probe the dictionary twice—once in `TryGetValue` and again in the indexer setter:
 
 ```csharp
-// Traditional approach
+// Traditional C# (2 lookups, 9 lines)
 if (scores.TryGetValue(player, out var score))
 {
-    score += points;
-    scores[player] = score;
+    scores[player] = score + points;
 }
 else
 {
     scores[player] = points;
 }
 
-// Using DictionaryEntry (fluent)
-scores.Entry(player).AndModify(score => score + points).OrInsert(points);
-
-// Zero-allocation fluent with TState + static lambda
-scores.Entry(player).AndModify(points, static (score, pts) => score + pts).OrInsert(points);
-
-// Or via ref return
+// DictionaryEntry: live ref return (1 lookup, 0 allocations)
 scores.Entry(player).OrDefault() += points;
+
+// DictionaryEntry: distinct update vs. initial value (1 lookup, 0 allocations)
+scores.Entry(player)
+    .AndModify(points, static (score, pts) => score + pts)
+    .OrInsert(initialScore);
 ```
 
-### Get-or-Add
+### Get-or-Initialize (Caching and Grouping)
+
+`OrInsert`, `OrInsertWith`, and `OrInsertWithKey` return a live `ref TValue` into the dictionary, evaluating factory delegates only when the key is absent:
 
 ```csharp
-// Traditional approach
-if (!cache.TryGetValue(key, out var value))
-{
-    value = defaultValue;
-    cache[key] = value;
-}
-return value;
+// Simple default value
+int port = config.Entry("port").OrInsert(8080);
 
-// Using DictionaryEntry
-return cache.Entry(key).OrInsert(defaultValue);
+// Lazy factory (only invoked when missing) + immediate mutation
+buckets.Entry(routeKey)
+    .OrInsertWith(static () => new List<Request>())
+    .Add(request);
+
+// Key-aware factory with state (0 closure allocations)
+int scaled = cache.Entry(key)
+    .OrInsertWithKey(multiplier, static (k, mult) => Compute(k, mult));
 ```
 
-### Get-or-Initialize with Factory
+### In-Place Struct Mutation
+
+Mutating a value-type entry in a standard `Dictionary<TKey, TStruct>` copies the struct out, modifies the copy, and hashes the key a second time to write it back. `DictionaryEntry` mutates the slot directly in place with zero struct copies:
 
 ```csharp
-// Traditional approach
-if (!cache.TryGetValue(key, out var value))
-{
-    value = ComputeExpensiveValue(key);
-    cache[key] = value;
-}
-return value;
-
-// Using DictionaryEntry
-return cache.Entry(key).OrInsertWithKey(ComputeExpensiveValue);
-```
-
-### Pattern Matching (C# 15 Unions)
-
-`Entry<TKey, TValue>` implements C# 15's custom non-boxing `[Union]` pattern over `OccupiedEntry<TKey, TValue>` and `VacantEntry<TKey, TValue>` (as well as `System.Runtime.CompilerServices.IUnion` on .NET 11+), enabling zero-allocation, compiler-verified exhaustive `switch` expressions and `is` patterns:
-
-```csharp
-// Exhaustive switch expression (no '_' discard arm required)
-string status = users.Entry(userId) switch
-{
-    OccupiedEntry<Guid, User> occupied => $"User found: {occupied.Value.Name}",
-    VacantEntry<Guid, User> vacant => "User not found",
-};
-
-// 'is' pattern matching (Rust 'if let' style)
-if (dict.Entry(key) is OccupiedEntry<string, int> occupied)
-{
-    Console.WriteLine($"Found: {occupied.Key} -> {occupied.Value}");
-}
-
-// Property and positional deconstruction patterns
-string tier = scores.Entry(player) switch
-{
-    OccupiedEntry<string, int> { Value: >= 1000 } => "Gold",
-    OccupiedEntry<string, int>(_, >= 100) => "Silver",
-    OccupiedEntry<string, int> => "Bronze",
-    VacantEntry<string, int> => "Unranked",
-};
-
-// Switch statement with local state (no lambdas or closure allocations)
-switch (users.Entry(userId))
-{
-    case OccupiedEntry<Guid, User> occupied:
-        ProcessExistingUser(occupied.Value);
-        break;
-    case VacantEntry<Guid, User> vacant:
-        vacant.Insert(CreateNewUser(userId));
-        break;
-}
-```
-
-### Pattern Matching with `Match` / `TryGetOccupied`
-
-On earlier C# versions—or when you prefer type inference over writing `<TKey, TValue>`—you can use `Match`, `TryGetOccupied`, and `TryGetVacant`:
-
-```csharp
-users.Entry(userId).Match(
-    occupied => ProcessExistingUser(occupied.Value),
-    vacant => vacant.Insert(CreateNewUser(userId))
-);
-
-if (dict.Entry(key).TryGetOccupied(out var occupied))
-{
-    Console.WriteLine($"Found: {occupied.Key} -> {occupied.Value}");
-}
-```
-
-### Reference Semantics
-
-```csharp
-// Get-or-insert and modify value in-place
-ref var user = ref users.Entry(userId).OrInsert(new User());
-user.LastLoginDate = DateTime.UtcNow;
-user.LoginCount++;
-
-// Update in-place ONLY if the key already exists (1 lookup, 0 struct copies)
-if (playerStats.Entry(playerId) is { IsOccupied: true } entry)
-{
-    ref var stats = ref entry.ValueRef;
-    stats.HitsLanded++;
-    stats.TotalDamage += damage;
-}
-
-// Or fluently mutate struct fields in-place with RefAction + OrInsert (1 lookup, 0 struct copies)
+// Upsert + in-place struct field mutation via RefAction
 playerStats.Entry(playerId)
     .AndModify(damage, static (ref stats, dmg) =>
     {
@@ -152,243 +106,201 @@ playerStats.Entry(playerId)
     })
     .OrInsert(new PlayerStats { HitsLanded = 1, TotalDamage = damage });
 
-// No need to write back to the dictionary!
+// Update in place ONLY if the key already exists
+if (playerStats.Entry(playerId) is { IsOccupied: true } entry)
+{
+    ref var stats = ref entry.ValueRef;
+    stats.HitsLanded++;
+    stats.TotalDamage += damage;
+}
 ```
 
-### Span & `AlternateLookup`
+### Zero-Allocation Span Lookups
 
-For `Dictionary<string, TValue>`, pass a `ReadOnlySpan<char>` directly to `dict.Entry(span)`—allocating zero strings on cache hits and materializing the `string` key only once when inserting a missing key. For tight loops (to hoist the comparer check) or other alternate key types such as `ReadOnlySpan<byte>`, cache `GetAlternateLookup<TAlternateKey>()` and call `lookup.Entry(key)`:
+For `Dictionary<string, TValue>`, pass a `ReadOnlySpan<char>` (or `Span<char>` / `char[]`) directly to `.Entry(span)`. Cache hits allocate **0 bytes**, and cache misses materialize the `string` key only once when inserting:
 
 ```csharp
-var counts = new Dictionary<string, int>(StringComparer.Ordinal);
+var headers = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase);
 
-// One-line ReadOnlySpan<char> lookup on Dictionary<string, TValue>
-ReadOnlySpan<char> headerName = "Content-Type: text/plain".AsSpan(0, 12);
-counts.Entry(headerName).OrInsert(1);
+ReadOnlySpan<char> line = "Content-Length: 512";
+ReadOnlySpan<char> name = line[..line.IndexOf(':')];
 
-// Cached AlternateLookup for tight loops or custom alternate keys (e.g. ReadOnlySpan<byte>)
-var lookup = counts.GetAlternateLookup<ReadOnlySpan<char>>();
-ReadOnlySpan<char> csv = "apple,banana,apple,cherry";
-foreach (var range in csv.Split(','))
-{
-    ReadOnlySpan<char> word = csv[range];
-    lookup.Entry(word).AndModify(static c => c + 1).OrInsert(1);
-}
+headers.Entry(name).OrDefault()++;
 ```
 
 ## Benchmarks
 
-The library is designed around single-lookup access and zero-boxing structs. Because `Entry<TKey, TValue>` implements C# 15's non-boxing union access pattern (`TryGetValue` / `HasValue` via explicit `IUnionMembers`) rather than `object`-backed union storage, union `switch` and `is` operations never box `OccupiedEntry` or `VacantEntry`.
+Benchmarked with BenchmarkDotNet v0.15.8 on `.NET 11.0` (Apple M1 Pro Arm64, RyuJIT). Comparing idiomatic hand-written `TryGetValue` + indexer code against `DictionaryEntry`:
 
-### Key Benchmarks (.NET 11)
+| Scenario | Key / Value | Hand-Written | `DictionaryEntry` | vs. Hand-Written | Allocated |
+|---|---|---:|---:|---:|---:|
+| **Get-or-Add (Hit)** | `int, int` | `1.84 ns` | **`1.88 ns`** | ~1.0x (parity) | `0 B` |
+| **Get-or-Add (Miss)** | `int, int` | `5.26 ns` | **`3.78 ns`** | **1.39x faster** | `0 B` |
+| **Get-or-Default (Hit)** | `string, string?` | `4.25 ns` | **`4.37 ns`** | ~1.0x (parity) | `0 B` |
+| **Get-or-Default (Miss)** | `string, string?` | `11.04 ns` | **`7.36 ns`** | **1.50x faster** | `0 B` |
+| **Lazy Factory (Miss)** | `string, List<int>` | `11.89 ns` | **`8.83 ns`** | **1.35x faster** | `0 B`* |
+| **Update Existing (Hit)** | `string, int` | `9.20 ns` | **`4.30 ns`** | **2.14x faster** | `0 B` |
+| **Increment / Upsert (Hit)** | `string, int` | `10.03 ns` | **`4.61 ns`** | **2.18x faster** | `0 B` |
+| **Union `switch` Upsert (Hit)** | `string, int` | `10.03 ns` | **`5.24 ns`** | **1.92x faster** | `0 B` |
+| **Union `switch` Upsert (Miss)** | `string, int` | `11.70 ns` | **`8.79 ns`** | **1.33x faster** | `0 B` |
+| **Span Lookup (Hit)** | `ReadOnlySpan<char>` | `12.40 ns` (`ToString`) | **`4.50 ns`** | **2.75x faster** | **`0 B`** vs `32 B` |
 
-```text
-BenchmarkDotNet v0.15.8, macOS 26.6.2 (Darwin 25.6.0)
-Apple M1 Pro, 1 CPU, 8 logical and 8 physical cores
-.NET SDK 11.0.100
-  [Host] : .NET 11.0.0 (11.0.0, 11.0.26.53018), Arm64 RyuJIT armv8.0-a
+*\*Excludes the `List<int>` intentionally created by the caller's factory.*
 
-InvocationCount=250000  OperationsPerInvoke=256  IterationCount=15  WarmupCount=10
-```
+Why is `DictionaryEntry` faster on misses and mutations?
+- **Single key hash & bucket probe:** `TryGetValue` followed by `dict[key] = value` hashes the key and walks the bucket chain twice. `Entry` caches the slot reference on hits and the computed hash code on misses.
+- **O(1) `OccupiedEntry.Insert`:** `OccupiedEntry` records the entry's byte offset and a structural version stamp, writing updated values directly to the slot without re-probing.
+- **Zero-boxing structs:** `Entry<TKey, TValue>` is a stack-only `ref struct` implementing C# 15's non-boxing `TryGetValue` union pattern rather than `object`-backed storage.
 
-Get-or-Add (`OrInsert` on `Dictionary<int, int>`):
+For the full benchmark suite and instructions to run them locally, see [**src/DictionaryEntry.Benchmarks/README.md**](https://github.com/kjhickman/DictionaryEntry/blob/main/src/DictionaryEntry.Benchmarks/README.md).
 
-```text
-| Method                         | Mean     | Allocated |
-|------------------------------- |---------:|----------:|
-| GetOrAdd_Traditional_Exists    | 1.837 ns |         - |
-| GetOrAdd_Traditional_NotExists | 5.235 ns |         - |
-| GetOrAdd_Entry_Exists          | 2.044 ns |         - |
-| GetOrAdd_Entry_NotExists       | 5.779 ns |         - |
-```
-
-Get-or-Default (`OrDefault` on `Dictionary<string, int>` / `Dictionary<string, string?>`):
-
-```text
-| Method                                   | Mean      | Allocated |
-|----------------------------------------- |----------:|----------:|
-| DefaultValue_Traditional_Exists          |  4.148 ns |         - |
-| DefaultValue_Traditional_NotExists       | 11.818 ns |         - |
-| DefaultValue_Entry_Exists                |  4.380 ns |         - |
-| DefaultValue_Entry_NotExists             | 12.601 ns |         - |
-| DefaultValue_TraditionalString_NotExists | 10.581 ns |         - |
-| DefaultValue_EntryString_NotExists       |  9.834 ns |         - |
-```
-
-Pattern Matching (`.Match(...)` vs. `switch` on `Dictionary<string, int>`):
-
-```text
-| Method                                 | Mean      | Allocated |
-|--------------------------------------- |----------:|----------:|
-| PatternMatching_Traditional_Exists     |  4.569 ns |         - |
-| PatternMatching_Traditional_NotExists  |  3.300 ns |         - |
-| PatternMatching_EntryMatch_Exists      |  5.328 ns |         - |
-| PatternMatching_EntryMatch_NotExists   |  4.362 ns |         - |
-| PatternMatching_EntrySwitch_Exists     |  4.835 ns |         - |
-| PatternMatching_EntrySwitch_NotExists  |  3.518 ns |         - |
-| DifferentActions_Traditional_Exists    |  9.908 ns |         - |
-| DifferentActions_Traditional_NotExists | 11.587 ns |         - |
-| DifferentActions_EntryMatch_Exists     | 11.736 ns |         - |
-| DifferentActions_EntryMatch_NotExists  | 13.665 ns |         - |
-| DifferentActions_EntrySwitch_Exists    |  9.167 ns |         - |
-| DifferentActions_EntrySwitch_NotExists | 12.129 ns |         - |
-```
-
-Increment Counter (`AndModify` vs. `AndModify(state, ...)` vs. `switch` on `Dictionary<string, int>`):
-
-```text
-| Method                                          | Mean      | Allocated |
-|------------------------------------------------ |----------:|----------:|
-| IncrementCounter_Traditional_Exists             |  9.996 ns |         - |
-| IncrementCounter_Traditional_NotExists          | 11.639 ns |         - |
-| IncrementCounter_EntryAndModify_Exists          | 10.804 ns |         - |
-| IncrementCounter_EntryAndModify_NotExists       | 12.808 ns |         - |
-| IncrementByAmount_Traditional_Exists            |  9.052 ns |         - |
-| IncrementByAmount_Traditional_NotExists         | 11.800 ns |         - |
-| IncrementByAmount_EntryAndModify_Exists         | 27.079 ns |      80 B |
-| IncrementByAmount_EntryAndModify_NotExists      | 24.381 ns |      80 B |
-| IncrementByAmount_EntryAndModifyState_Exists    | 10.130 ns |         - |
-| IncrementByAmount_EntryAndModifyState_NotExists | 12.719 ns |         - |
-| IncrementByAmount_EntrySwitch_Exists            |  9.225 ns |         - |
-| IncrementByAmount_EntrySwitch_NotExists         | 12.346 ns |         - |
-```
-
-Stateful Factory (`OrInsertWithKey` capturing vs. `TState` overload on `Dictionary<string, int>`):
-
-```text
-| Method                                   | Mean      | Allocated |
-|----------------------------------------- |----------:|----------:|
-| StatefulFactory_Traditional_Exists       |  4.113 ns |         - |
-| StatefulFactory_Traditional_NotExists    | 11.946 ns |         - |
-| StatefulFactory_EntryCapturing_Exists    | 17.186 ns |      80 B |
-| StatefulFactory_EntryCapturing_NotExists | 30.216 ns |      80 B |
-| StatefulFactory_EntryState_Exists        |  4.496 ns |         - |
-| StatefulFactory_EntryState_NotExists     | 13.650 ns |         - |
-```
-
-Update Existing Only (`TryGetValue` + indexer vs. `AndModify` vs. `ValueRef` on `Dictionary<string, int>`):
-
-```text
-| Method                         | Mean      | Allocated |
-|------------------------------- |----------:|----------:|
-| Update_Traditional_Exists      |  9.197 ns |         - |
-| Update_Traditional_NotExists   |  3.130 ns |         - |
-| Update_Entry_Exists            | 10.875 ns |         - |
-| Update_Entry_NotExists         |  3.485 ns |         - |
-| Update_EntryValueRef_Exists    |  4.304 ns |         - |
-| Update_EntryValueRef_NotExists |  3.373 ns |         - |
-```
-
-To run the benchmarks yourself:
-
-```bash
-cd src/DictionaryEntry.Benchmarks
-dotnet run -c Release
-```
-
-*(Earlier full-suite v0.1.0 results on .NET 9 x64 are also archived in [benchmarks/results-0.1.0.md](./benchmarks/results-0.1.0.md).)*
-
-### Performance Considerations with Lambdas and Closures
-
-Methods that accept delegates (`AndModify`, `OrInsertWith`, `OrInsertWithKey`, and `Match`) are zero-allocation when passed a non-capturing lambda or `static` method group, because C# caches a singleton delegate instance.
-
-When a lambda **captures local variables or `this`**, C# allocates a closure object on the heap—even on cache hits before the method is called (`24 B` outside loops on .NET 10/11 when JIT escape analysis stack-allocates the delegate, and up to `80–88 B` inside loops or on .NET 9 when the `64 B` delegate is also heap-allocated):
-
-```csharp
-// Captures 'amount' -> allocates a closure + delegate inside loops (24-88 B)
-private void IncrementByAmountCapturing(string key, int amount)
-{
-    _dictionary.Entry(key).AndModify(count => count + amount).OrInsert(amount);
-}
-```
-
-On hot paths that need local state without closure allocations, use the **`TState` overloads** with `static` lambdas, a **union `switch`**, or **`ref` returns**:
-
-```csharp
-// Zero-allocation with TState overload + static lambda (also supports Span/ReadOnlySpan state)
-private void IncrementByAmountState(string key, int amount)
-{
-    _dictionary.Entry(key).AndModify(amount, static (count, amt) => count + amt).OrInsert(amount);
-}
-
-// Zero-allocation lazy factory with TState (passes value tuples or ReadOnlySpan<T>)
-private int GetOrComputeScaled(string key, int multiplier)
-{
-    return _dictionary.Entry(key).OrInsertWithKey(multiplier, static (k, mult) => k.Length * mult);
-}
-
-// Zero-allocation with switch (no delegates or closures)
-private void IncrementByAmountSwitch(string key, int amount)
-{
-    switch (_dictionary.Entry(key))
-    {
-        case OccupiedEntry<string, int> occupied:
-            occupied.Insert(occupied.Value + amount);
-            break;
-        case VacantEntry<string, int> vacant:
-            vacant.Insert(amount);
-            break;
-    }
-}
-
-// Zero-allocation with ref return
-private void IncrementByAmountRef(string key, int amount)
-{
-    _dictionary.Entry(key).OrDefault() += amount;
-}
-```
-
-## Limitations
+## Advanced Features
 
 ### C# 15 Union Pattern Matching
 
-- **Requires C# 15 (.NET 11 SDK):** Native union `switch` and `is` patterns require compiling with C# 15 (`net11.0` uses C# 15 by default; projects targeting `net9.0` or `net10.0` on the .NET 11 SDK can also opt in with `<LangVersion>15.0</LangVersion>` or `<LangVersion>latest</LangVersion>`). On older C# versions/SDKs, all fluent methods, `Match`, `TryGetOccupied`, and `TryGetVacant` continue to work normally.
-- **`Entry` is live, cases are snapshots:** `OccupiedEntry.Value` is captured when the entry is obtained and is not updated by `Insert` or later dictionary changes. Converting an `OccupiedEntry` / `VacantEntry` back to `Entry<TKey, TValue>` (e.g. `Entry<string, int> e = occupied;`) performs a fresh lookup, so the result reflects the dictionary's *current* state and may be a different case if the dictionary changed in between. `OccupiedEntry.Remove()` / `RemoveEntry()` return the value actually removed, and throw `KeyNotFoundException` if the key is no longer present.
-- **Explicit generic type arguments in type patterns:** Because C# 15 unions are type unions rather than nominal enum variants, C# does not infer `<TKey, TValue>` in `OccupiedEntry<TKey, TValue>` / `VacantEntry<TKey, TValue>` patterns. When `<TKey, TValue>` is verbose, `TryGetOccupied(out var occupied)`, `Match(...)`, or a `using` type alias avoids repeating the type parameters.
+`Entry<TKey, TValue>` is decorated with `[Union]` over `OccupiedEntry<TKey, TValue>` and `VacantEntry<TKey, TValue>` (and implements `System.Runtime.CompilerServices.IUnion` on .NET 11+), enabling compiler-verified exhaustive `switch` expressions, `switch` statements, and `is` patterns without boxing:
 
-### `ref struct` & Async Operations
+```csharp
+// Exhaustive switch expression (no '_' discard arm needed)
+string tier = scores.Entry(player) switch
+{
+    OccupiedEntry<string, int> { Value: >= 1000 } => "Gold",
+    OccupiedEntry<string, int>(_, >= 100) => "Silver", // positional Deconstruct(out key, out value)
+    OccupiedEntry<string, int> => "Bronze",
+    VacantEntry<string, int> => "Unranked",
+};
 
-`Entry<TKey, TValue>` is a `ref struct` holding an interior `ref TValue` into the dictionary, which means:
+// 'is' pattern matching (Rust 'if let' style)
+if (users.Entry(userId) is OccupiedEntry<Guid, User> occupied)
+{
+    Console.WriteLine($"Found {occupied.Key}: {occupied.Value.Name}");
+}
 
-- An `Entry<TKey, TValue>` instance cannot be boxed, stored in fields of classes or regular structs, captured in lambdas, or preserved across `await` / `yield return` boundaries:
-  ```csharp
-  // This does NOT work
-  var user = cache.Entry(userId).OrInsertWith(async () => await db.LoadAsync(userId));
-  ```
-- **Async with C# 15 union `switch`:** `OccupiedEntry<TKey, TValue>` and `VacantEntry<TKey, TValue>` are regular `readonly struct`s (not `ref struct`s). Switching on `cache.Entry(userId)` unwraps into `OccupiedEntry` or `VacantEntry` *before* hitting an `await`, so `async`/`await` works directly inside `switch` expressions and statements:
-  ```csharp
-  var user = cache.Entry(userId) switch
-  {
-      OccupiedEntry<Guid, User> occupied => occupied.Value,
-      VacantEntry<Guid, User> vacant => vacant.Insert(await db.LoadUserAsync(vacant.Key)),
-  };
-  ```
-- **Async on earlier C# versions:** Return a `Task` from `Match` and `await` the result:
-  ```csharp
-  var user = await cache.Entry(userId).Match(
-      occupied => Task.FromResult(occupied.Value),
-      async vacant => vacant.Insert(await db.LoadUserAsync(vacant.Key)));
-  ```
-- **Do not mutate the dictionary externally while holding an `Entry` local (or inside `AndModify` callbacks):** Because `Entry<TKey, TValue>` caches a direct value reference into the dictionary's entry storage, mutating or resizing the same `Dictionary<TKey, TValue>` directly (outside the `Entry`'s own methods, including inside an `AndModify` callback) invalidates that `Entry` instance.
+// Switch statement with local variables (no delegates or closures)
+switch (users.Entry(userId))
+{
+    case OccupiedEntry<Guid, User> existing:
+        existing.Insert(existing.Value with { LastSeen = now });
+        break;
+    case VacantEntry<Guid, User> vacant:
+        vacant.Insert(CreateNewUser(vacant.Key, now));
+        break;
+}
+```
 
-### `AlternateEntry` (`AlternateLookup`)
+### Pattern Matching Without C# 15
 
-Because `TAlternateKey` supports `ref struct` keys such as `ReadOnlySpan<char>`, `AlternateEntry<TKey, TValue, TAlternateKey>`, `AlternateOccupiedEntry<TKey, TValue, TAlternateKey>`, and `AlternateVacantEntry<TKey, TValue, TAlternateKey>` are all `ref struct`s:
+On C# 13 / 14—or when you prefer generic type inference over spelling out `<TKey, TValue>` in case patterns—use `Match`, `TryGetOccupied`, and `TryGetVacant`:
 
-- **Not a C# 15 `[Union]`:** C# 15 union case types must be convertible to `object` and cannot be `ref struct`s (`CS8121`), so `switch` / `is` type patterns on `AlternateOccupiedEntry` and `AlternateVacantEntry` are not supported. Use fluent methods, untyped property patterns (e.g. `if (lookup.Entry(span) is { IsOccupied: true } e)`), `TryGetOccupied`, `TryGetVacant`, or synchronous `Match` instead.
-- **No `async` / `await` across `AlternateOccupiedEntry` or `AlternateVacantEntry`:** Unlike `OccupiedEntry` and `VacantEntry` (which are regular `struct`s), alternate case types hold a `ref struct` key and cannot cross `await` / `yield return` boundaries, be boxed, or be captured in `async` lambdas.
+```csharp
+string status = users.Entry(userId).Match(
+    occupied => $"Found: {occupied.Value.Name}",
+    vacant => $"Created: {vacant.Insert(CreateNewUser(vacant.Key)).Name}"
+);
 
-### Runtime Internals
+if (users.Entry(userId).TryGetOccupied(out var occupied))
+{
+    // Remove and return the value in a single flow
+    User removed = occupied.Remove();
+}
+```
 
-`DictionaryEntry` uses `[UnsafeAccessor]` to avoid rehashing keys on vacant insertions and to write directly to entry slots on `OccupiedEntry.Insert` / `AlternateOccupiedEntry.Insert`. It is verified against `Dictionary<TKey, TValue>` on .NET 9, .NET 10, and .NET 11; newer .NET releases may require an updated package version if `Dictionary<TKey, TValue>`'s internal layout changes.
+### AlternateLookup and Custom Span Keys
 
-### Thread Safety
+While `dict.Entry(ReadOnlySpan<char>)` is convenient for one-off lookups on `Dictionary<string, TValue>`, tight loops and custom alternate key types (such as UTF-8 `ReadOnlySpan<byte>` via `IAlternateEqualityComparer<ReadOnlySpan<byte>, string>`) can hoist `GetAlternateLookup<TAlternateKey>()` once outside the loop:
 
-`Dictionary<TKey, TValue>` is not thread-safe. In concurrent scenarios, protect access with synchronization or use a concurrent collection.
+```csharp
+var counts = new Dictionary<string, int>(StringComparer.Ordinal);
+var lookup = counts.GetAlternateLookup<ReadOnlySpan<char>>();
 
-## Potential Features
+ReadOnlySpan<char> csv = "apple,banana,apple,cherry";
+foreach (var range in csv.Split(','))
+{
+    lookup.Entry(csv[range]).AndModify(static c => c + 1).OrInsert(1);
+}
 
-- Support for `ConcurrentDictionary<TKey, TValue>` and other dictionary-like collections
+// Remove via alternate key and recover both the stored string key and value
+if (lookup.Entry("banana".AsSpan()).TryGetOccupied(out var banana))
+{
+    (string storedKey, int finalCount) = banana.RemoveEntry();
+}
+```
+
+### API Quick Reference
+
+| Type | Kind | Key Members |
+|---|---|---|
+| `Entry<TKey, TValue>` | `ref struct` (`[Union]`) | `Key`, `IsOccupied`, `IsVacant`, `ValueRef`, `OrInsert(v)`, `OrDefault()`, `OrInsertWith(...)`, `OrInsertWithKey(...)`, `AndModify(...)`, `InsertEntry(v)`, `ToOccupied()`, `ToVacant()`, `TryGetOccupied(out ...)`, `TryGetVacant(out ...)`, `Match(...)` |
+| `OccupiedEntry<TKey, TValue>` | `readonly struct` | `Key`, `Value` *(snapshot)*, `Deconstruct(out key, out value)`, `Insert(newValue)`, `Remove()`, `RemoveEntry()` |
+| `VacantEntry<TKey, TValue>` | `readonly struct` | `Key`, `Insert(value)`, `InsertEntry(value)` |
+| `AlternateEntry<TKey, TValue, TAlt>` | `ref struct` | Same fluent surface as `Entry<TKey, TValue>`, keyed by `TAlt` (`allows ref struct`) |
+| `AlternateOccupiedEntry<...>` | `readonly ref struct` | `Key`, `Value` *(snapshot)*, `Deconstruct`, `Insert(newValue)`, `Remove()`, `RemoveEntry()` *(returns `(TKey, TValue)`)* |
+| `AlternateVacantEntry<...>` | `readonly ref struct` | `Key`, `Insert(value)`, `InsertEntry(value)` |
+
+## Performance Considerations
+
+Methods taking delegates (`AndModify`, `OrInsertWith`, `OrInsertWithKey`, and `Match`) are **zero-allocation** when passed a `static` lambda or non-capturing lambda, because C# caches a singleton delegate instance.
+
+If a lambda **captures local variables or `this`**, C# allocates a closure object (`24–88 B`) even on cache hits before the method runs:
+
+```csharp
+// Avoid on hot paths: captures 'amount', allocating a closure on every call
+scores.Entry(key).AndModify(c => c + amount).OrInsert(amount);
+
+// Zero-allocation Option 1: TState overload + static lambda (also supports ref struct / Span state)
+scores.Entry(key).AndModify(amount, static (c, amt) => c + amt).OrInsert(amount);
+
+// Zero-allocation Option 2: ref return
+scores.Entry(key).OrDefault() += amount;
+
+// Zero-allocation Option 3: C# 15 union switch
+switch (scores.Entry(key))
+{
+    case OccupiedEntry<string, int> occupied:
+        occupied.Insert(occupied.Value + amount);
+        break;
+    case VacantEntry<string, int> vacant:
+        vacant.Insert(amount);
+        break;
+}
+```
+
+## Limitations and Caveats
+
+### `ref struct` and `async` / `await`
+
+`Entry<TKey, TValue>` holds a managed `ref TValue` into the dictionary, so `Entry` itself cannot be boxed, stored in heap fields, or held across `await` boundaries.
+
+However, **`OccupiedEntry<TKey, TValue>` and `VacantEntry<TKey, TValue>` are regular `readonly struct`s** (not `ref struct`s). Unwrapping `Entry` in a C# 15 `switch` before hitting `await` works seamlessly:
+
+```csharp
+// Works on C# 15: Entry is unwrapped into OccupiedEntry / VacantEntry before 'await'
+var user = cache.Entry(userId) switch
+{
+    OccupiedEntry<Guid, User> occupied => occupied.Value,
+    VacantEntry<Guid, User> vacant => vacant.Insert(await db.LoadUserAsync(vacant.Key)),
+};
+
+// Works on C# 13 / 14: return a Task from Match and await it
+var user = await cache.Entry(userId).Match(
+    occupied => Task.FromResult(occupied.Value),
+    async vacant => vacant.Insert(await db.LoadUserAsync(vacant.Key))
+);
+```
+
+*(Note: `AlternateOccupiedEntry` and `AlternateVacantEntry` hold `TAlternateKey`—such as `ReadOnlySpan<char>`—so all three `Alternate*` types are `ref struct`s, cannot cross `await` boundaries, and cannot participate in C# 15 `[Union]` type patterns (`CS8121`).)*
+
+### C# 15 Union Nuances
+
+- **Compiler version:** Native union `switch` / `is` patterns require compiling with C# 15 (`.NET 11` SDK; projects targeting `net9.0` or `net10.0` on the `.NET 11` SDK can opt in with `<LangVersion>15.0</LangVersion>` or `<LangVersion>latest</LangVersion>`). All fluent methods, `Match`, and `TryGet*` work on earlier C# versions.
+- **Explicit type arguments in case patterns:** C# 15 unions are type unions rather than nominal enum variants, so `<TKey, TValue>` must be written in `OccupiedEntry<TKey, TValue>` / `VacantEntry<TKey, TValue>` type patterns (or aliased with `using`).
+- **Live `Entry` vs. snapshot cases:** `OccupiedEntry.Value` is a snapshot captured when the entry was obtained and is not updated by `Insert`. Converting an `OccupiedEntry` or `VacantEntry` back to `Entry<TKey, TValue>` performs a fresh lookup against the dictionary's current state.
+
+### External Mutation, Runtime Internals, and Thread Safety
+
+- **Do not mutate the dictionary externally while holding an `Entry`:** Because `Entry` and `AlternateEntry` cache an interior value reference into the dictionary's storage, mutating or resizing the same `Dictionary<TKey, TValue>` outside the entry's own methods (including inside an `AndModify` callback) invalidates that entry instance.
+- **Runtime internals:** `DictionaryEntry` uses `[UnsafeAccessor]` to avoid rehashing keys on vacant insertions and to perform O(1) slot writes on `OccupiedEntry.Insert`. It is verified on `.NET 9`, `.NET 10`, and `.NET 11`; newer `.NET` releases may require an updated package version if `Dictionary<TKey, TValue>`'s internal layout changes.
+- **Thread safety:** `Dictionary<TKey, TValue>` is not thread-safe. Synchronize concurrent access externally or use a concurrent collection.
 
 ## License
 
