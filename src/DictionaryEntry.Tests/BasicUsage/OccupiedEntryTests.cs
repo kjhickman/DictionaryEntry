@@ -242,4 +242,21 @@ public class OccupiedEntryTests
         Assert.Null(value);
         Assert.Empty(dict);
     }
+
+    [Fact]
+    public void Insert_WhenKeyRemovedExternally_ReinsertsValue()
+    {
+        // Arrange
+        var dict = new Dictionary<string, int> { ["key"] = 42 };
+        var occupied = dict.Entry("key").ToOccupied();
+        dict.Remove("key");
+
+        // Act
+        var inserted = occupied.Insert(99);
+
+        // Assert
+        Assert.Equal(99, inserted);
+        Assert.Equal(99, dict["key"]);
+        Assert.Equal(42, occupied.Value);
+    }
 }

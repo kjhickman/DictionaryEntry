@@ -18,21 +18,20 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
 {
     private readonly Dictionary<TKey, TValue> _dictionary;
     private readonly TKey _key;
-    private bool _exists;
     private ref TValue _valueRef;
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal Entry(Dictionary<TKey, TValue> dictionary, TKey key)
     {
         _dictionary = dictionary;
         _key = key;
         _valueRef = ref CollectionsMarshal.GetValueRefOrNullRef(dictionary, key);
-        _exists = !Unsafe.IsNullRef(ref _valueRef);
     }
 
     /// <summary>
     /// Gets the key associated with this entry.
     /// </summary>
-    public TKey Key
+    public readonly TKey Key
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _key;
@@ -41,10 +40,10 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// <summary>
     /// Gets a value indicating whether the entry exists in the dictionary.
     /// </summary>
-    public bool IsOccupied
+    public readonly bool IsOccupied
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => _exists;
+        get => !Unsafe.IsNullRef(ref _valueRef);
     }
 
     /// <summary>
@@ -53,10 +52,10 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// <remarks>
     /// A <c>default</c> entry is neither occupied nor vacant.
     /// </remarks>
-    public bool IsVacant
+    public readonly bool IsVacant
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => !_exists && _dictionary is not null;
+        get => Unsafe.IsNullRef(ref _valueRef) && _dictionary is not null;
     }
 
     /// <summary>
@@ -69,19 +68,14 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// without copying the value or inserting when absent. Do not mutate or resize the dictionary externally
     /// while holding the returned reference.
     /// </remarks>
-    public ref TValue ValueRef
+    public readonly ref TValue ValueRef
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get
         {
-            if (!_exists)
+            if (Unsafe.IsNullRef(ref _valueRef))
             {
-                if (_dictionary is null)
-                {
-                    ThrowDefaultEntry();
-                }
-
-                ThrowKeyNotFound(_key);
+                ThrowVacantOrDefault(_dictionary, _key);
             }
 
             return ref _valueRef;
@@ -96,11 +90,12 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
     /// <remarks>
     /// If the entry does not exist, this method does nothing and returns the unchanged entry.
-    /// The update function is applied atomically to the dictionary entry.
+    /// Do not mutate or resize the dictionary inside <paramref name="updateFunc"/>.
     /// </remarks>
-    public Entry<TKey, TValue> AndModify(Func<TValue, TValue> updateFunc)
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly Entry<TKey, TValue> AndModify(Func<TValue, TValue> updateFunc)
     {
-        if (!_exists)
+        if (Unsafe.IsNullRef(ref _valueRef))
         {
             if (_dictionary is null)
             {
@@ -110,14 +105,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
             return this;
         }
 
-        var newValue = updateFunc(_valueRef);
-
-        // Re-acquire the ref rather than writing through the indexer: updateFunc may have mutated the
-        // dictionary (e.g. triggered a resize), which would leave _valueRef pointing at stale storage
-        // for chained calls like .OrInsert(). This costs the same single lookup as the indexer set,
-        // and still re-adds the key if updateFunc removed it.
-        _valueRef = ref CollectionsMarshal.GetValueRefOrAddDefault(_dictionary, _key, out _)!;
-        _valueRef = newValue;
+        _valueRef = updateFunc(_valueRef);
         return this;
     }
 
@@ -130,12 +118,16 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// <param name="updateFunc">A function that takes the current value and <paramref name="state"/> and returns the new value. This function is only called if the entry exists.</param>
     /// <returns>The entry instance to allow for method chaining.</returns>
     /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
-    public Entry<TKey, TValue> AndModify<TState>(TState state, Func<TValue, TState, TValue> updateFunc)
+    /// <remarks>
+    /// Do not mutate or resize the dictionary inside <paramref name="updateFunc"/>.
+    /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly Entry<TKey, TValue> AndModify<TState>(TState state, Func<TValue, TState, TValue> updateFunc)
 #if NET9_0_OR_GREATER
         where TState : allows ref struct
 #endif
     {
-        if (!_exists)
+        if (Unsafe.IsNullRef(ref _valueRef))
         {
             if (_dictionary is null)
             {
@@ -145,10 +137,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
             return this;
         }
 
-        var newValue = updateFunc(_valueRef, state);
-
-        _valueRef = ref CollectionsMarshal.GetValueRefOrAddDefault(_dictionary, _key, out _)!;
-        _valueRef = newValue;
+        _valueRef = updateFunc(_valueRef, state);
         return this;
     }
 
@@ -158,9 +147,10 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// <param name="defaultValue">The value to insert if the entry does not exist.</param>
     /// <returns>A reference to the value in the dictionary.</returns>
     /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ref TValue OrInsert(TValue defaultValue)
     {
-        if (_exists)
+        if (!Unsafe.IsNullRef(ref _valueRef))
         {
             return ref _valueRef;
         }
@@ -178,7 +168,6 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
 
         slot = defaultValue;
         _valueRef = ref slot!;
-        _exists = true;
         return ref _valueRef;
     }
 
@@ -188,9 +177,10 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// <param name="valueFactory">A function that computes the value to insert if the entry does not exist.</param>
     /// <returns>A reference to the value in the dictionary.</returns>
     /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ref TValue OrInsertWith(Func<TValue> valueFactory)
     {
-        if (_exists)
+        if (!Unsafe.IsNullRef(ref _valueRef))
         {
             return ref _valueRef;
         }
@@ -209,7 +199,6 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
 
         slot = value;
         _valueRef = ref slot!;
-        _exists = true;
         return ref _valueRef;
     }
 
@@ -222,12 +211,13 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// <param name="valueFactory">A function that takes <paramref name="state"/> and computes the value to insert if the entry does not exist.</param>
     /// <returns>A reference to the value in the dictionary.</returns>
     /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ref TValue OrInsertWith<TState>(TState state, Func<TState, TValue> valueFactory)
 #if NET9_0_OR_GREATER
         where TState : allows ref struct
 #endif
     {
-        if (_exists)
+        if (!Unsafe.IsNullRef(ref _valueRef))
         {
             return ref _valueRef;
         }
@@ -246,7 +236,6 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
 
         slot = value;
         _valueRef = ref slot!;
-        _exists = true;
         return ref _valueRef;
     }
 
@@ -256,9 +245,10 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// <param name="valueFactory">A function that takes the key and computes the value to insert if the entry does not exist.</param>
     /// <returns>A reference to the value in the dictionary.</returns>
     /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ref TValue OrInsertWithKey(Func<TKey, TValue> valueFactory)
     {
-        if (_exists)
+        if (!Unsafe.IsNullRef(ref _valueRef))
         {
             return ref _valueRef;
         }
@@ -277,7 +267,6 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
 
         slot = value;
         _valueRef = ref slot!;
-        _exists = true;
         return ref _valueRef;
     }
 
@@ -290,12 +279,13 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// <param name="valueFactory">A function that takes the key and <paramref name="state"/> and computes the value to insert if the entry does not exist.</param>
     /// <returns>A reference to the value in the dictionary.</returns>
     /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ref TValue OrInsertWithKey<TState>(TState state, Func<TKey, TState, TValue> valueFactory)
 #if NET9_0_OR_GREATER
         where TState : allows ref struct
 #endif
     {
-        if (_exists)
+        if (!Unsafe.IsNullRef(ref _valueRef))
         {
             return ref _valueRef;
         }
@@ -314,7 +304,6 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
 
         slot = value;
         _valueRef = ref slot!;
-        _exists = true;
         return ref _valueRef;
     }
 
@@ -326,9 +315,10 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// <remarks>
     /// For reference types, the default value is null. For value types, the default value is the zero-initialized value.
     /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public ref TValue OrDefault()
     {
-        if (_exists)
+        if (!Unsafe.IsNullRef(ref _valueRef))
         {
             return ref _valueRef;
         }
@@ -345,7 +335,6 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         }
 
         _valueRef = ref slot!;
-        _exists = true;
         return ref _valueRef;
     }
 
@@ -358,9 +347,10 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// <remarks>
     /// This method always results in an occupied entry, regardless of whether the key previously existed.
     /// </remarks>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public OccupiedEntry<TKey, TValue> InsertEntry(TValue value)
     {
-        if (_exists)
+        if (!Unsafe.IsNullRef(ref _valueRef))
         {
             _valueRef = value;
             return new OccupiedEntry<TKey, TValue>(_dictionary, _key, value);
@@ -379,7 +369,6 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
 
         slot = value;
         _valueRef = ref slot!;
-        _exists = true;
         return new OccupiedEntry<TKey, TValue>(_dictionary, _key, value);
     }
 
@@ -389,16 +378,12 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// <returns>An <see cref="OccupiedEntry{TKey, TValue}"/> representing the entry in the dictionary.</returns>
     /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
     /// <exception cref="KeyNotFoundException">Thrown if the entry does not exist in the dictionary.</exception>
-    public OccupiedEntry<TKey, TValue> ToOccupied()
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly OccupiedEntry<TKey, TValue> ToOccupied()
     {
-        if (!_exists)
+        if (Unsafe.IsNullRef(ref _valueRef))
         {
-            if (_dictionary is null)
-            {
-                ThrowDefaultEntry();
-            }
-
-            ThrowKeyNotFound(_key);
+            ThrowVacantOrDefault(_dictionary, _key);
         }
 
         return new OccupiedEntry<TKey, TValue>(_dictionary, _key, _valueRef);
@@ -409,16 +394,12 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// </summary>
     /// <returns>A <see cref="VacantEntry{TKey, TValue}"/> representing the entry not in the dictionary.</returns>
     /// <exception cref="InvalidOperationException">Thrown if the entry exists in the dictionary, or if this is a <c>default</c> entry.</exception>
-    public VacantEntry<TKey, TValue> ToVacant()
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly VacantEntry<TKey, TValue> ToVacant()
     {
-        if (_exists)
+        if (!Unsafe.IsNullRef(ref _valueRef) || _dictionary is null)
         {
-            ThrowKeyAlreadyExists(_key);
-        }
-
-        if (_dictionary is null)
-        {
-            ThrowDefaultEntry();
+            ThrowOccupiedOrDefault(_dictionary, _key);
         }
 
         return new VacantEntry<TKey, TValue>(_dictionary, _key);
@@ -430,10 +411,11 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// <param name="occupiedAction">The action to execute if the entry exists.</param>
     /// <param name="vacantAction">The action to execute if the entry does not exist.</param>
     /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
-    public void Match(Action<OccupiedEntry<TKey, TValue>> occupiedAction,
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly void Match(Action<OccupiedEntry<TKey, TValue>> occupiedAction,
         Action<VacantEntry<TKey, TValue>> vacantAction)
     {
-        if (_exists)
+        if (!Unsafe.IsNullRef(ref _valueRef))
         {
             occupiedAction(new OccupiedEntry<TKey, TValue>(_dictionary, _key, _valueRef));
         }
@@ -457,7 +439,8 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// <param name="occupiedAction">The action to execute if the entry exists.</param>
     /// <param name="vacantAction">The action to execute if the entry does not exist.</param>
     /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
-    public void Match<TState>(
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly void Match<TState>(
         TState state,
         Action<OccupiedEntry<TKey, TValue>, TState> occupiedAction,
         Action<VacantEntry<TKey, TValue>, TState> vacantAction)
@@ -465,7 +448,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         where TState : allows ref struct
 #endif
     {
-        if (_exists)
+        if (!Unsafe.IsNullRef(ref _valueRef))
         {
             occupiedAction(new OccupiedEntry<TKey, TValue>(_dictionary, _key, _valueRef), state);
         }
@@ -488,10 +471,11 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// <param name="vacantFunc">The function to execute if the entry does not exist.</param>
     /// <returns>The result of the executed function.</returns>
     /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
-    public TResult Match<TResult>(Func<OccupiedEntry<TKey, TValue>, TResult> occupiedFunc,
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly TResult Match<TResult>(Func<OccupiedEntry<TKey, TValue>, TResult> occupiedFunc,
         Func<VacantEntry<TKey, TValue>, TResult> vacantFunc)
     {
-        if (_exists)
+        if (!Unsafe.IsNullRef(ref _valueRef))
         {
             return occupiedFunc(new OccupiedEntry<TKey, TValue>(_dictionary, _key, _valueRef));
         }
@@ -515,7 +499,8 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// <param name="vacantFunc">The function to execute if the entry does not exist.</param>
     /// <returns>The result of the executed function.</returns>
     /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
-    public TResult Match<TState, TResult>(
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public readonly TResult Match<TState, TResult>(
         TState state,
         Func<OccupiedEntry<TKey, TValue>, TState, TResult> occupiedFunc,
         Func<VacantEntry<TKey, TValue>, TState, TResult> vacantFunc)
@@ -523,7 +508,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         where TState : allows ref struct
 #endif
     {
-        if (_exists)
+        if (!Unsafe.IsNullRef(ref _valueRef))
         {
             return occupiedFunc(new OccupiedEntry<TKey, TValue>(_dictionary, _key, _valueRef), state);
         }
@@ -544,13 +529,27 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
 
     [DoesNotReturn]
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void ThrowKeyNotFound(TKey key) =>
+    private static void ThrowVacantOrDefault(Dictionary<TKey, TValue>? dictionary, TKey key)
+    {
+        if (dictionary is null)
+        {
+            ThrowDefaultEntry();
+        }
+
         throw new KeyNotFoundException($"The key '{key}' was not found in the dictionary.");
+    }
 
     [DoesNotReturn]
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void ThrowKeyAlreadyExists(TKey key) =>
+    private static void ThrowOccupiedOrDefault(Dictionary<TKey, TValue>? dictionary, TKey key)
+    {
+        if (dictionary is null)
+        {
+            ThrowDefaultEntry();
+        }
+
         throw new InvalidOperationException($"The key '{key}' already exists in the dictionary.");
+    }
 
     [DoesNotReturn]
     [MethodImpl(MethodImplOptions.NoInlining)]
@@ -563,9 +562,9 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// <param name="occupied">When this method returns, contains the occupied entry if the key was found; otherwise, the default value.</param>
     /// <returns><c>true</c> if the key was found; otherwise, <c>false</c>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool TryGetOccupied(out OccupiedEntry<TKey, TValue> occupied)
+    public readonly bool TryGetOccupied(out OccupiedEntry<TKey, TValue> occupied)
     {
-        if (_exists)
+        if (!Unsafe.IsNullRef(ref _valueRef))
         {
             occupied = new OccupiedEntry<TKey, TValue>(_dictionary, _key, _valueRef);
             return true;
@@ -581,9 +580,9 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// <param name="vacant">When this method returns, contains the vacant entry if the key was not found; otherwise, the default value.</param>
     /// <returns><c>true</c> if the key was not found; otherwise, <c>false</c>.</returns>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public bool TryGetVacant(out VacantEntry<TKey, TValue> vacant)
+    public readonly bool TryGetVacant(out VacantEntry<TKey, TValue> vacant)
     {
-        if (!_exists && _dictionary is not null)
+        if (Unsafe.IsNullRef(ref _valueRef) && _dictionary is not null)
         {
             vacant = new VacantEntry<TKey, TValue>(_dictionary, _key);
             return true;
@@ -606,6 +605,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         /// the result is vacant; if the value changed, the result carries the current value.
         /// A <c>default</c> occupied entry produces a <c>default</c> (null) entry.
         /// </remarks>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         static Entry<TKey, TValue> Create(OccupiedEntry<TKey, TValue> value) =>
             value.Dictionary is not null ? new Entry<TKey, TValue>(value.Dictionary, value.Key) : default;
 
@@ -614,6 +614,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         /// Performs a fresh dictionary lookup: if the key was inserted since the vacant entry was obtained,
         /// the result is occupied. A <c>default</c> vacant entry produces a <c>default</c> (null) entry.
         /// </remarks>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         static Entry<TKey, TValue> Create(VacantEntry<TKey, TValue> value) =>
             value.Dictionary is not null ? new Entry<TKey, TValue>(value.Dictionary, value.Key) : default;
 
@@ -630,22 +631,22 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         bool TryGetValue(out VacantEntry<TKey, TValue> value);
     }
 
-    object? IUnionMembers.Value => _dictionary is null
+    readonly object? IUnionMembers.Value => _dictionary is null
         ? null
-        : _exists
+        : !Unsafe.IsNullRef(ref _valueRef)
             ? new OccupiedEntry<TKey, TValue>(_dictionary, _key, _valueRef)
             : new VacantEntry<TKey, TValue>(_dictionary, _key);
 
-    bool IUnionMembers.HasValue
+    readonly bool IUnionMembers.HasValue
     {
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         get => _dictionary is not null;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    bool IUnionMembers.TryGetValue(out OccupiedEntry<TKey, TValue> value)
+    readonly bool IUnionMembers.TryGetValue(out OccupiedEntry<TKey, TValue> value)
     {
-        if (_exists)
+        if (!Unsafe.IsNullRef(ref _valueRef))
         {
             value = new OccupiedEntry<TKey, TValue>(_dictionary, _key, _valueRef);
             return true;
@@ -656,9 +657,9 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    bool IUnionMembers.TryGetValue(out VacantEntry<TKey, TValue> value)
+    readonly bool IUnionMembers.TryGetValue(out VacantEntry<TKey, TValue> value)
     {
-        if (!_exists && _dictionary is not null)
+        if (Unsafe.IsNullRef(ref _valueRef) && _dictionary is not null)
         {
             value = new VacantEntry<TKey, TValue>(_dictionary, _key);
             return true;

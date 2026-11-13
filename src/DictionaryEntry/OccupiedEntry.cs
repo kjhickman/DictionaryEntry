@@ -1,5 +1,6 @@
 using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 
 namespace DictionaryEntry;
 
@@ -15,8 +16,13 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
     private readonly TKey _key;
     private readonly TValue _value;
 
-    internal Dictionary<TKey, TValue> Dictionary => _dictionary;
+    internal Dictionary<TKey, TValue> Dictionary
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => _dictionary;
+    }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal OccupiedEntry(Dictionary<TKey, TValue> dictionary, TKey key, TValue value)
     {
         _dictionary = dictionary;
@@ -74,7 +80,20 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
             ThrowDefaultEntry();
         }
 
-        _dictionary[_key] = newValue;
+        ref var valueRef = ref CollectionsMarshal.GetValueRefOrNullRef(_dictionary, _key);
+        if (!Unsafe.IsNullRef(ref valueRef))
+        {
+            valueRef = newValue;
+            return newValue;
+        }
+
+        return InsertFallback(_dictionary, _key, newValue);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static TValue InsertFallback(Dictionary<TKey, TValue> dictionary, TKey key, TValue newValue)
+    {
+        dictionary[key] = newValue;
         return newValue;
     }
 

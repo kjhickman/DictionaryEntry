@@ -339,7 +339,7 @@ private void IncrementByAmountRef(string key, int amount)
       occupied => Task.FromResult(occupied.Value),
       async vacant => vacant.Insert(await db.LoadUserAsync(vacant.Key)));
   ```
-- **Do not mutate the dictionary externally while holding an `Entry` local:** Because `Entry<TKey, TValue>` caches a `CollectionsMarshal` value reference, mutating or resizing the same `Dictionary<TKey, TValue>` directly (outside the `Entry`'s own methods) invalidates that `Entry` instance.
+- **Do not mutate the dictionary externally while holding an `Entry` local (or inside `AndModify` callbacks):** Because `Entry<TKey, TValue>` caches a `CollectionsMarshal` value reference, mutating or resizing the same `Dictionary<TKey, TValue>` directly (outside the `Entry`'s own methods, including inside an `AndModify` callback) invalidates that `Entry` instance.
 
 ### Thread Safety
 

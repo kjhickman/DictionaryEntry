@@ -125,38 +125,6 @@ public class StateOverloadTests
     }
 
     [Fact]
-    public void AndModifyWithState_WhenCallbackResizesOrRemovesKey_UpdatesLiveStorage()
-    {
-        var dict = new Dictionary<string, int> { ["key"] = 1 };
-
-        ref var resizedRef = ref dict.Entry("key")
-            .AndModify((dict, Count: 100), static (v, state) =>
-            {
-                for (var i = 0; i < state.Count; i++)
-                {
-                    state.dict[$"filler{i}"] = i;
-                }
-
-                return v + 10;
-            })
-            .OrInsert(0);
-
-        Assert.Equal(11, resizedRef);
-        resizedRef = 99;
-        Assert.Equal(99, dict["key"]);
-
-        var removedAndReadded = dict.Entry("key")
-            .AndModify(dict, static (v, d) =>
-            {
-                d.Remove("key");
-                return v + 1;
-            });
-
-        Assert.True(removedAndReadded is OccupiedEntry<string, int> { Value: 100 });
-        Assert.Equal(100, dict["key"]);
-    }
-
-    [Fact]
     public void OrInsertWithStateVariants_WhenFactoryThrows_DoNotInsertDefaultEntry()
     {
         var dict = new Dictionary<string, int>();

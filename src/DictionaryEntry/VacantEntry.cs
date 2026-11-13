@@ -14,8 +14,13 @@ public readonly struct VacantEntry<TKey, TValue> where TKey : notnull
     private readonly Dictionary<TKey, TValue> _dictionary;
     private readonly TKey _key;
 
-    internal Dictionary<TKey, TValue> Dictionary => _dictionary;
+    internal Dictionary<TKey, TValue> Dictionary
+    {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        get => _dictionary;
+    }
 
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal VacantEntry(Dictionary<TKey, TValue> dictionary, TKey key)
     {
         _dictionary = dictionary;

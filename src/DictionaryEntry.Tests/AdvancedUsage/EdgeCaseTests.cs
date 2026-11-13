@@ -147,72 +147,6 @@ public class EdgeCaseTests
     }
 
     [Fact]
-    public void AndModify_WhenUpdateFuncResizesDictionary_ChainedRefPointsAtLiveStorage()
-    {
-        // Arrange
-        var dict = new Dictionary<string, int> { ["key"] = 1 };
-
-        // Act: the callback forces several resizes, invalidating the ref captured by Entry()
-        ref var valueRef = ref dict.Entry("key")
-            .AndModify(v =>
-            {
-                for (var i = 0; i < 100; i++)
-                {
-                    dict[$"filler{i}"] = i;
-                }
-
-                return v + 1;
-            })
-            .OrInsert(0);
-
-        // Assert: the ref observes the modified value and writes through it are not lost
-        Assert.Equal(2, valueRef);
-        valueRef = 500;
-        Assert.Equal(500, dict["key"]);
-    }
-
-    [Fact]
-    public void AndModify_WhenUpdateFuncResizesDictionary_ChainedAndModifySeesUpdatedValue()
-    {
-        // Arrange
-        var dict = new Dictionary<string, int> { ["key"] = 1 };
-
-        // Act
-        dict.Entry("key")
-            .AndModify(v =>
-            {
-                for (var i = 0; i < 100; i++)
-                {
-                    dict[$"filler{i}"] = i;
-                }
-
-                return v + 1;
-            })
-            .AndModify(v => v * 10);
-
-        // Assert
-        Assert.Equal(20, dict["key"]);
-    }
-
-    [Fact]
-    public void AndModify_WhenUpdateFuncRemovesKey_ReinsertsWithNewValue()
-    {
-        // Arrange
-        var dict = new Dictionary<string, int> { ["key"] = 1 };
-
-        // Act
-        var entry = dict.Entry("key").AndModify(v =>
-        {
-            dict.Remove("key");
-            return v + 1;
-        });
-
-        // Assert
-        Assert.Equal(2, dict["key"]);
-        Assert.True(entry is OccupiedEntry<string, int> { Value: 2 });
-    }
-
-    [Fact]
     public void AndModify_ChainedTwice_AppliesBothUpdates()
     {
         // Arrange
@@ -409,7 +343,7 @@ public class EdgeCaseTests
     }
 
     [Fact]
-    public void ValueRef_AfterTransitionOrResize_PointsAtLiveStorage()
+    public void ValueRef_AfterVacantTransition_PointsAtLiveStorage()
     {
         var dict = new Dictionary<string, int>();
 
@@ -418,17 +352,18 @@ public class EdgeCaseTests
         entry.ValueRef += 5;
         Assert.Equal(15, dict["a"]);
 
-        var resized = dict.Entry("a").AndModify(v =>
+        var viaFactory = dict.Entry("b");
+        viaFactory.OrInsertWith(() =>
         {
             for (var i = 0; i < 100; i++)
             {
                 dict[$"filler{i}"] = i;
             }
 
-            return v + 5;
+            return 20;
         });
-        resized.ValueRef *= 2;
-        Assert.Equal(40, dict["a"]);
+        viaFactory.ValueRef *= 2;
+        Assert.Equal(40, dict["b"]);
     }
 
     [Fact]
@@ -483,6 +418,78 @@ public class EdgeCaseTests
             {
                 Assert.Equal(i * 10, dict[i]);
             }
+        }
+    }
+
+    [Fact]
+    public void InEntry_ReadonlyMembers_SupportInspectionPatternMatchingAndValueRefMutation()
+    {
+        var dict = new Dictionary<string, int> { ["existing"] = 10 };
+
+        var existingEntry = dict.Entry("existing");
+        var missingEntry = dict.Entry("missing");
+        Entry<string, int> defaultEntry = default;
+
+        InspectOccupied(in existingEntry);
+        InspectVacant(in missingEntry);
+        InspectDefault(in defaultEntry);
+
+        Assert.Equal(20, dict["existing"]);
+        Assert.False(dict.ContainsKey("missing"));
+
+        static void InspectOccupied(in Entry<string, int> entry)
+        {
+            Assert.Equal("existing", entry.Key);
+            Assert.True(entry.IsOccupied);
+            Assert.False(entry.IsVacant);
+            Assert.True(entry.TryGetOccupied(out var occupied));
+            Assert.Equal(10, occupied.Value);
+            Assert.False(entry.TryGetVacant(out _));
+            Assert.Equal(10, entry.ToOccupied().Value);
+
+            var matched = entry.Match(static o => o.Value * 2, static _ => -1);
+            Assert.Equal(20, matched);
+
+            var statefulMatched = entry.Match(3, static (o, add) => o.Value + add, static (_, _) => -1);
+            Assert.Equal(13, statefulMatched);
+
+            var switched = entry switch
+            {
+                OccupiedEntry<string, int> o => o.Value,
+                VacantEntry<string, int> => -1,
+            };
+            Assert.Equal(10, switched);
+
+            entry.ValueRef += 5;
+            entry.AndModify(static v => v + 2);
+            entry.AndModify(3, static (v, delta) => v + delta);
+        }
+
+        static void InspectVacant(in Entry<string, int> entry)
+        {
+            Assert.Equal("missing", entry.Key);
+            Assert.False(entry.IsOccupied);
+            Assert.True(entry.IsVacant);
+            Assert.False(entry.TryGetOccupied(out _));
+            Assert.True(entry.TryGetVacant(out var vacant));
+            Assert.Equal("missing", vacant.Key);
+            Assert.Equal("missing", entry.ToVacant().Key);
+
+            var switched = entry switch
+            {
+                OccupiedEntry<string, int> o => o.Value,
+                VacantEntry<string, int> => -1,
+            };
+            Assert.Equal(-1, switched);
+        }
+
+        static void InspectDefault(in Entry<string, int> entry)
+        {
+            Assert.False(entry.IsOccupied);
+            Assert.False(entry.IsVacant);
+            Assert.False(entry.TryGetOccupied(out _));
+            Assert.False(entry.TryGetVacant(out _));
+            Assert.True(entry is null);
         }
     }
 
