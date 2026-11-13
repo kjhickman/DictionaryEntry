@@ -1,6 +1,6 @@
 # DictionaryEntry Benchmarks
 
-Full BenchmarkDotNet results for the current version of `DictionaryEntry` (`v0.3.0`), comparing idiomatic hand-written `Dictionary<TKey, TValue>` code (`TryGetValue` + indexer) against `DictionaryEntry`.
+Full BenchmarkDotNet results for the current version of `DictionaryEntry` (`v0.4.0`), comparing idiomatic hand-written `Dictionary<TKey, TValue>` code (`TryGetValue` + indexer) against `DictionaryEntry`.
 
 ## Running the Benchmarks
 

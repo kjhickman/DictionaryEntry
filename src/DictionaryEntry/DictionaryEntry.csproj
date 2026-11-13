@@ -10,8 +10,8 @@
         <LangVersion>latest</LangVersion>
 
         <PackageId>DictionaryEntry</PackageId>
-        <Version>0.3.0</Version>
-        <PackageVersion>0.3.0</PackageVersion>
+        <Version>0.4.0</Version>
+        <PackageVersion>0.4.0</PackageVersion>
         <Authors>Kyle Hickman</Authors>
         <Description>Dictionary manipulation with a fluent, expressive syntax.</Description>
         <PackageTags>dictionary;collections;entry;fluent;extension;union;span;aot</PackageTags>
