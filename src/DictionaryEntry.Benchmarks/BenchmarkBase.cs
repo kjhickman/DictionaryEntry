@@ -21,9 +21,12 @@ public abstract class BenchmarkBase
         {
             AddJob(Job.Default
                 .WithStrategy(RunStrategy.Throughput)
-                .WithIterationCount(15)
-                .WithWarmupCount(10)
-                .WithInvocationCount(250_000)
+                .WithMinWarmupCount(5)
+                .WithMaxWarmupCount(8)
+                .WithMinIterationCount(8)
+                .WithMaxIterationCount(15)
+                .WithMaxRelativeError(0.01)
+                .WithInvocationCount(64_000)
                 .WithToolchain(InProcessNoEmitToolchain.Instance));
         }
     }
