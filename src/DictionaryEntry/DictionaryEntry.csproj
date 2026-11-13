@@ -6,6 +6,7 @@
         <Nullable>enable</Nullable>
         <IsAotCompatible>true</IsAotCompatible>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <LangVersion>latest</LangVersion>
 
         <PackageId>DictionaryEntry</PackageId>
@@ -13,7 +14,7 @@
         <PackageVersion>0.3.0</PackageVersion>
         <Authors>Kyle Hickman</Authors>
         <Description>Dictionary manipulation with a fluent, expressive syntax.</Description>
-        <PackageTags>dictionary;collections;entry;fluent;extension;union</PackageTags>
+        <PackageTags>dictionary;collections;entry;fluent;extension;union;span;aot</PackageTags>
         <Copyright>Copyright © Kyle Hickman</Copyright>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageProjectUrl>https://github.com/kjhickman/DictionaryEntry</PackageProjectUrl>
