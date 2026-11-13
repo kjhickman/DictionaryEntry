@@ -157,12 +157,17 @@ playerStats.Entry(playerId)
 
 ### Span & `AlternateLookup`
 
-`AlternateLookup<TAlternateKey>.Entry(key)` provides the same fluent API over `ReadOnlySpan<char>`, `ReadOnlySpan<byte>`, or any custom `IAlternateEqualityComparer<TAlternateKey, TKey>`—allocating zero strings on cache hits and materializing the `TKey` only once when inserting a missing key:
+For `Dictionary<string, TValue>`, pass a `ReadOnlySpan<char>` directly to `dict.Entry(span)`—allocating zero strings on cache hits and materializing the `string` key only once when inserting a missing key. For tight loops (to hoist the comparer check) or other alternate key types such as `ReadOnlySpan<byte>`, cache `GetAlternateLookup<TAlternateKey>()` and call `lookup.Entry(key)`:
 
 ```csharp
 var counts = new Dictionary<string, int>(StringComparer.Ordinal);
-var lookup = counts.GetAlternateLookup<ReadOnlySpan<char>>();
 
+// One-line ReadOnlySpan<char> lookup on Dictionary<string, TValue>
+ReadOnlySpan<char> headerName = "Content-Type: text/plain".AsSpan(0, 12);
+counts.Entry(headerName).OrInsert(1);
+
+// Cached AlternateLookup for tight loops or custom alternate keys (e.g. ReadOnlySpan<byte>)
+var lookup = counts.GetAlternateLookup<ReadOnlySpan<char>>();
 ReadOnlySpan<char> csv = "apple,banana,apple,cherry";
 foreach (var range in csv.Split(','))
 {

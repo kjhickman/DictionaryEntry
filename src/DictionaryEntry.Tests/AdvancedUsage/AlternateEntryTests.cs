@@ -388,6 +388,102 @@ public class AlternateEntryTests
     }
 
     [Fact]
+    public void DirectReadOnlySpanCharExtension_SupportsSlicesMutableSpansAndCaseInsensitiveComparers()
+    {
+        var dict = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Alpha"] = 10
+        };
+
+        // ReadOnlySpan<char> slice directly on Dictionary<string, TValue>
+        const string raw = "header:ALPHA:trailer";
+        dict.Entry(raw.AsSpan(7, 5)).AndModify(static v => v + 5).OrInsert(0);
+        Assert.Equal(15, dict["Alpha"]);
+
+        // Mutable Span<char> converts implicitly to ReadOnlySpan<char>
+        Span<char> buffer = stackalloc char[4];
+        "beta".AsSpan().CopyTo(buffer);
+        dict.Entry(buffer).OrInsert(20);
+        Assert.Equal(20, dict["BETA"]);
+
+        // Default comparer dictionary also supports ReadOnlySpan<char> and C# 14+ char[] span conversion directly
+        var defaultDict = new Dictionary<string, int>();
+        defaultDict.Entry("gamma".AsSpan()).OrInsert(30);
+        char[] charArray = ['g', 'a', 'm', 'm', 'a'];
+        Assert.Equal(30, defaultDict.Entry(charArray).ValueRef);
+        Assert.Equal(30, defaultDict["gamma"]);
+    }
+
+    [Fact]
+    public void DirectReadOnlySpanCharExtension_PreservesStringAndNullOverloadResolution()
+    {
+        var dict = new Dictionary<string, int> { ["alpha"] = 42 };
+
+        // String literal/variable resolves to Entry<string, int> (priority 0), preserving C# 15 [Union] support
+        Entry<string, int> stringEntry = dict.Entry("alpha");
+        Assert.True(stringEntry.IsOccupied);
+
+        var matchedUnion = dict.Entry("alpha") switch
+        {
+            OccupiedEntry<string, int> { Value: var v } => v,
+            VacantEntry<string, int> => -1,
+        };
+        Assert.Equal(42, matchedUnion);
+
+        // null literal still resolves to string overload and throws ArgumentNullException
+        Assert.Throws<ArgumentNullException>(() => dict.Entry(null!));
+
+        // Incompatible custom IEqualityComparer<string> throws InvalidOperationException on span lookup
+        var customDict = new Dictionary<string, int>(StringOnlyComparer.Instance);
+        Assert.Throws<InvalidOperationException>(() => customDict.Entry("alpha".AsSpan()));
+
+        // Null dictionary throws NullReferenceException
+        Dictionary<string, int> nullDict = null!;
+        Assert.Throws<NullReferenceException>(() => nullDict.Entry("alpha".AsSpan()));
+    }
+
+    [Fact]
+    public void DirectReadOnlySpanCharExtension_AllocatesZeroBytesOnHitsAndMisses()
+    {
+        var dict = new Dictionary<string, int>(StringComparer.Ordinal)
+        {
+            ["alpha"] = 1,
+            ["beta"] = 2,
+        };
+        const string buffer = "alpha,beta,gamma";
+
+        for (var i = 0; i < 200; i++)
+        {
+            _ = DirectHotLoop(dict, buffer.AsSpan());
+        }
+
+        var before = GC.GetAllocatedBytesForCurrentThread();
+        var sum = DirectHotLoop(dict, buffer.AsSpan());
+        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+
+        Assert.True(sum > 0);
+        Assert.Equal(0, allocated);
+
+        [MethodImpl(MethodImplOptions.NoInlining)]
+        static int DirectHotLoop(Dictionary<string, int> d, ReadOnlySpan<char> csv)
+        {
+            var hit = csv[..5];
+            var miss = csv[11..];
+            var total = 0;
+            for (var i = 0; i < 200; i++)
+            {
+                total += d.Entry(hit).OrInsert(0);
+                if (d.Entry(miss).IsOccupied)
+                {
+                    total++;
+                }
+            }
+
+            return total;
+        }
+    }
+
+    [Fact]
     public void CustomUtf8AlternateComparer_SupportsUtf8ByteSpanLookups()
     {
         var dict = new Dictionary<string, int>(Utf8StringComparer.Instance);
@@ -404,6 +500,13 @@ public class AlternateEntryTests
     {
         public int Hits;
         public int Damage;
+    }
+
+    private sealed class StringOnlyComparer : IEqualityComparer<string>
+    {
+        public static readonly StringOnlyComparer Instance = new();
+        public bool Equals(string? x, string? y) => string.Equals(x, y, StringComparison.Ordinal);
+        public int GetHashCode(string obj) => obj.GetHashCode(StringComparison.Ordinal);
     }
 
     private sealed class Utf8StringComparer : IEqualityComparer<string>, IAlternateEqualityComparer<ReadOnlySpan<byte>, string>
