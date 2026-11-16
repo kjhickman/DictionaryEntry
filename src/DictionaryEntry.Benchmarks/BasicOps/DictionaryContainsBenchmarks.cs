@@ -3,22 +3,8 @@ using BenchmarkDotNet.Attributes;
 namespace DictionaryEntry.Benchmarks.BasicOps;
 
 [BenchmarkCategory("BasicOps")]
-public class DictionaryContainsBenchmarks : BenchmarkBase
+public class DictionaryContainsBenchmarks : IntIntBenchmarkBase
 {
-    private Dictionary<int, int> _existingDictionary = null!;
-    private Dictionary<int, int> _emptyDictionary = null!;
-
-    [GlobalSetup]
-    public void Setup()
-    {
-        _existingDictionary = new Dictionary<int, int>(capacity: BatchSize * 2);
-        _emptyDictionary = new Dictionary<int, int>(capacity: BatchSize * 2);
-        for (var i = 0; i < BatchSize; i++)
-        {
-            _existingDictionary[i] = 1;
-        }
-    }
-
     [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize)]
     public int TryGetValue_Found()
     {

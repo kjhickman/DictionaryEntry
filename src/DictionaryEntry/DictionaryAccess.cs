@@ -71,10 +71,6 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
         Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(GetEntries(dictionary)!), (nint)(uint)location).value = newValue;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static TValue RemoveOccupied(Dictionary<TKey, TValue> dictionary, ulong location) =>
-        RemoveOccupied(dictionary, location, out _);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static TValue RemoveOccupied(Dictionary<TKey, TValue> dictionary, ulong location, out TKey actualKey)
     {
         int index = (int)location;
@@ -94,8 +90,7 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
             }
             else
             {
-                ref byte firstBucket = ref Unsafe.As<int, byte>(ref MemoryMarshal.GetArrayDataReference(GetBuckets(dictionary)!));
-                Unsafe.As<byte, int>(ref Unsafe.AddByteOffset(ref firstBucket, (nint)(uint)~prevOrBucket)) = next + 1;
+                Unsafe.AddByteOffset(ref MemoryMarshal.GetArrayDataReference(GetBuckets(dictionary)!), (nint)(uint)~prevOrBucket) = next + 1;
             }
         }
         else
@@ -174,9 +169,7 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
             {
                 int prevOrBucket = typeof(TKey).IsValueType
                     ? -1
-                    : ~(int)Unsafe.ByteOffset(
-                        ref Unsafe.As<int, byte>(ref MemoryMarshal.GetArrayDataReference(GetBuckets(dictionary)!)),
-                        ref Unsafe.As<int, byte>(ref bucket));
+                    : ~(int)Unsafe.ByteOffset(ref MemoryMarshal.GetArrayDataReference(GetBuckets(dictionary)!), ref bucket);
                 uint collisionCount = 0;
                 do
                 {
@@ -232,9 +225,7 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
         {
             int prevOrBucket = typeof(TKey).IsValueType
                 ? -1
-                : ~(int)Unsafe.ByteOffset(
-                    ref Unsafe.As<int, byte>(ref MemoryMarshal.GetArrayDataReference(GetBuckets(dictionary)!)),
-                    ref Unsafe.As<int, byte>(ref bucket));
+                : ~(int)Unsafe.ByteOffset(ref MemoryMarshal.GetArrayDataReference(GetBuckets(dictionary)!), ref bucket);
             uint collisionCount = 0;
             do
             {
@@ -427,7 +418,7 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static void ThrowVacantOrDefault(Dictionary<TKey, TValue>? dictionary, TKey key)
     {
-        if (dictionary is null) DictionaryThrowHelper.ThrowDefaultEntry();
+        DictionaryThrowHelper.ThrowIfDefault(dictionary);
         ThrowKeyNotFound(key);
     }
 
@@ -435,7 +426,7 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static void ThrowOccupiedOrDefault(Dictionary<TKey, TValue>? dictionary, TKey key)
     {
-        if (dictionary is null) DictionaryThrowHelper.ThrowDefaultEntry();
+        DictionaryThrowHelper.ThrowIfDefault(dictionary);
         throw new InvalidOperationException($"The key '{key}' already exists in the dictionary.");
     }
 
@@ -452,7 +443,7 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
     public static void ThrowAlternateKeyNotFound<TAlternateKey>(Dictionary<TKey, TValue>? dictionary, TAlternateKey key)
         where TAlternateKey : notnull, allows ref struct
     {
-        if (dictionary is null) DictionaryThrowHelper.ThrowDefaultEntry();
+        DictionaryThrowHelper.ThrowIfDefault(dictionary);
         throw new KeyNotFoundException($"The key {FormatAlternateKey(dictionary, key)} was not found in the dictionary.");
     }
 
@@ -461,7 +452,7 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
     public static void ThrowAlternateOccupiedOrDefault<TAlternateKey>(Dictionary<TKey, TValue>? dictionary, TAlternateKey key)
         where TAlternateKey : notnull, allows ref struct
     {
-        if (dictionary is null) DictionaryThrowHelper.ThrowDefaultEntry();
+        DictionaryThrowHelper.ThrowIfDefault(dictionary);
         throw new InvalidOperationException($"The key {FormatAlternateKey(dictionary, key)} already exists in the dictionary.");
     }
 
@@ -472,6 +463,12 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
 
 internal static class DictionaryThrowHelper
 {
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static void ThrowIfDefault([NotNull] object? dictionary)
+    {
+        if (dictionary is null) ThrowDefaultEntry();
+    }
+
     [DoesNotReturn]
     [MethodImpl(MethodImplOptions.NoInlining)]
     public static void ThrowDefaultEntry() =>

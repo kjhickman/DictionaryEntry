@@ -496,11 +496,7 @@ public class AlternateEntryTests
         Assert.Equal(42, lookup.Entry("hello"u8).ValueRef);
     }
 
-    private struct PlayerStats
-    {
-        public int Hits;
-        public int Damage;
-    }
+    private record struct PlayerStats(int Hits, int Damage);
 
     private sealed class StringOnlyComparer : IEqualityComparer<string>
     {

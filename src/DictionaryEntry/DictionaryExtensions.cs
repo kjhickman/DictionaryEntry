@@ -1,5 +1,7 @@
 using System.Runtime.CompilerServices;
 
+[module: SkipLocalsInit]
+
 namespace DictionaryEntry;
 
 /// <summary>

@@ -1,3 +1,5 @@
+using DictionaryEntry.Tests.Stress;
+
 namespace DictionaryEntry.Tests.AdvancedUsage;
 
 public class DictionaryInternalsTests
@@ -169,7 +171,7 @@ public class DictionaryInternalsTests
     [Fact]
     public void StringAndAlternateCollisions_Exceeding100Threshold_DelegateCleanlyAndPreserveAllEntries()
     {
-        var dict = new Dictionary<string, int>(CollidingSpanStringComparer.Instance);
+        var dict = new Dictionary<string, int>(LowEntropySpanStringComparer.Colliding);
         var lookup = dict.GetAlternateLookup<ReadOnlySpan<char>>();
 
         for (var i = 0; i < 140; i++)
@@ -245,7 +247,7 @@ public class DictionaryInternalsTests
     public void OccupiedRemove_FallsBackSafelyAcrossAllExternalStructuralMutations()
     {
         // 1. External Remove of ANOTHER key in the same collision chain before occupied.Remove()
-        var d1 = new Dictionary<string, int>(CollidingSpanStringComparer.Instance)
+        var d1 = new Dictionary<string, int>(LowEntropySpanStringComparer.Colliding)
         {
             ["a"] = 1,
             ["b"] = 2,
@@ -273,7 +275,7 @@ public class DictionaryInternalsTests
         Assert.Single(d3);
 
         // 4. AlternateOccupiedEntry.Remove and RemoveEntry across collision chain and external resize
-        var d4 = new Dictionary<string, int>(CollidingSpanStringComparer.Instance)
+        var d4 = new Dictionary<string, int>(LowEntropySpanStringComparer.Colliding)
         {
             ["k1"] = 10,
             ["k2"] = 20,
@@ -319,21 +321,8 @@ public class DictionaryInternalsTests
         Dictionary<TKey, TValue> actual)
         where TKey : notnull
     {
-        Assert.Equal(expected.Count, actual.Count);
-        foreach (var (k, v) in expected)
-        {
-            Assert.True(actual.TryGetValue(k, out var actualVal));
-            Assert.Equal(v, actualVal);
-        }
-
-        // Also verify actual's own enumerator yields exact Count items
-        var enumeratedCount = 0;
-        foreach (var (k, v) in actual)
-        {
-            Assert.Equal(expected[k], v);
-            enumeratedCount++;
-        }
-        Assert.Equal(expected.Count, enumeratedCount);
+        Assert.Equal(expected, actual);
+        Assert.Equal(expected, actual.ToDictionary());
     }
 
     private sealed record RefCollidingKey(int Id)
@@ -342,17 +331,6 @@ public class DictionaryInternalsTests
     }
 
     private readonly record struct MixedLayoutValue(byte Tag, string Label, long Timestamp);
-
-    private sealed class CollidingSpanStringComparer
-        : IEqualityComparer<string>, IAlternateEqualityComparer<ReadOnlySpan<char>, string>
-    {
-        public static readonly CollidingSpanStringComparer Instance = new();
-        public bool Equals(string? x, string? y) => string.Equals(x, y, StringComparison.Ordinal);
-        public int GetHashCode(string obj) => 42;
-        public bool Equals(ReadOnlySpan<char> alternate, string other) => alternate.SequenceEqual(other.AsSpan());
-        public int GetHashCode(ReadOnlySpan<char> alternate) => 42;
-        public string Create(ReadOnlySpan<char> alternate) => alternate.ToString();
-    }
 
     private sealed class Mod10Comparer : IEqualityComparer<int>
     {

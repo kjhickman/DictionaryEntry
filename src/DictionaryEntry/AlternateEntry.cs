@@ -104,10 +104,7 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
     {
         if (Unsafe.IsNullRef(ref _valueRef))
         {
-            if (_lookup.Dictionary is null)
-            {
-                DictionaryThrowHelper.ThrowDefaultEntry();
-            }
+            DictionaryThrowHelper.ThrowIfDefault(_lookup.Dictionary);
 
             return this;
         }
@@ -136,10 +133,7 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
     {
         if (Unsafe.IsNullRef(ref _valueRef))
         {
-            if (_lookup.Dictionary is null)
-            {
-                DictionaryThrowHelper.ThrowDefaultEntry();
-            }
+            DictionaryThrowHelper.ThrowIfDefault(_lookup.Dictionary);
 
             return this;
         }
@@ -164,10 +158,7 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
     {
         if (Unsafe.IsNullRef(ref _valueRef))
         {
-            if (_lookup.Dictionary is null)
-            {
-                DictionaryThrowHelper.ThrowDefaultEntry();
-            }
+            DictionaryThrowHelper.ThrowIfDefault(_lookup.Dictionary);
 
             return this;
         }
@@ -198,10 +189,7 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
     {
         if (Unsafe.IsNullRef(ref _valueRef))
         {
-            if (_lookup.Dictionary is null)
-            {
-                DictionaryThrowHelper.ThrowDefaultEntry();
-            }
+            DictionaryThrowHelper.ThrowIfDefault(_lookup.Dictionary);
 
             return this;
         }
@@ -224,10 +212,7 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
             return ref _valueRef;
         }
 
-        if (_lookup.Dictionary is null)
-        {
-            DictionaryThrowHelper.ThrowDefaultEntry();
-        }
+        DictionaryThrowHelper.ThrowIfDefault(_lookup.Dictionary);
 
         return ref InsertVacant(defaultValue);
     }
@@ -246,10 +231,7 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
             return ref _valueRef;
         }
 
-        if (_lookup.Dictionary is null)
-        {
-            DictionaryThrowHelper.ThrowDefaultEntry();
-        }
+        DictionaryThrowHelper.ThrowIfDefault(_lookup.Dictionary);
 
         return ref InsertVacant(valueFactory());
     }
@@ -272,10 +254,7 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
             return ref _valueRef;
         }
 
-        if (_lookup.Dictionary is null)
-        {
-            DictionaryThrowHelper.ThrowDefaultEntry();
-        }
+        DictionaryThrowHelper.ThrowIfDefault(_lookup.Dictionary);
 
         return ref InsertVacant(valueFactory(state));
     }
@@ -294,10 +273,7 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
             return ref _valueRef;
         }
 
-        if (_lookup.Dictionary is null)
-        {
-            DictionaryThrowHelper.ThrowDefaultEntry();
-        }
+        DictionaryThrowHelper.ThrowIfDefault(_lookup.Dictionary);
 
         return ref InsertVacant(valueFactory(_key));
     }
@@ -320,10 +296,7 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
             return ref _valueRef;
         }
 
-        if (_lookup.Dictionary is null)
-        {
-            DictionaryThrowHelper.ThrowDefaultEntry();
-        }
+        DictionaryThrowHelper.ThrowIfDefault(_lookup.Dictionary);
 
         return ref InsertVacant(valueFactory(_key, state));
     }
@@ -341,10 +314,7 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
             return ref _valueRef;
         }
 
-        if (_lookup.Dictionary is null)
-        {
-            DictionaryThrowHelper.ThrowDefaultEntry();
-        }
+        DictionaryThrowHelper.ThrowIfDefault(_lookup.Dictionary);
 
         _valueRef = ref DictionaryAccess<TKey, TValue>.AddAlternateVacant(_lookup, _key, _hashAndVersion);
         _hashAndVersion = ulong.MaxValue;
@@ -366,10 +336,7 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
             return new AlternateOccupiedEntry<TKey, TValue, TAlternateKey>(_lookup, _key, value, _hashAndVersion);
         }
 
-        if (_lookup.Dictionary is null)
-        {
-            DictionaryThrowHelper.ThrowDefaultEntry();
-        }
+        DictionaryThrowHelper.ThrowIfDefault(_lookup.Dictionary);
 
         InsertVacant(value);
         return new AlternateOccupiedEntry<TKey, TValue, TAlternateKey>(_lookup, _key, value);
@@ -434,10 +401,7 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
         }
         else
         {
-            if (_lookup.Dictionary is null)
-            {
-                DictionaryThrowHelper.ThrowDefaultEntry();
-            }
+            DictionaryThrowHelper.ThrowIfDefault(_lookup.Dictionary);
 
             vacantAction(new AlternateVacantEntry<TKey, TValue, TAlternateKey>(_lookup, _key, _hashAndVersion));
         }
@@ -465,10 +429,7 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
         }
         else
         {
-            if (_lookup.Dictionary is null)
-            {
-                DictionaryThrowHelper.ThrowDefaultEntry();
-            }
+            DictionaryThrowHelper.ThrowIfDefault(_lookup.Dictionary);
 
             vacantAction(new AlternateVacantEntry<TKey, TValue, TAlternateKey>(_lookup, _key, _hashAndVersion), state);
         }
@@ -492,10 +453,7 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
             return occupiedFunc(new AlternateOccupiedEntry<TKey, TValue, TAlternateKey>(_lookup, _key, _valueRef, _hashAndVersion));
         }
 
-        if (_lookup.Dictionary is null)
-        {
-            DictionaryThrowHelper.ThrowDefaultEntry();
-        }
+        DictionaryThrowHelper.ThrowIfDefault(_lookup.Dictionary);
 
         return vacantFunc(new AlternateVacantEntry<TKey, TValue, TAlternateKey>(_lookup, _key, _hashAndVersion));
     }
@@ -523,10 +481,7 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
             return occupiedFunc(new AlternateOccupiedEntry<TKey, TValue, TAlternateKey>(_lookup, _key, _valueRef, _hashAndVersion), state);
         }
 
-        if (_lookup.Dictionary is null)
-        {
-            DictionaryThrowHelper.ThrowDefaultEntry();
-        }
+        DictionaryThrowHelper.ThrowIfDefault(_lookup.Dictionary);
 
         return vacantFunc(new AlternateVacantEntry<TKey, TValue, TAlternateKey>(_lookup, _key, _hashAndVersion), state);
     }

@@ -94,10 +94,7 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public TValue Insert(TValue newValue)
     {
-        if (_dictionary is null)
-        {
-            DictionaryThrowHelper.ThrowDefaultEntry();
-        }
+        DictionaryThrowHelper.ThrowIfDefault(_dictionary);
 
         if (DictionaryAccess<TKey, TValue>.GetOccupiedStamp(_dictionary) == _stamp && (int)_location >= 0)
         {
@@ -127,14 +124,11 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public TValue Remove()
     {
-        if (_dictionary is null)
-        {
-            DictionaryThrowHelper.ThrowDefaultEntry();
-        }
+        DictionaryThrowHelper.ThrowIfDefault(_dictionary);
 
         if (DictionaryAccess<TKey, TValue>.GetOccupiedStamp(_dictionary) == _stamp && (int)_location >= 0)
         {
-            return DictionaryAccess<TKey, TValue>.RemoveOccupied(_dictionary, _location);
+            return DictionaryAccess<TKey, TValue>.RemoveOccupied(_dictionary, _location, out _);
         }
 
         return RemoveFallback(_dictionary, _key);

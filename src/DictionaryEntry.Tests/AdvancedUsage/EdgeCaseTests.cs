@@ -24,23 +24,11 @@ public class EdgeCaseTests
     }
 
     [Fact]
-    public void OrDefault_WithVacantEntry_InsertsDefaultValue()
+    public void OrDefault_WithReferenceTypeVacantEntry_InsertsNullDefaultValue()
     {
-        // Arrange
-        var dict = new Dictionary<string, int>();
-
-        // Act
-        ref var value = ref dict.Entry("key").OrDefault();
-
-        // Assert
-        Assert.Equal(default, dict["key"]);
-        Assert.Equal(default, value);
-
-        // Test with reference type
-        var dictStr = new Dictionary<string, string>();
+        var dictStr = new Dictionary<string, string?>();
         ref var strValue = ref dictStr.Entry("key").OrDefault();
 
-        // Assert
         Assert.Null(dictStr["key"]);
         Assert.Null(strValue);
     }
@@ -48,88 +36,41 @@ public class EdgeCaseTests
     [Fact]
     public void DefaultEntry_IsNeitherOccupiedNorVacant()
     {
-        // Arrange
         Entry<string, int> entry = default;
 
-        // Assert
         Assert.False(entry.IsOccupied);
         Assert.False(entry.IsVacant);
     }
 
     [Fact]
-    public void DefaultEntry_ToOccupied_ThrowsInvalidOperationException()
+    public void DefaultEntry_AllOperations_ThrowInvalidOperationExceptionWithoutInvokingCallbacks()
     {
-        var ex = Assert.Throws<InvalidOperationException>(() => default(Entry<string, int>).ToOccupied());
-        Assert.Contains("not associated with a dictionary", ex.Message);
-    }
-
-    [Fact]
-    public void DefaultEntry_ValueRef_ThrowsInvalidOperationException()
-    {
-        var ex = Assert.Throws<InvalidOperationException>(() => _ = default(Entry<string, int>).ValueRef);
-        Assert.Contains("not associated with a dictionary", ex.Message);
-    }
-
-    [Fact]
-    public void DefaultEntry_ToVacant_ThrowsInvalidOperationException()
-    {
-        // Act & Assert (ref structs can't be captured by lambdas, so the default is created inside)
-        var ex = Assert.Throws<InvalidOperationException>(() => default(Entry<string, int>).ToVacant());
-        Assert.Contains("not associated with a dictionary", ex.Message);
-    }
-
-    [Fact]
-    public void DefaultEntry_MatchAction_ThrowsWithoutInvokingEitherBranch()
-    {
-        // Arrange
         var invoked = false;
 
-        // Act & Assert
+        Assert.Contains("not associated with a dictionary",
+            Assert.Throws<InvalidOperationException>(() => default(Entry<string, int>).ToOccupied()).Message);
+        Assert.Contains("not associated with a dictionary",
+            Assert.Throws<InvalidOperationException>(() => _ = default(Entry<string, int>).ValueRef).Message);
+        Assert.Contains("not associated with a dictionary",
+            Assert.Throws<InvalidOperationException>(() => default(Entry<string, int>).ToVacant()).Message);
+        Assert.Contains("not associated with a dictionary",
+            Assert.Throws<InvalidOperationException>(() =>
+                default(Entry<string, int>).AndModify(v => { invoked = true; return v; })).Message);
+
         Assert.Throws<InvalidOperationException>(() =>
             default(Entry<string, int>).Match(_ => invoked = true, _ => invoked = true));
-        Assert.False(invoked);
-    }
-
-    [Fact]
-    public void DefaultEntry_MatchFunc_ThrowsWithoutInvokingEitherBranch()
-    {
-        // Arrange
-        var invoked = false;
-
-        // Act & Assert
         Assert.Throws<InvalidOperationException>(() =>
             default(Entry<string, int>).Match(_ => { invoked = true; return 1; }, _ => { invoked = true; return 2; }));
-        Assert.False(invoked);
-    }
-
-    [Fact]
-    public void DefaultEntry_AndModify_ThrowsWithoutInvokingCallback()
-    {
-        // Arrange
-        var invoked = false;
-
-        // Act & Assert
-        var ex = Assert.Throws<InvalidOperationException>(() =>
-            default(Entry<string, int>).AndModify(v => { invoked = true; return v; }));
-        Assert.Contains("not associated with a dictionary", ex.Message);
-        Assert.False(invoked);
-    }
-
-    [Fact]
-    public void DefaultEntry_InsertionMethods_ThrowInvalidOperationExceptionWithoutInvokingFactories()
-    {
-        var factoryInvoked = false;
 
         Assert.Throws<InvalidOperationException>(() => default(Entry<string, int>).OrInsert(1));
         Assert.Throws<InvalidOperationException>(() => default(Entry<string, int>).OrDefault());
         Assert.Throws<InvalidOperationException>(() => default(Entry<string, int>).InsertEntry(1));
-
         Assert.Throws<InvalidOperationException>(() =>
-            default(Entry<string, int>).OrInsertWith(() => { factoryInvoked = true; return 1; }));
+            default(Entry<string, int>).OrInsertWith(() => { invoked = true; return 1; }));
         Assert.Throws<InvalidOperationException>(() =>
-            default(Entry<string, int>).OrInsertWithKey(_ => { factoryInvoked = true; return 1; }));
+            default(Entry<string, int>).OrInsertWithKey(_ => { invoked = true; return 1; }));
 
-        Assert.False(factoryInvoked);
+        Assert.False(invoked);
     }
 
     [Fact]
@@ -497,17 +438,10 @@ public class EdgeCaseTests
 
     private readonly record struct GridCoord(int X, int Y);
 
-    private struct PlayerStats
-    {
-        public int Score;
-        public int Visits;
-    }
+    private record struct PlayerStats(int Score, int Visits);
 
-    private readonly struct CollidingKey(int id) : IEquatable<CollidingKey>
+    private readonly record struct CollidingKey(int Id)
     {
-        public int Id { get; } = id;
-        public bool Equals(CollidingKey other) => Id == other.Id;
-        public override bool Equals(object? obj) => obj is CollidingKey other && Equals(other);
         public override int GetHashCode() => 0;
     }
 }

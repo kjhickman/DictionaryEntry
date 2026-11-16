@@ -365,9 +365,5 @@ public class StateOverloadTests
         public int Multiplier { get; } = Multiplier;
     }
 
-    private struct CounterStats
-    {
-        public int Hits;
-        public int TotalDamage;
-    }
+    private record struct CounterStats(int Hits, int TotalDamage);
 }

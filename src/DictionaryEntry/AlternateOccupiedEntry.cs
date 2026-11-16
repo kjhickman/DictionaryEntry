@@ -92,10 +92,7 @@ public readonly ref struct AlternateOccupiedEntry<TKey, TValue, TAlternateKey>
     public TValue Insert(TValue newValue)
     {
         var dictionary = _lookup.Dictionary;
-        if (dictionary is null)
-        {
-            DictionaryThrowHelper.ThrowDefaultEntry();
-        }
+        DictionaryThrowHelper.ThrowIfDefault(dictionary);
 
         if (DictionaryAccess<TKey, TValue>.GetOccupiedStamp(dictionary) == _stamp && (int)_location >= 0)
         {
@@ -126,21 +123,7 @@ public readonly ref struct AlternateOccupiedEntry<TKey, TValue, TAlternateKey>
     /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
     /// <exception cref="KeyNotFoundException">Thrown if the key is no longer present in the dictionary.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public TValue Remove()
-    {
-        var dictionary = _lookup.Dictionary;
-        if (dictionary is null)
-        {
-            DictionaryThrowHelper.ThrowDefaultEntry();
-        }
-
-        if (DictionaryAccess<TKey, TValue>.GetOccupiedStamp(dictionary) == _stamp && (int)_location >= 0)
-        {
-            return DictionaryAccess<TKey, TValue>.RemoveOccupied(dictionary, _location);
-        }
-
-        return RemoveEntryFallback(_lookup, _key).Value;
-    }
+    public TValue Remove() => RemoveEntry().Value;
 
     /// <summary>
     /// Removes this entry from the dictionary and returns both the stored <typeparamref name="TKey"/> and the removed <typeparamref name="TValue"/>.
@@ -155,10 +138,7 @@ public readonly ref struct AlternateOccupiedEntry<TKey, TValue, TAlternateKey>
     public (TKey Key, TValue Value) RemoveEntry()
     {
         var dictionary = _lookup.Dictionary;
-        if (dictionary is null)
-        {
-            DictionaryThrowHelper.ThrowDefaultEntry();
-        }
+        DictionaryThrowHelper.ThrowIfDefault(dictionary);
 
         if (DictionaryAccess<TKey, TValue>.GetOccupiedStamp(dictionary) == _stamp && (int)_location >= 0)
         {

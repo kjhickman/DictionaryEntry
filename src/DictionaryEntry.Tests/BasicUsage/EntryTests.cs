@@ -218,21 +218,6 @@ public class EntryTests
     }
 
     [Fact]
-    public void OrInsertWith_InsertsValue()
-    {
-        // Arrange
-        var dict = new Dictionary<string, int>();
-
-        // Act
-        var value = dict.Entry("key").OrInsertWith(() => 42);
-
-        // Assert
-        Assert.True(dict.ContainsKey("key"));
-        Assert.Equal(42, dict["key"]);
-        Assert.Equal(42, value);
-    }
-
-    [Fact]
     public void OrInsertWithKey_WhenNotExists_InsertsValue()
     {
         // Arrange

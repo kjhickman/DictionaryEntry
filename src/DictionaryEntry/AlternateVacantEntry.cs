@@ -50,10 +50,7 @@ public readonly ref struct AlternateVacantEntry<TKey, TValue, TAlternateKey>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public TValue Insert(TValue value)
     {
-        if (_lookup.Dictionary is null)
-        {
-            DictionaryThrowHelper.ThrowDefaultEntry();
-        }
+        DictionaryThrowHelper.ThrowIfDefault(_lookup.Dictionary);
 
         ref TValue slot = ref DictionaryAccess<TKey, TValue>.AddAlternateVacant(_lookup, _key, _hashAndVersion, overwriteIfStale: true);
         slot = value;

@@ -1,6 +1,5 @@
 using System.Reflection;
 using System.Reflection.Emit;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 
@@ -120,34 +119,32 @@ public class LayoutParityTests
         Assert.Equal(v1, dict[k2]);
     }
 
-    private static EntryLayout MeasureStructLayout(Type entryStructType)
-    {
-        var arr = Array.CreateInstance(entryStructType, 2);
-        var stride = (int)typeof(Unsafe).GetMethod(nameof(Unsafe.SizeOf))!.MakeGenericMethod(entryStructType).Invoke(null, null)!;
+    private static EntryLayout MeasureStructLayout(Type entryStructType) => new(
+        ElementStride: MeasureOffsetOrSize(entryStructType, fieldName: null),
+        HashCodeOffset: MeasureOffsetOrSize(entryStructType, "hashCode"),
+        NextOffset: MeasureOffsetOrSize(entryStructType, "next"),
+        KeyOffset: MeasureOffsetOrSize(entryStructType, "key"),
+        ValueOffset: MeasureOffsetOrSize(entryStructType, "value"));
 
-        return new EntryLayout(
-            ElementStride: stride,
-            HashCodeOffset: MeasureFieldOffset(entryStructType, "hashCode", arr),
-            NextOffset: MeasureFieldOffset(entryStructType, "next", arr),
-            KeyOffset: MeasureFieldOffset(entryStructType, "key", arr),
-            ValueOffset: MeasureFieldOffset(entryStructType, "value", arr));
-    }
-
-    private static nint MeasureFieldOffset(Type entryStructType, string fieldName, Array twoElementArray)
+    private static nint MeasureOffsetOrSize(Type entryStructType, string? fieldName)
     {
-        var field = entryStructType.GetField(fieldName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!;
-        var dm = new DynamicMethod($"Offset_{fieldName}", typeof(nint), [typeof(Array)], restrictedSkipVisibility: true);
+        var dm = new DynamicMethod($"Layout_{fieldName ?? "size"}", typeof(nint), Type.EmptyTypes, restrictedSkipVisibility: true);
         var il = dm.GetILGenerator();
-        il.Emit(OpCodes.Ldarg_0);
-        il.Emit(OpCodes.Ldc_I4_0);
-        il.Emit(OpCodes.Ldelema, entryStructType);
-        il.Emit(OpCodes.Ldflda, field);
-        il.Emit(OpCodes.Ldarg_0);
-        il.Emit(OpCodes.Ldc_I4_0);
-        il.Emit(OpCodes.Ldelema, entryStructType);
-        il.Emit(OpCodes.Sub);
+        if (fieldName is null)
+        {
+            il.Emit(OpCodes.Sizeof, entryStructType);
+            il.Emit(OpCodes.Conv_I);
+        }
+        else
+        {
+            var local = il.DeclareLocal(entryStructType);
+            il.Emit(OpCodes.Ldloca_S, local);
+            il.Emit(OpCodes.Ldflda, entryStructType.GetField(fieldName, BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)!);
+            il.Emit(OpCodes.Ldloca_S, local);
+            il.Emit(OpCodes.Sub);
+        }
         il.Emit(OpCodes.Ret);
-        return dm.CreateDelegate<Func<Array, nint>>()(twoElementArray);
+        return dm.CreateDelegate<Func<nint>>()();
     }
 
     private readonly record struct EntryLayout(
@@ -173,22 +170,11 @@ public class LayoutParityTests
     private readonly record struct RefBearingKeyStruct(int Id, string Label);
 
     [StructLayout(LayoutKind.Explicit, Size = 16)]
-    private struct ExplicitUnionStruct : IEquatable<ExplicitUnionStruct>
+    private record struct ExplicitUnionStruct
     {
-        [FieldOffset(0)]
-        public long LongValue;
-
-        [FieldOffset(0)]
-        public int LowInt;
-
-        [FieldOffset(8)]
-        public double SecondHalf;
-
-        public readonly bool Equals(ExplicitUnionStruct other) =>
-            LongValue == other.LongValue && BitConverter.DoubleToInt64Bits(SecondHalf) == BitConverter.DoubleToInt64Bits(other.SecondHalf);
-
-        public override readonly bool Equals(object? obj) => obj is ExplicitUnionStruct other && Equals(other);
-        public override readonly int GetHashCode() => HashCode.Combine(LongValue, SecondHalf);
+        [FieldOffset(0)] public long LongValue;
+        [FieldOffset(0)] public int LowInt;
+        [FieldOffset(8)] public double SecondHalf;
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

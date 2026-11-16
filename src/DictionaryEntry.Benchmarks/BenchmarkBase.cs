@@ -32,6 +32,23 @@ public abstract class BenchmarkBase
     }
 }
 
+public abstract class IntIntBenchmarkBase : BenchmarkBase
+{
+    protected Dictionary<int, int> _existingDictionary = null!;
+    protected Dictionary<int, int> _emptyDictionary = null!;
+
+    [GlobalSetup]
+    public void GlobalSetup()
+    {
+        _existingDictionary = new Dictionary<int, int>(capacity: BatchSize * 2);
+        _emptyDictionary = new Dictionary<int, int>(capacity: BatchSize * 2);
+        for (var i = 0; i < BatchSize; i++)
+        {
+            _existingDictionary[i] = 10;
+        }
+    }
+}
+
 public abstract class StringIntBenchmarkBase : BenchmarkBase
 {
     protected Dictionary<string, int> _existingDictionary = null!;

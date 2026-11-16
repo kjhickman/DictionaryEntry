@@ -50,10 +50,7 @@ public readonly struct VacantEntry<TKey, TValue> where TKey : notnull
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public TValue Insert(TValue value)
     {
-        if (_dictionary is null)
-        {
-            DictionaryThrowHelper.ThrowDefaultEntry();
-        }
+        DictionaryThrowHelper.ThrowIfDefault(_dictionary);
 
         ref TValue slot = ref DictionaryAccess<TKey, TValue>.AddVacant(_dictionary, _key, _hashAndVersion, overwriteIfStale: true);
         slot = value;

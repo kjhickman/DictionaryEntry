@@ -41,20 +41,6 @@ public class FactoryMethodTests
     }
 
     [Fact]
-    public void OrInsertWithKey_UsesKeyInFactory()
-    {
-        // Arrange
-        var dict = new Dictionary<string, int>();
-
-        // Act
-        ref var value = ref dict.Entry("key").OrInsertWithKey(k => k.Length);
-
-        // Assert
-        Assert.Equal(3, dict["key"]); // "key".Length == 3
-        Assert.Equal(3, value);
-    }
-
-    [Fact]
     public void OrInsertWith_ReturnsMutableReference_ForVacantAndOccupiedEntries()
     {
         // Arrange

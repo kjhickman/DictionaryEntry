@@ -46,7 +46,7 @@ public class DifferentialFuzzTests
             0 => null, // default EqualityComparer<string>.Default (NonRandomizedStringEqualityComparer)
             1 => StringComparer.Ordinal,
             2 => StringComparer.OrdinalIgnoreCase,
-            _ => LowEntropySpanStringComparer.Instance, // heavy bucket collisions + AlternateLookup
+            _ => LowEntropySpanStringComparer.LowEntropy, // heavy bucket collisions + AlternateLookup
         };
 
         var sut = initialCapacity == 0 && comparer is null
@@ -556,29 +556,11 @@ public class DifferentialFuzzTests
         int seed,
         int step)
     {
-        Assert.Equal(oracle.Count, sut.Count);
-        foreach (var (k, expectedVal) in oracle)
-        {
-            Assert.True(sut.TryGetValue(k, out var actualVal));
-            Assert.Equal(expectedVal, actualVal);
-        }
-
+        Assert.Equal(oracle, sut);
         DictionaryStructureVerifier<int, FuzzRecord>.Verify(sut, seed, step);
     }
 
     private record struct FuzzRecord(int Counter, string? Tag, long Checksum);
-
-    private sealed class LowEntropySpanStringComparer
-        : IEqualityComparer<string>, IAlternateEqualityComparer<ReadOnlySpan<char>, string>
-    {
-        public static readonly LowEntropySpanStringComparer Instance = new();
-
-        public bool Equals(string? x, string? y) => string.Equals(x, y, StringComparison.Ordinal);
-        public int GetHashCode(string obj) => obj.Length & 3;
-        public bool Equals(ReadOnlySpan<char> alternate, string other) => alternate.SequenceEqual(other.AsSpan());
-        public int GetHashCode(ReadOnlySpan<char> alternate) => alternate.Length & 3;
-        public string Create(ReadOnlySpan<char> alternate) => alternate.ToString();
-    }
 
     private static class DictionaryStructureVerifier<TKey, TValue> where TKey : notnull
     {
@@ -667,4 +649,17 @@ public class DifferentialFuzzTests
             }
         }
     }
+}
+
+internal sealed class LowEntropySpanStringComparer(int mask)
+    : IEqualityComparer<string>, IAlternateEqualityComparer<ReadOnlySpan<char>, string>
+{
+    public static readonly LowEntropySpanStringComparer Colliding = new(0);
+    public static readonly LowEntropySpanStringComparer LowEntropy = new(3);
+
+    public bool Equals(string? x, string? y) => string.Equals(x, y, StringComparison.Ordinal);
+    public int GetHashCode(string obj) => obj.Length & mask;
+    public bool Equals(ReadOnlySpan<char> alternate, string other) => alternate.SequenceEqual(other.AsSpan());
+    public int GetHashCode(ReadOnlySpan<char> alternate) => alternate.Length & mask;
+    public string Create(ReadOnlySpan<char> alternate) => alternate.ToString();
 }
