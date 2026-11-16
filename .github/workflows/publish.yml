@@ -2,42 +2,61 @@ name: Publish NuGet Package
 
 on:
   release:
-    types: [published]
+    types: [ published ]
   workflow_dispatch: {}
-    
+
 jobs:
   build-and-publish:
+    if: github.event_name == 'release' || github.ref == 'refs/heads/main'
     permissions:
       contents: read
       id-token: write
     runs-on: ubuntu-latest
-    
+
     steps:
-    - uses: actions/checkout@v7
-    
-    - name: Setup .NET
-      uses: actions/setup-dotnet@v6
-      with:
-        dotnet-version: |
-          9.0.x
-          10.0.x
-          11.0.x
-        
-    - name: Build
-      run: dotnet build --configuration Release
-      
-    - name: Test
-      run: dotnet test --configuration Release --no-build --verbosity normal
-      
-    - name: Pack
-      run: dotnet pack src/DictionaryEntry/DictionaryEntry.csproj --configuration Release --no-build --output ./nupkgs
-      
-    - name: NuGet login
-      uses: NuGet/login@v1
-      id: login
-      with:
-        user: kjhickman
-      
-    - name: Push to NuGet.org
-      run: dotnet nuget push ./nupkgs/*.nupkg --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate
-      
+      - uses: actions/checkout@v7
+
+      - name: Setup .NET
+        uses: actions/setup-dotnet@v6
+        with:
+          dotnet-version: |
+            9.0.x
+            10.0.x
+            11.0.x
+
+      - name: Validate release version
+        if: github.event_name == 'release'
+        env:
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          EXPECTED_VERSION="${RELEASE_TAG#v}"
+          PROJECT_VERSION="$(dotnet msbuild src/DictionaryEntry/DictionaryEntry.csproj -getProperty:Version)"
+          if [[ "$EXPECTED_VERSION" != "$PROJECT_VERSION" ]]; then
+            echo "::error::Release tag '$RELEASE_TAG' does not match <Version>$PROJECT_VERSION</Version> in DictionaryEntry.csproj."
+            exit 1
+          fi
+
+      - name: Build
+        run: dotnet build --configuration Release
+
+      - name: Test
+        run: dotnet test --configuration Release --no-build --verbosity normal
+
+      - name: Pack
+        run: dotnet pack src/DictionaryEntry/DictionaryEntry.csproj --configuration Release --no-build --output ./nupkgs
+
+      - name: Upload package artifacts
+        uses: actions/upload-artifact@v7
+        with:
+          name: nuget-packages
+          path: ./nupkgs/*
+          if-no-files-found: error
+
+      - name: NuGet login
+        uses: NuGet/login@v1
+        id: login
+        with:
+          user: kjhickman
+
+      - name: Push to NuGet.org
+        run: dotnet nuget push ./nupkgs/*.nupkg --api-key "${{ steps.login.outputs.NUGET_API_KEY }}" --source https://api.nuget.org/v3/index.json --skip-duplicate

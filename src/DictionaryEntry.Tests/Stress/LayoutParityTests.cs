@@ -1,7 +1,5 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
 using System.Reflection.Emit;
-using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 
@@ -9,20 +7,20 @@ namespace DictionaryEntry.Tests.Stress;
 
 public class LayoutParityTests
 {
+    private static readonly Type OpenDictionaryAccessType =
+        typeof(Entry<,>).Assembly.GetType("DictionaryEntry.DictionaryAccess`2", throwOnError: true)!;
+
+    private static readonly Type OpenRawEntryType =
+        OpenDictionaryAccessType.GetNestedType("RawEntry", BindingFlags.NonPublic | BindingFlags.Public)!;
+
+    private static readonly Type OpenBclEntryType =
+        typeof(Dictionary<,>).GetNestedType("Entry", BindingFlags.NonPublic)!;
+
     private static readonly int[] SampleIntArray = [1, 2];
 
     [Fact]
-    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "JIT-only layout reflection test guarded by RuntimeFeature.IsDynamicCodeSupported.")]
-    [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "JIT-only layout reflection test guarded by RuntimeFeature.IsDynamicCodeSupported.")]
-    [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "JIT-only layout reflection test guarded by RuntimeFeature.IsDynamicCodeSupported.")]
-    [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "JIT-only layout reflection test guarded by RuntimeFeature.IsDynamicCodeSupported.")]
     public void AllPathologicalKeyAndValueTypeCombinations_HaveIdenticalBclAndRawEntryLayouts()
     {
-        if (!RuntimeFeature.IsDynamicCodeSupported)
-        {
-            return;
-        }
-
         ReadOnlySpan<TypeSample> keys =
         [
             TypeSample.Create<byte>(1, 2),
@@ -72,17 +70,11 @@ public class LayoutParityTests
         Assert.Equal(120, checkedPairs);
     }
 
-    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "JIT-only layout reflection test guarded by RuntimeFeature.IsDynamicCodeSupported.")]
-    [UnconditionalSuppressMessage("Trimming", "IL2055", Justification = "JIT-only layout reflection test guarded by RuntimeFeature.IsDynamicCodeSupported.")]
-    [UnconditionalSuppressMessage("Trimming", "IL2060", Justification = "JIT-only layout reflection test guarded by RuntimeFeature.IsDynamicCodeSupported.")]
-    [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "JIT-only layout reflection test guarded by RuntimeFeature.IsDynamicCodeSupported.")]
-    [UnconditionalSuppressMessage("Trimming", "IL2080", Justification = "JIT-only layout reflection test guarded by RuntimeFeature.IsDynamicCodeSupported.")]
-    [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "JIT-only layout reflection test guarded by RuntimeFeature.IsDynamicCodeSupported.")]
     private static void VerifyPair<TKey, TValue>(object k1Obj, object k2Obj, object v1Obj, object v2Obj)
         where TKey : notnull
     {
-        var bclEntryType = JitTypes.OpenBclEntryType.MakeGenericType(typeof(TKey), typeof(TValue));
-        var rawEntryType = JitTypes.OpenRawEntryType.MakeGenericType(typeof(TKey), typeof(TValue));
+        var bclEntryType = OpenBclEntryType.MakeGenericType(typeof(TKey), typeof(TValue));
+        var rawEntryType = OpenRawEntryType.MakeGenericType(typeof(TKey), typeof(TValue));
 
         // 1. Verify exact array stride and field byte offsets between Dictionary.Entry and DictionaryAccess.RawEntry
         var bclLayout = MeasureStructLayout(bclEntryType);
@@ -102,7 +94,7 @@ public class LayoutParityTests
 
         var dict = new Dictionary<TKey, TValue>(capacity: 4);
         var bclEntriesField = typeof(Dictionary<TKey, TValue>).GetField("_entries", BindingFlags.Instance | BindingFlags.NonPublic)!;
-        var getEntriesMethod = JitTypes.OpenDictionaryAccessType
+        var getEntriesMethod = OpenDictionaryAccessType
             .MakeGenericType(typeof(TKey), typeof(TValue))
             .GetMethod("GetEntries", BindingFlags.Static | BindingFlags.Public)!;
 
@@ -136,8 +128,6 @@ public class LayoutParityTests
         KeyOffset: MeasureOffsetOrSize(entryStructType, "key"),
         ValueOffset: MeasureOffsetOrSize(entryStructType, "value"));
 
-    [UnconditionalSuppressMessage("Trimming", "IL2070", Justification = "JIT-only layout reflection test guarded by RuntimeFeature.IsDynamicCodeSupported.")]
-    [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "JIT-only layout reflection test guarded by RuntimeFeature.IsDynamicCodeSupported.")]
     private static nint MeasureOffsetOrSize(Type entryStructType, string? fieldName)
     {
         var dm = new DynamicMethod($"Layout_{fieldName ?? "size"}", typeof(nint), Type.EmptyTypes, restrictedSkipVisibility: true);
@@ -157,21 +147,6 @@ public class LayoutParityTests
         }
         il.Emit(OpCodes.Ret);
         return dm.CreateDelegate<Func<nint>>()();
-    }
-
-    [UnconditionalSuppressMessage("Trimming", "IL2026", Justification = "JIT-only layout reflection test guarded by RuntimeFeature.IsDynamicCodeSupported.")]
-    [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "JIT-only layout reflection test guarded by RuntimeFeature.IsDynamicCodeSupported.")]
-    [UnconditionalSuppressMessage("Trimming", "IL2080", Justification = "JIT-only layout reflection test guarded by RuntimeFeature.IsDynamicCodeSupported.")]
-    private static class JitTypes
-    {
-        public static readonly Type OpenDictionaryAccessType =
-            typeof(Entry<,>).Assembly.GetType("DictionaryEntry.DictionaryAccess`2", throwOnError: true)!;
-
-        public static readonly Type OpenRawEntryType =
-            OpenDictionaryAccessType.GetNestedType("RawEntry", BindingFlags.NonPublic | BindingFlags.Public)!;
-
-        public static readonly Type OpenBclEntryType =
-            typeof(Dictionary<,>).GetNestedType("Entry", BindingFlags.NonPublic)!;
     }
 
     private readonly record struct EntryLayout(

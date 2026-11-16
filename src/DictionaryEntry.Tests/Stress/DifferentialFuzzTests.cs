@@ -1,6 +1,4 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
-using System.Runtime.CompilerServices;
 
 namespace DictionaryEntry.Tests.Stress;
 
@@ -509,10 +507,7 @@ public class DifferentialFuzzTests
             if ((step & 31) == 31 || step == steps - 1)
             {
                 DictionaryAssert.Equal(oracle, sut);
-                if (RuntimeFeature.IsDynamicCodeSupported)
-                {
-                    DictionaryStructureVerifier<int, FuzzRecord>.Verify(sut, seed, step);
-                }
+                DictionaryStructureVerifier<int, FuzzRecord>.Verify(sut, seed, step);
             }
         }
     }
@@ -531,17 +526,11 @@ public class DifferentialFuzzTests
             Assert.Equal(expectedVal, spanVal);
         }
 
-        if (RuntimeFeature.IsDynamicCodeSupported)
-        {
-            DictionaryStructureVerifier<string, int>.Verify(sut, seed, step);
-        }
+        DictionaryStructureVerifier<string, int>.Verify(sut, seed, step);
     }
 
     private record struct FuzzRecord(int Counter, string? Tag, long Checksum);
 
-    [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "JIT-only internal invariant verifier guarded by RuntimeFeature.IsDynamicCodeSupported.")]
-    [UnconditionalSuppressMessage("Trimming", "IL2080", Justification = "JIT-only internal invariant verifier guarded by RuntimeFeature.IsDynamicCodeSupported.")]
-    [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "JIT-only internal invariant verifier guarded by RuntimeFeature.IsDynamicCodeSupported.")]
     private static class DictionaryStructureVerifier<TKey, TValue> where TKey : notnull
     {
         private const int StartOfFreeList = -3;
