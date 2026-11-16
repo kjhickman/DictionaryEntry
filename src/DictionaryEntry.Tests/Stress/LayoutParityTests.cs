@@ -1,5 +1,6 @@
 using System.Reflection;
 using System.Reflection.Emit;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Runtime.Intrinsics;
 
@@ -122,21 +123,10 @@ public class LayoutParityTests
     private static EntryLayout MeasureStructLayout(Type entryStructType)
     {
         var arr = Array.CreateInstance(entryStructType, 2);
-
-        var strideMethod = new DynamicMethod("MeasureStride", typeof(nint), [typeof(Array)], restrictedSkipVisibility: true);
-        var strideIl = strideMethod.GetILGenerator();
-        strideIl.Emit(OpCodes.Ldarg_0);
-        strideIl.Emit(OpCodes.Ldc_I4_1);
-        strideIl.Emit(OpCodes.Ldelema, entryStructType);
-        strideIl.Emit(OpCodes.Ldarg_0);
-        strideIl.Emit(OpCodes.Ldc_I4_0);
-        strideIl.Emit(OpCodes.Ldelema, entryStructType);
-        strideIl.Emit(OpCodes.Sub);
-        strideIl.Emit(OpCodes.Ret);
-        var measureStride = strideMethod.CreateDelegate<Func<Array, nint>>();
+        var stride = (int)typeof(Unsafe).GetMethod(nameof(Unsafe.SizeOf))!.MakeGenericMethod(entryStructType).Invoke(null, null)!;
 
         return new EntryLayout(
-            ElementStride: measureStride(arr),
+            ElementStride: stride,
             HashCodeOffset: MeasureFieldOffset(entryStructType, "hashCode", arr),
             NextOffset: MeasureFieldOffset(entryStructType, "next", arr),
             KeyOffset: MeasureFieldOffset(entryStructType, "key", arr),

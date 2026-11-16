@@ -3,35 +3,9 @@ using BenchmarkDotNet.Attributes;
 namespace DictionaryEntry.Benchmarks.BasicOps;
 
 [BenchmarkCategory("BasicOps")]
-public class IncrementCounterBenchmarks : BenchmarkBase
+public class IncrementCounterBenchmarks : StringIntMutableBenchmarkBase
 {
-    private Dictionary<string, int> _existingDictionary = null!;
-    private Dictionary<string, int> _emptyDictionary = null!;
-    private string[] _keys = null!;
     private int _amount = 5;
-
-    [GlobalSetup]
-    public void GlobalSetup()
-    {
-        _existingDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
-        _emptyDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
-        _keys = new string[BatchSize];
-        for (var i = 0; i < BatchSize; i++)
-        {
-            var key = $"key_{i}";
-            _keys[i] = key;
-            _existingDictionary[key] = 10;
-        }
-    }
-
-    [IterationSetup]
-    public void IterationSetup()
-    {
-        for (var i = 0; i < BatchSize; i++)
-        {
-            _existingDictionary[_keys[i]] = 10;
-        }
-    }
 
     private static void IncrementCounterTraditional(Dictionary<string, int> dict, string key)
     {

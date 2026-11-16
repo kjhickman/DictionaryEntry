@@ -3,39 +3,21 @@ using BenchmarkDotNet.Attributes;
 namespace DictionaryEntry.Benchmarks.AdvancedOps;
 
 [BenchmarkCategory("AdvancedOps")]
-public class PatternMatchingBenchmarks : BenchmarkBase
+public class PatternMatchingBenchmarks : StringIntMutableBenchmarkBase
 {
     private Dictionary<string, int> _readOnlyDictionary = null!;
-    private Dictionary<string, int> _mutableDictionary = null!;
-    private Dictionary<string, int> _emptyDictionary = null!;
-    private string[] _keys = null!;
     private int _factor = 3;
 
-    [GlobalSetup]
-    public void GlobalSetup()
+    public override void GlobalSetup()
     {
+        base.GlobalSetup();
         _readOnlyDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
-        _mutableDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
-        _emptyDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
-        _keys = new string[BatchSize];
 
         // Spread values evenly across all 5 switch arms: <= 0, 1..10, 11..50, 51..100, > 100
         ReadOnlySpan<int> bucketValues = [-5, 5, 25, 75, 150];
         for (var i = 0; i < BatchSize; i++)
         {
-            var key = $"key_{i}";
-            _keys[i] = key;
-            _readOnlyDictionary[key] = bucketValues[i % bucketValues.Length];
-            _mutableDictionary[key] = 10;
-        }
-    }
-
-    [IterationSetup]
-    public void IterationSetup()
-    {
-        for (var i = 0; i < BatchSize; i++)
-        {
-            _mutableDictionary[_keys[i]] = 10;
+            _readOnlyDictionary[_keys[i]] = bucketValues[i % bucketValues.Length];
         }
     }
 
@@ -220,7 +202,7 @@ public class PatternMatchingBenchmarks : BenchmarkBase
     {
         for (var i = 0; i < BatchSize; i++)
         {
-            DifferentActionsTraditional(_mutableDictionary, _keys[i]);
+            DifferentActionsTraditional(_existingDictionary, _keys[i]);
         }
     }
 
@@ -239,7 +221,7 @@ public class PatternMatchingBenchmarks : BenchmarkBase
     {
         for (var i = 0; i < BatchSize; i++)
         {
-            DifferentActionsEntryMatch(_mutableDictionary, _keys[i]);
+            DifferentActionsEntryMatch(_existingDictionary, _keys[i]);
         }
     }
 
@@ -258,7 +240,7 @@ public class PatternMatchingBenchmarks : BenchmarkBase
     {
         for (var i = 0; i < BatchSize; i++)
         {
-            DifferentActionsEntrySwitch(_mutableDictionary, _keys[i]);
+            DifferentActionsEntrySwitch(_existingDictionary, _keys[i]);
         }
     }
 
@@ -278,7 +260,7 @@ public class PatternMatchingBenchmarks : BenchmarkBase
         var factor = _factor;
         for (var i = 0; i < BatchSize; i++)
         {
-            StatefulActionsEntryMatchCapturing(_mutableDictionary, _keys[i], factor);
+            StatefulActionsEntryMatchCapturing(_existingDictionary, _keys[i], factor);
         }
     }
 
@@ -299,7 +281,7 @@ public class PatternMatchingBenchmarks : BenchmarkBase
         var factor = _factor;
         for (var i = 0; i < BatchSize; i++)
         {
-            StatefulActionsEntryMatchState(_mutableDictionary, _keys[i], factor);
+            StatefulActionsEntryMatchState(_existingDictionary, _keys[i], factor);
         }
     }
 
@@ -320,7 +302,7 @@ public class PatternMatchingBenchmarks : BenchmarkBase
         var factor = _factor;
         for (var i = 0; i < BatchSize; i++)
         {
-            StatefulActionsEntrySwitch(_mutableDictionary, _keys[i], factor);
+            StatefulActionsEntrySwitch(_existingDictionary, _keys[i], factor);
         }
     }
 

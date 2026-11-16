@@ -3,26 +3,8 @@ using BenchmarkDotNet.Attributes;
 namespace DictionaryEntry.Benchmarks.BasicOps;
 
 [BenchmarkCategory("BasicOps")]
-public class TryGetEntryBenchmarks : BenchmarkBase
+public class TryGetEntryBenchmarks : StringIntBenchmarkBase
 {
-    private Dictionary<string, int> _existingDictionary = null!;
-    private Dictionary<string, int> _emptyDictionary = null!;
-    private string[] _keys = null!;
-
-    [GlobalSetup]
-    public void Setup()
-    {
-        _existingDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
-        _emptyDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
-        _keys = new string[BatchSize];
-        for (var i = 0; i < BatchSize; i++)
-        {
-            var key = $"key_{i}";
-            _keys[i] = key;
-            _existingDictionary[key] = 42;
-        }
-    }
-
     private static int? TryLookupTraditional(Dictionary<string, int> dict, string key)
     {
         return dict.TryGetValue(key, out var value) ? value : null;

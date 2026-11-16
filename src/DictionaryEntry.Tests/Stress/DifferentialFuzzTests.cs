@@ -4,15 +4,10 @@ namespace DictionaryEntry.Tests.Stress;
 
 public class DifferentialFuzzTests
 {
-    private static int GetSeedCount(int defaultSeeds) =>
-        int.TryParse(Environment.GetEnvironmentVariable("DICTIONARYENTRY_FUZZ_SEEDS"), out var parsed) && parsed > 0
-            ? parsed
-            : defaultSeeds;
-
     [Fact]
     public void RandomizedStringAndSpanStateMachine_MatchesOracleAndPreservesInternalInvariants()
     {
-        var seedCount = GetSeedCount(defaultSeeds: 400);
+        const int seedCount = 400;
         const int stepsPerSeed = 250;
 
         for (var seed = 1; seed <= seedCount; seed++)
@@ -24,7 +19,7 @@ public class DifferentialFuzzTests
     [Fact]
     public void RandomizedValueTypeAndMixedStructStateMachine_MatchesOracleAndPreservesInternalInvariants()
     {
-        var seedCount = GetSeedCount(defaultSeeds: 200);
+        const int seedCount = 200;
         const int stepsPerSeed = 250;
 
         for (var seed = 1; seed <= seedCount; seed++)

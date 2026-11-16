@@ -3,24 +3,9 @@ using BenchmarkDotNet.Attributes;
 namespace DictionaryEntry.Benchmarks.ConditionalOps;
 
 [BenchmarkCategory("ConditionalOps")]
-public class ConditionalModificationBenchmarks : BenchmarkBase
+public class ConditionalModificationBenchmarks : StringIntBenchmarkBase
 {
-    private Dictionary<string, int> _existingDictionary = null!;
-    private Dictionary<string, int> _emptyDictionary = null!;
-    private string[] _keys = null!;
     private const int Threshold = 5;
-
-    [GlobalSetup]
-    public void GlobalSetup()
-    {
-        _existingDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
-        _emptyDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
-        _keys = new string[BatchSize];
-        for (var i = 0; i < BatchSize; i++)
-        {
-            _keys[i] = $"key_{i}";
-        }
-    }
 
     [IterationSetup]
     public void IterationSetup()

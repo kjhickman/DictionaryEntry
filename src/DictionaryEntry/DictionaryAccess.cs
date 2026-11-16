@@ -71,49 +71,8 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
         Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(GetEntries(dictionary)!), (nint)(uint)location).value = newValue;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static TValue RemoveOccupied(Dictionary<TKey, TValue> dictionary, ulong location)
-    {
-        int index = (int)location;
-        int prevOrBucket = (int)(location >> 32);
-        ref RawEntry firstEntry = ref MemoryMarshal.GetArrayDataReference(GetEntries(dictionary)!);
-        ref RawEntry target = ref Unsafe.Add(ref firstEntry, (nint)(uint)index);
-
-        int next = target.next;
-        TValue value = target.value;
-
-        if (prevOrBucket < 0)
-        {
-            if (typeof(TKey).IsValueType)
-            {
-                GetBucket(dictionary, target.hashCode) = next + 1;
-            }
-            else
-            {
-                ref byte firstBucket = ref Unsafe.As<int, byte>(ref MemoryMarshal.GetArrayDataReference(GetBuckets(dictionary)!));
-                Unsafe.As<byte, int>(ref Unsafe.AddByteOffset(ref firstBucket, (nint)(uint)~prevOrBucket)) = next + 1;
-            }
-        }
-        else
-        {
-            Unsafe.Add(ref firstEntry, (nint)(uint)prevOrBucket).next = next;
-        }
-
-        target.next = -3 - GetFreeList(dictionary);
-
-        if (RuntimeHelpers.IsReferenceOrContainsReferences<TKey>())
-        {
-            target.key = default!;
-        }
-
-        if (RuntimeHelpers.IsReferenceOrContainsReferences<TValue>())
-        {
-            target.value = default!;
-        }
-
-        GetFreeList(dictionary) = index;
-        GetFreeCount(dictionary)++;
-        return value;
-    }
+    public static TValue RemoveOccupied(Dictionary<TKey, TValue> dictionary, ulong location) =>
+        RemoveOccupied(dictionary, location, out _);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static TValue RemoveOccupied(Dictionary<TKey, TValue> dictionary, ulong location, out TKey actualKey)
@@ -160,46 +119,6 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
         GetFreeCount(dictionary)++;
         return value;
     }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OccupiedEntry<TKey, TValue> CreateOccupied(
-        Dictionary<TKey, TValue> dictionary,
-        TKey key,
-        TValue value,
-        ulong location) =>
-        new(dictionary, key, value, location, GetOccupiedStamp(dictionary));
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static OccupiedEntry<TKey, TValue> CreateOccupiedUnstamped(
-        Dictionary<TKey, TValue> dictionary,
-        TKey key,
-        TValue value) =>
-        new(dictionary, key, value, ulong.MaxValue, 0);
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static AlternateOccupiedEntry<TKey, TValue, TAlternateKey> CreateAlternateOccupied<TAlternateKey>(
-        Dictionary<TKey, TValue>.AlternateLookup<TAlternateKey> lookup,
-        TAlternateKey key,
-        TValue value,
-        ulong location)
-        where TAlternateKey : notnull, allows ref struct
-    {
-        var dictionary = lookup.Dictionary;
-        return new AlternateOccupiedEntry<TKey, TValue, TAlternateKey>(
-            lookup,
-            key,
-            value,
-            location,
-            GetOccupiedStamp(dictionary));
-    }
-
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static AlternateOccupiedEntry<TKey, TValue, TAlternateKey> CreateAlternateOccupiedUnstamped<TAlternateKey>(
-        Dictionary<TKey, TValue>.AlternateLookup<TAlternateKey> lookup,
-        TAlternateKey key,
-        TValue value)
-        where TAlternateKey : notnull, allows ref struct =>
-        new(lookup, key, value, ulong.MaxValue, 0);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ref TValue FindValue(
@@ -501,16 +420,61 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
 
     [DoesNotReturn]
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void ThrowAlternateKeyAlreadyAdded<TAlternateKey>(
-        Dictionary<TKey, TValue> dictionary,
-        TAlternateKey key)
+    public static void ThrowKeyNotFound(TKey key) =>
+        throw new KeyNotFoundException($"The key '{key}' was not found in the dictionary.");
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void ThrowVacantOrDefault(Dictionary<TKey, TValue>? dictionary, TKey key)
+    {
+        if (dictionary is null) DictionaryThrowHelper.ThrowDefaultEntry();
+        ThrowKeyNotFound(key);
+    }
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void ThrowOccupiedOrDefault(Dictionary<TKey, TValue>? dictionary, TKey key)
+    {
+        if (dictionary is null) DictionaryThrowHelper.ThrowDefaultEntry();
+        throw new InvalidOperationException($"The key '{key}' already exists in the dictionary.");
+    }
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ThrowAlternateKeyAlreadyAdded<TAlternateKey>(Dictionary<TKey, TValue> dictionary, TAlternateKey key)
+        where TAlternateKey : notnull, allows ref struct =>
+        throw new ArgumentException(dictionary.Comparer is IAlternateEqualityComparer<TAlternateKey, TKey> alt
+            ? $"An item with the same key has already been added. Key: {alt.Create(key)}"
+            : "An item with the same key has already been added.");
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void ThrowAlternateKeyNotFound<TAlternateKey>(Dictionary<TKey, TValue>? dictionary, TAlternateKey key)
         where TAlternateKey : notnull, allows ref struct
     {
-        if (dictionary.Comparer is IAlternateEqualityComparer<TAlternateKey, TKey> altComparer)
-        {
-            throw new ArgumentException($"An item with the same key has already been added. Key: {altComparer.Create(key)}");
-        }
-
-        throw new ArgumentException("An item with the same key has already been added.");
+        if (dictionary is null) DictionaryThrowHelper.ThrowDefaultEntry();
+        throw new KeyNotFoundException($"The key {FormatAlternateKey(dictionary, key)} was not found in the dictionary.");
     }
+
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void ThrowAlternateOccupiedOrDefault<TAlternateKey>(Dictionary<TKey, TValue>? dictionary, TAlternateKey key)
+        where TAlternateKey : notnull, allows ref struct
+    {
+        if (dictionary is null) DictionaryThrowHelper.ThrowDefaultEntry();
+        throw new InvalidOperationException($"The key {FormatAlternateKey(dictionary, key)} already exists in the dictionary.");
+    }
+
+    private static string FormatAlternateKey<TAlternateKey>(Dictionary<TKey, TValue> dictionary, TAlternateKey key)
+        where TAlternateKey : notnull, allows ref struct =>
+        dictionary.Comparer is IAlternateEqualityComparer<TAlternateKey, TKey> alt ? $"'{alt.Create(key)}'" : "given";
+}
+
+internal static class DictionaryThrowHelper
+{
+    [DoesNotReturn]
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    public static void ThrowDefaultEntry() =>
+        throw new InvalidOperationException(
+            "The entry is not associated with a dictionary. Obtain entries with Dictionary.Entry(key) rather than default.");
 }

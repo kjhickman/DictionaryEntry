@@ -3,26 +3,14 @@ using BenchmarkDotNet.Attributes;
 namespace DictionaryEntry.Benchmarks.BasicOps;
 
 [BenchmarkCategory("BasicOps")]
-public class DefaultValueBenchmarks : BenchmarkBase
+public class DefaultValueBenchmarks : StringIntBenchmarkBase
 {
-    private Dictionary<string, int> _existingDictionary = null!;
-    private Dictionary<string, int> _emptyDictionary = null!;
     private Dictionary<string, string?> _emptyStringDictionary = null!;
-    private string[] _keys = null!;
 
-    [GlobalSetup]
-    public void GlobalSetup()
+    public override void GlobalSetup()
     {
-        _existingDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
-        _emptyDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
+        base.GlobalSetup();
         _emptyStringDictionary = new Dictionary<string, string?>(capacity: BatchSize * 2);
-        _keys = new string[BatchSize];
-        for (var i = 0; i < BatchSize; i++)
-        {
-            var key = $"key_{i}";
-            _keys[i] = key;
-            _existingDictionary[key] = 10;
-        }
     }
 
     private static int DefaultValueTraditional(Dictionary<string, int> dict, string key)

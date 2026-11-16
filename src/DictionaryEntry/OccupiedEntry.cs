@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
 namespace DictionaryEntry;
@@ -28,14 +27,26 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
         Dictionary<TKey, TValue> dictionary,
         TKey key,
         TValue value,
-        ulong location,
-        ulong stamp)
+        ulong location)
     {
         _dictionary = dictionary;
         _key = key;
         _value = value;
         _location = location;
-        _stamp = stamp;
+        _stamp = DictionaryAccess<TKey, TValue>.GetOccupiedStamp(dictionary);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal OccupiedEntry(
+        Dictionary<TKey, TValue> dictionary,
+        TKey key,
+        TValue value)
+    {
+        _dictionary = dictionary;
+        _key = key;
+        _value = value;
+        _location = ulong.MaxValue;
+        _stamp = 0;
     }
 
     /// <summary>
@@ -85,7 +96,7 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
     {
         if (_dictionary is null)
         {
-            ThrowDefaultEntry();
+            DictionaryThrowHelper.ThrowDefaultEntry();
         }
 
         if (DictionaryAccess<TKey, TValue>.GetOccupiedStamp(_dictionary) == _stamp && (int)_location >= 0)
@@ -118,7 +129,7 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
     {
         if (_dictionary is null)
         {
-            ThrowDefaultEntry();
+            DictionaryThrowHelper.ThrowDefaultEntry();
         }
 
         if (DictionaryAccess<TKey, TValue>.GetOccupiedStamp(_dictionary) == _stamp && (int)_location >= 0)
@@ -139,40 +150,16 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
     /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
     /// <exception cref="KeyNotFoundException">Thrown if the key is no longer present in the dictionary.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public (TKey, TValue) RemoveEntry()
-    {
-        if (_dictionary is null)
-        {
-            ThrowDefaultEntry();
-        }
-
-        if (DictionaryAccess<TKey, TValue>.GetOccupiedStamp(_dictionary) == _stamp && (int)_location >= 0)
-        {
-            return (_key, DictionaryAccess<TKey, TValue>.RemoveOccupied(_dictionary, _location));
-        }
-
-        return (_key, RemoveFallback(_dictionary, _key));
-    }
+    public (TKey, TValue) RemoveEntry() => (_key, Remove());
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static TValue RemoveFallback(Dictionary<TKey, TValue> dictionary, TKey key)
     {
         if (!dictionary.Remove(key, out var value))
         {
-            ThrowKeyNotFound(key);
+            DictionaryAccess<TKey, TValue>.ThrowKeyNotFound(key);
         }
 
         return value;
     }
-
-    [DoesNotReturn]
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void ThrowDefaultEntry() =>
-        throw new InvalidOperationException(
-            "The occupied entry is not associated with a dictionary. Obtain entries with Dictionary.Entry(key) rather than default.");
-
-    [DoesNotReturn]
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void ThrowKeyNotFound(TKey key) =>
-        throw new KeyNotFoundException($"The key '{key}' is no longer present in the dictionary.");
 }

@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
 namespace DictionaryEntry;
@@ -25,14 +24,26 @@ public readonly ref struct AlternateOccupiedEntry<TKey, TValue, TAlternateKey>
         Dictionary<TKey, TValue>.AlternateLookup<TAlternateKey> lookup,
         TAlternateKey key,
         TValue value,
-        ulong location,
-        ulong stamp)
+        ulong location)
     {
         _lookup = lookup;
         _key = key;
         _value = value;
         _location = location;
-        _stamp = stamp;
+        _stamp = DictionaryAccess<TKey, TValue>.GetOccupiedStamp(lookup.Dictionary);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal AlternateOccupiedEntry(
+        Dictionary<TKey, TValue>.AlternateLookup<TAlternateKey> lookup,
+        TAlternateKey key,
+        TValue value)
+    {
+        _lookup = lookup;
+        _key = key;
+        _value = value;
+        _location = ulong.MaxValue;
+        _stamp = 0;
     }
 
     /// <summary>
@@ -83,7 +94,7 @@ public readonly ref struct AlternateOccupiedEntry<TKey, TValue, TAlternateKey>
         var dictionary = _lookup.Dictionary;
         if (dictionary is null)
         {
-            ThrowDefaultEntry();
+            DictionaryThrowHelper.ThrowDefaultEntry();
         }
 
         if (DictionaryAccess<TKey, TValue>.GetOccupiedStamp(dictionary) == _stamp && (int)_location >= 0)
@@ -120,7 +131,7 @@ public readonly ref struct AlternateOccupiedEntry<TKey, TValue, TAlternateKey>
         var dictionary = _lookup.Dictionary;
         if (dictionary is null)
         {
-            ThrowDefaultEntry();
+            DictionaryThrowHelper.ThrowDefaultEntry();
         }
 
         if (DictionaryAccess<TKey, TValue>.GetOccupiedStamp(dictionary) == _stamp && (int)_location >= 0)
@@ -128,7 +139,7 @@ public readonly ref struct AlternateOccupiedEntry<TKey, TValue, TAlternateKey>
             return DictionaryAccess<TKey, TValue>.RemoveOccupied(dictionary, _location);
         }
 
-        return RemoveFallback(_lookup, _key);
+        return RemoveEntryFallback(_lookup, _key).Value;
     }
 
     /// <summary>
@@ -146,7 +157,7 @@ public readonly ref struct AlternateOccupiedEntry<TKey, TValue, TAlternateKey>
         var dictionary = _lookup.Dictionary;
         if (dictionary is null)
         {
-            ThrowDefaultEntry();
+            DictionaryThrowHelper.ThrowDefaultEntry();
         }
 
         if (DictionaryAccess<TKey, TValue>.GetOccupiedStamp(dictionary) == _stamp && (int)_location >= 0)
@@ -159,46 +170,15 @@ public readonly ref struct AlternateOccupiedEntry<TKey, TValue, TAlternateKey>
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static TValue RemoveFallback(
-        Dictionary<TKey, TValue>.AlternateLookup<TAlternateKey> lookup,
-        TAlternateKey key)
-    {
-        if (!lookup.Remove(key, out _, out var value))
-        {
-            ThrowKeyNotFound(lookup.Dictionary, key);
-        }
-
-        return value;
-    }
-
-    [MethodImpl(MethodImplOptions.NoInlining)]
     private static (TKey Key, TValue Value) RemoveEntryFallback(
         Dictionary<TKey, TValue>.AlternateLookup<TAlternateKey> lookup,
         TAlternateKey key)
     {
         if (!lookup.Remove(key, out var actualKey, out var value))
         {
-            ThrowKeyNotFound(lookup.Dictionary, key);
+            DictionaryAccess<TKey, TValue>.ThrowAlternateKeyNotFound(lookup.Dictionary, key);
         }
 
         return (actualKey, value);
-    }
-
-    [DoesNotReturn]
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void ThrowDefaultEntry() =>
-        throw new InvalidOperationException(
-            "The occupied entry is not associated with a dictionary. Obtain entries with AlternateLookup.Entry(key) rather than default.");
-
-    [DoesNotReturn]
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void ThrowKeyNotFound(Dictionary<TKey, TValue> dictionary, TAlternateKey key)
-    {
-        if (dictionary.Comparer is IAlternateEqualityComparer<TAlternateKey, TKey> altComparer)
-        {
-            throw new KeyNotFoundException($"The key '{altComparer.Create(key)}' is no longer present in the dictionary.");
-        }
-
-        throw new KeyNotFoundException("The given key is no longer present in the dictionary.");
     }
 }

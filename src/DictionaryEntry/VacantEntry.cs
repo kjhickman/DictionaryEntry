@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
 namespace DictionaryEntry;
@@ -53,7 +52,7 @@ public readonly struct VacantEntry<TKey, TValue> where TKey : notnull
     {
         if (_dictionary is null)
         {
-            ThrowDefaultEntry();
+            DictionaryThrowHelper.ThrowDefaultEntry();
         }
 
         ref TValue slot = ref DictionaryAccess<TKey, TValue>.AddVacant(_dictionary, _key, _hashAndVersion, overwriteIfStale: true);
@@ -74,19 +73,7 @@ public readonly struct VacantEntry<TKey, TValue> where TKey : notnull
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public OccupiedEntry<TKey, TValue> InsertEntry(TValue value)
     {
-        if (_dictionary is null)
-        {
-            ThrowDefaultEntry();
-        }
-
-        ref TValue slot = ref DictionaryAccess<TKey, TValue>.AddVacant(_dictionary, _key, _hashAndVersion, overwriteIfStale: true);
-        slot = value;
-        return DictionaryAccess<TKey, TValue>.CreateOccupiedUnstamped(_dictionary, _key, value);
+        Insert(value);
+        return new OccupiedEntry<TKey, TValue>(_dictionary, _key, value);
     }
-
-    [DoesNotReturn]
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void ThrowDefaultEntry() =>
-        throw new InvalidOperationException(
-            "The vacant entry is not associated with a dictionary. Obtain entries with Dictionary.Entry(key) rather than default.");
 }

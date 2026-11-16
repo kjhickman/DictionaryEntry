@@ -31,3 +31,36 @@ public abstract class BenchmarkBase
         }
     }
 }
+
+public abstract class StringIntBenchmarkBase : BenchmarkBase
+{
+    protected Dictionary<string, int> _existingDictionary = null!;
+    protected Dictionary<string, int> _emptyDictionary = null!;
+    protected string[] _keys = null!;
+
+    [GlobalSetup]
+    public virtual void GlobalSetup()
+    {
+        _existingDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
+        _emptyDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
+        _keys = new string[BatchSize];
+        for (var i = 0; i < BatchSize; i++)
+        {
+            var key = $"key_{i}";
+            _keys[i] = key;
+            _existingDictionary[key] = 10;
+        }
+    }
+}
+
+public abstract class StringIntMutableBenchmarkBase : StringIntBenchmarkBase
+{
+    [IterationSetup]
+    public void IterationSetup()
+    {
+        for (var i = 0; i < BatchSize; i++)
+        {
+            _existingDictionary[_keys[i]] = 10;
+        }
+    }
+}

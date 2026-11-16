@@ -3,26 +3,8 @@ using BenchmarkDotNet.Attributes;
 namespace DictionaryEntry.Benchmarks.BasicOps;
 
 [BenchmarkCategory("BasicOps")]
-public class InitializeAbsentBenchmarks : BenchmarkBase
+public class InitializeAbsentBenchmarks : StringIntBenchmarkBase
 {
-    private Dictionary<string, int> _existingDictionary = null!;
-    private Dictionary<string, int> _emptyDictionary = null!;
-    private string[] _keys = null!;
-
-    [GlobalSetup]
-    public void Setup()
-    {
-        _existingDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
-        _emptyDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
-        _keys = new string[BatchSize];
-        for (var i = 0; i < BatchSize; i++)
-        {
-            var key = $"key_{i}";
-            _keys[i] = key;
-            _existingDictionary[key] = 10;
-        }
-    }
-
     private static bool InitializeAbsentTraditional(Dictionary<string, int> dict, string key)
     {
         return dict.TryAdd(key, 1);

@@ -1,4 +1,3 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
 namespace DictionaryEntry;
@@ -53,7 +52,7 @@ public readonly ref struct AlternateVacantEntry<TKey, TValue, TAlternateKey>
     {
         if (_lookup.Dictionary is null)
         {
-            ThrowDefaultEntry();
+            DictionaryThrowHelper.ThrowDefaultEntry();
         }
 
         ref TValue slot = ref DictionaryAccess<TKey, TValue>.AddAlternateVacant(_lookup, _key, _hashAndVersion, overwriteIfStale: true);
@@ -73,19 +72,7 @@ public readonly ref struct AlternateVacantEntry<TKey, TValue, TAlternateKey>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public AlternateOccupiedEntry<TKey, TValue, TAlternateKey> InsertEntry(TValue value)
     {
-        if (_lookup.Dictionary is null)
-        {
-            ThrowDefaultEntry();
-        }
-
-        ref TValue slot = ref DictionaryAccess<TKey, TValue>.AddAlternateVacant(_lookup, _key, _hashAndVersion, overwriteIfStale: true);
-        slot = value;
-        return DictionaryAccess<TKey, TValue>.CreateAlternateOccupiedUnstamped(_lookup, _key, value);
+        Insert(value);
+        return new AlternateOccupiedEntry<TKey, TValue, TAlternateKey>(_lookup, _key, value);
     }
-
-    [DoesNotReturn]
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void ThrowDefaultEntry() =>
-        throw new InvalidOperationException(
-            "The vacant entry is not associated with a dictionary. Obtain entries with AlternateLookup.Entry(key) rather than default.");
 }

@@ -9,9 +9,7 @@
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <LangVersion>latest</LangVersion>
 
-        <PackageId>DictionaryEntry</PackageId>
         <Version>0.4.0</Version>
-        <PackageVersion>0.4.0</PackageVersion>
         <Authors>Kyle Hickman</Authors>
         <Description>Dictionary manipulation with a fluent, expressive syntax.</Description>
         <PackageTags>dictionary;collections;entry;fluent;extension;union;span;aot</PackageTags>
@@ -19,13 +17,9 @@
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageProjectUrl>https://github.com/kjhickman/DictionaryEntry</PackageProjectUrl>
         <RepositoryUrl>https://github.com/kjhickman/DictionaryEntry.git</RepositoryUrl>
-        <RepositoryType>git</RepositoryType>
         <PackageReadmeFile>README.md</PackageReadmeFile>
-        <OutputType>Library</OutputType>
         <SymbolPackageFormat>snupkg</SymbolPackageFormat>
         <IncludeSymbols>true</IncludeSymbols>
-        <GeneratePackageOnBuild>false</GeneratePackageOnBuild>
-        <PublishRepositoryUrl>true</PublishRepositoryUrl>
     </PropertyGroup>
 
     <ItemGroup>

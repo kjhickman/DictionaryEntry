@@ -3,24 +3,8 @@ using BenchmarkDotNet.Attributes;
 namespace DictionaryEntry.Benchmarks.BasicOps;
 
 [BenchmarkCategory("BasicOps")]
-public class RetrieveAndRemoveBenchmarks : BenchmarkBase
+public class RetrieveAndRemoveBenchmarks : StringIntBenchmarkBase
 {
-    private Dictionary<string, int> _dictionary = null!;
-    private Dictionary<string, int> _emptyDictionary = null!;
-    private string[] _keys = null!;
-
-    [GlobalSetup]
-    public void Setup()
-    {
-        _dictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
-        _emptyDictionary = new Dictionary<string, int>(capacity: BatchSize * 2);
-        _keys = new string[BatchSize];
-        for (var i = 0; i < BatchSize; i++)
-        {
-            _keys[i] = $"key_{i}";
-        }
-    }
-
     private static int? GetAndRemoveTraditional(Dictionary<string, int> dict, string key)
     {
         return dict.Remove(key, out var value) ? value : null;
@@ -43,13 +27,13 @@ public class RetrieveAndRemoveBenchmarks : BenchmarkBase
     {
         for (var i = 0; i < BatchSize; i++)
         {
-            _dictionary[_keys[i]] = 10;
+            _existingDictionary[_keys[i]] = 10;
         }
 
         var sum = 0;
         for (var i = 0; i < BatchSize; i++)
         {
-            sum += GetAndRemoveTraditional(_dictionary, _keys[i]) ?? 0;
+            sum += GetAndRemoveTraditional(_existingDictionary, _keys[i]) ?? 0;
         }
 
         return sum;
@@ -72,13 +56,13 @@ public class RetrieveAndRemoveBenchmarks : BenchmarkBase
     {
         for (var i = 0; i < BatchSize; i++)
         {
-            _dictionary[_keys[i]] = 10;
+            _existingDictionary[_keys[i]] = 10;
         }
 
         var sum = 0;
         for (var i = 0; i < BatchSize; i++)
         {
-            sum += GetAndRemoveEntry(_dictionary, _keys[i]) ?? 0;
+            sum += GetAndRemoveEntry(_existingDictionary, _keys[i]) ?? 0;
         }
 
         return sum;
