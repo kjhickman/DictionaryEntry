@@ -220,18 +220,9 @@ public class UnionTests
     {
         var dict = new Dictionary<string, int> { ["existing"] = 42 };
 
-        // Warm up JIT
-        for (var i = 0; i < 200; i++)
-        {
-            _ = MatchLoop(dict);
-        }
-
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        var total = MatchLoop(dict);
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        var total = AllocationAssert.ZeroAllocations(dict, static d => MatchLoop(d));
 
         Assert.Equal(42_000, total);
-        Assert.Equal(0, allocated);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         static int MatchLoop(Dictionary<string, int> d)

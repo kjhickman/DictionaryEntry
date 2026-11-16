@@ -27,9 +27,9 @@ public class StateOverloadTests
     [Fact]
     public void AndModifyRef_WithState_MutatesStructFieldsInPlaceAndSkipsVacant()
     {
-        var dict = new Dictionary<string, CounterStats>
+        var dict = new Dictionary<string, PlayerStats>
         {
-            ["existing"] = new CounterStats { Hits = 2, TotalDamage = 15 }
+            ["existing"] = new PlayerStats { Hits = 2, Damage = 15 }
         };
         var invokedOnVacant = false;
 
@@ -37,7 +37,7 @@ public class StateOverloadTests
             .AndModify(10, static (ref stats, dmg) =>
             {
                 stats.Hits++;
-                stats.TotalDamage += dmg;
+                stats.Damage += dmg;
             })
             .OrDefault();
 
@@ -45,13 +45,13 @@ public class StateOverloadTests
             .AndModify(10, (ref stats, dmg) =>
             {
                 invokedOnVacant = true;
-                stats.TotalDamage += dmg;
+                stats.Damage += dmg;
             })
-            .OrInsert(new CounterStats { Hits = 1, TotalDamage = 10 });
+            .OrInsert(new PlayerStats { Hits = 1, Damage = 10 });
 
-        Assert.Equal(new CounterStats { Hits = 3, TotalDamage = 25 }, dict["existing"]);
+        Assert.Equal(new PlayerStats { Hits = 3, Damage = 25 }, dict["existing"]);
         Assert.False(invokedOnVacant);
-        Assert.Equal(new CounterStats { Hits = 1, TotalDamage = 10 }, dict["missing"]);
+        Assert.Equal(new PlayerStats { Hits = 1, Damage = 10 }, dict["missing"]);
     }
 
     [Fact]
@@ -172,18 +172,9 @@ public class StateOverloadTests
     {
         var dict = new Dictionary<string, int> { ["existing"] = 1 };
 
-        // Warm up JIT and static delegate caches
-        for (var i = 0; i < 200; i++)
-        {
-            _ = RunStatefulLoop(dict, i);
-        }
-
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        var sum = RunStatefulLoop(dict, 5);
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        var sum = AllocationAssert.ZeroAllocations(dict, 5, static (d, amt) => RunStatefulLoop(d, amt));
 
         Assert.NotEqual(0L, sum);
-        Assert.Equal(0, allocated);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         static long RunStatefulLoop(Dictionary<string, int> d, int amount)
@@ -230,11 +221,10 @@ public class StateOverloadTests
     {
         var dict = new Dictionary<string, int> { ["existing"] = 10 };
 
-        // Warm up both paths
+        // Warm up capturing path
         for (var i = 0; i < 200; i++)
         {
             _ = CapturingCacheHit(dict, "existing", i);
-            _ = StatefulCacheHit(dict, "existing", i);
         }
 
         var beforeCapturing = GC.GetAllocatedBytesForCurrentThread();
@@ -244,16 +234,20 @@ public class StateOverloadTests
         }
         var capturingAllocated = GC.GetAllocatedBytesForCurrentThread() - beforeCapturing;
 
-        var beforeStateful = GC.GetAllocatedBytesForCurrentThread();
-        for (var i = 0; i < 100; i++)
-        {
-            _ = StatefulCacheHit(dict, "existing", i);
-        }
-        var statefulAllocated = GC.GetAllocatedBytesForCurrentThread() - beforeStateful;
-
         // Even on a 100% cache hit, the capturing lambda allocates its closure (24 B/call on .NET 10+, 88 B/call on .NET 9)
         Assert.True(capturingAllocated >= 2_400, $"Expected closure allocations, got {capturingAllocated} bytes.");
-        Assert.Equal(0, statefulAllocated);
+
+        var statefulSum = AllocationAssert.ZeroAllocations(dict, static d =>
+        {
+            var sum = 0;
+            for (var i = 0; i < 100; i++)
+            {
+                sum += StatefulCacheHit(d, "existing", i);
+            }
+
+            return sum;
+        });
+        Assert.True(statefulSum > 0);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         static int CapturingCacheHit(Dictionary<string, int> d, string key, int multiplier) =>
@@ -302,17 +296,9 @@ public class StateOverloadTests
         Assert.Equal(30, matched);
 
         // 5. Verify 0 bytes allocated when passing ReadOnlySpan<char> in a hot loop
-        for (var i = 0; i < 200; i++)
-        {
-            _ = SpanStateHotLoop(dict, charSpan);
-        }
-
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        var total = SpanStateHotLoop(dict, charSpan);
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        var total = AllocationAssert.ZeroAllocations(dict, charSpan, static (d, span) => SpanStateHotLoop(d, span));
 
         Assert.True(total > 0);
-        Assert.Equal(0, allocated);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
         static int SpanStateHotLoop(Dictionary<string, int> d, ReadOnlySpan<char> span)
@@ -338,6 +324,4 @@ public class StateOverloadTests
         public ReadOnlySpan<char> Digits { get; } = digits;
         public int Multiplier { get; } = Multiplier;
     }
-
-    private record struct CounterStats(int Hits, int TotalDamage);
 }

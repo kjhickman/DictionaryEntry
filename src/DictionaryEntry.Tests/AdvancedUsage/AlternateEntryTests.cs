@@ -340,17 +340,12 @@ public class AlternateEntryTests
         };
         const string buffer = "alpha,beta,gamma";
 
-        for (var i = 0; i < 200; i++)
-        {
-            _ = HotLoop(dict, buffer.AsSpan());
-        }
-
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        var sum = HotLoop(dict, buffer.AsSpan());
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
+        var sum = AllocationAssert.ZeroAllocations(
+            dict,
+            buffer.AsSpan(),
+            static (d, csv) => HotLoop(d, csv));
 
         Assert.True(sum > 0);
-        Assert.Equal(0, allocated);
         Assert.Equal(2, dict.Count);
 
         [MethodImpl(MethodImplOptions.NoInlining)]
@@ -448,8 +443,6 @@ public class AlternateEntryTests
         Assert.Equal(42, dict["hello"]);
         Assert.Equal(42, lookup.Entry("hello"u8).ValueRef);
     }
-
-    private record struct PlayerStats(int Hits, int Damage);
 
     private sealed class StringOnlyComparer : IEqualityComparer<string>
     {

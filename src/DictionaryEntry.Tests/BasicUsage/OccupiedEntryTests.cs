@@ -32,19 +32,43 @@ public class OccupiedEntryTests
     }
 
     [Fact]
-    public void RemoveEntry_RemovesKeyAndReturnsTuple()
+    public void RemoveEntry_RemovesKeyAndReturnsNamedTuple()
     {
         // Arrange
         var dict = new Dictionary<string, int> { ["key"] = 42 };
 
         // Act
         var occupied = dict.Entry("key").ToOccupied();
-        var (key, value) = occupied.RemoveEntry();
+        var removed = occupied.RemoveEntry();
 
         // Assert
-        Assert.Equal("key", key);
-        Assert.Equal(42, value);
+        Assert.Equal("key", removed.Key);
+        Assert.Equal(42, removed.Value);
         Assert.False(dict.ContainsKey("key"));
+    }
+
+    [Fact]
+    public void RemoveEntry_WithCaseInsensitiveComparer_ReturnsLookupKeyAndRemovedValue()
+    {
+        var dict = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["Alpha"] = 42,
+            ["Beta"] = 99,
+        };
+
+        // Fast path (known slot location)
+        var fastRemoved = dict.Entry("alpha").ToOccupied().RemoveEntry();
+        Assert.Equal("alpha", fastRemoved.Key);
+        Assert.Equal(42, fastRemoved.Value);
+        Assert.False(dict.ContainsKey("Alpha"));
+
+        // Stale fallback path (after structural resize)
+        var staleOccupied = dict.Entry("BETA").ToOccupied();
+        dict.EnsureCapacity(100);
+        var (fallbackKey, fallbackValue) = staleOccupied.RemoveEntry();
+        Assert.Equal("BETA", fallbackKey);
+        Assert.Equal(99, fallbackValue);
+        Assert.Empty(dict);
     }
 
     [Fact]

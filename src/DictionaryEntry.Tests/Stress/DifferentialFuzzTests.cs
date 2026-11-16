@@ -1,4 +1,6 @@
+using System.Diagnostics.CodeAnalysis;
 using System.Reflection;
+using System.Runtime.CompilerServices;
 
 namespace DictionaryEntry.Tests.Stress;
 
@@ -251,7 +253,7 @@ public class DifferentialFuzzTests
 
                             if (oracle.Remove(occ.Key, out var expectedVal))
                             {
-                                var actualVal = (step & 1) == 0 ? occ.Remove() : occ.RemoveEntry().Item2;
+                                var actualVal = (step & 1) == 0 ? occ.Remove() : occ.RemoveEntry().Value;
                                 Assert.Equal(expectedVal, actualVal);
                             }
                             else
@@ -506,8 +508,11 @@ public class DifferentialFuzzTests
 
             if ((step & 31) == 31 || step == steps - 1)
             {
-                Assert.Equal(oracle, sut);
-                DictionaryStructureVerifier<int, FuzzRecord>.Verify(sut, seed, step);
+                DictionaryAssert.Equal(oracle, sut);
+                if (RuntimeFeature.IsDynamicCodeSupported)
+                {
+                    DictionaryStructureVerifier<int, FuzzRecord>.Verify(sut, seed, step);
+                }
             }
         }
     }
@@ -519,20 +524,28 @@ public class DifferentialFuzzTests
         int seed,
         int step)
     {
-        Assert.Equal(oracle, sut);
+        DictionaryAssert.Equal(oracle, sut);
         foreach (var (k, expectedVal) in oracle)
         {
             Assert.True(lookup.TryGetValue(k.AsSpan(), out var spanVal));
             Assert.Equal(expectedVal, spanVal);
         }
 
-        DictionaryStructureVerifier<string, int>.Verify(sut, seed, step);
+        if (RuntimeFeature.IsDynamicCodeSupported)
+        {
+            DictionaryStructureVerifier<string, int>.Verify(sut, seed, step);
+        }
     }
 
     private record struct FuzzRecord(int Counter, string? Tag, long Checksum);
 
+    [UnconditionalSuppressMessage("Trimming", "IL2075", Justification = "JIT-only internal invariant verifier guarded by RuntimeFeature.IsDynamicCodeSupported.")]
+    [UnconditionalSuppressMessage("Trimming", "IL2080", Justification = "JIT-only internal invariant verifier guarded by RuntimeFeature.IsDynamicCodeSupported.")]
+    [UnconditionalSuppressMessage("AOT", "IL3050", Justification = "JIT-only internal invariant verifier guarded by RuntimeFeature.IsDynamicCodeSupported.")]
     private static class DictionaryStructureVerifier<TKey, TValue> where TKey : notnull
     {
+        private const int StartOfFreeList = -3;
+
         private static readonly FieldInfo BucketsField =
             typeof(Dictionary<TKey, TValue>).GetField("_buckets", BindingFlags.Instance | BindingFlags.NonPublic)!;
         private static readonly FieldInfo EntriesField =
@@ -584,7 +597,7 @@ public class DifferentialFuzzTests
                 var entryBoxed = entries.GetValue(f)!;
                 var nextRaw = (int)NextField.GetValue(entryBoxed)!;
                 Assert.True(nextRaw <= -2, $"Expected free entry.next <= -2, got {nextRaw} at seed={seed}, step={step}");
-                f = -3 - nextRaw;
+                f = StartOfFreeList - nextRaw;
             }
 
             if (freeVisited.Count != freeCount)
@@ -618,17 +631,4 @@ public class DifferentialFuzzTests
             }
         }
     }
-}
-
-internal sealed class LowEntropySpanStringComparer(int mask)
-    : IEqualityComparer<string>, IAlternateEqualityComparer<ReadOnlySpan<char>, string>
-{
-    public static readonly LowEntropySpanStringComparer Colliding = new(0);
-    public static readonly LowEntropySpanStringComparer LowEntropy = new(3);
-
-    public bool Equals(string? x, string? y) => string.Equals(x, y, StringComparison.Ordinal);
-    public int GetHashCode(string obj) => obj.Length & mask;
-    public bool Equals(ReadOnlySpan<char> alternate, string other) => alternate.SequenceEqual(other.AsSpan());
-    public int GetHashCode(ReadOnlySpan<char> alternate) => alternate.Length & mask;
-    public string Create(ReadOnlySpan<char> alternate) => alternate.ToString();
 }

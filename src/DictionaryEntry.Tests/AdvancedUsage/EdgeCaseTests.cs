@@ -221,23 +221,23 @@ public class EdgeCaseTests
     {
         var dict = new Dictionary<int, PlayerStats>();
 
-        ref var p1 = ref dict.Entry(1).OrInsert(new PlayerStats { Score = 10, Visits = 1 });
-        p1.Score += 25;
-        p1.Visits++;
-        Assert.Equal(new PlayerStats { Score = 35, Visits = 2 }, dict[1]);
+        ref var p1 = ref dict.Entry(1).OrInsert(new PlayerStats { Damage = 10, Hits = 1 });
+        p1.Damage += 25;
+        p1.Hits++;
+        Assert.Equal(new PlayerStats { Damage = 35, Hits = 2 }, dict[1]);
 
         ref var p2 = ref dict.Entry(2).OrDefault();
-        p2.Score = 5;
-        p2.Visits = 1;
-        Assert.Equal(new PlayerStats { Score = 5, Visits = 1 }, dict[2]);
+        p2.Damage = 5;
+        p2.Hits = 1;
+        Assert.Equal(new PlayerStats { Damage = 5, Hits = 1 }, dict[2]);
 
-        ref var p3 = ref dict.Entry(3).OrInsertWith(() => new PlayerStats { Score = 1, Visits = 1 });
-        p3.Visits += 4;
-        Assert.Equal(new PlayerStats { Score = 1, Visits = 5 }, dict[3]);
+        ref var p3 = ref dict.Entry(3).OrInsertWith(() => new PlayerStats { Damage = 1, Hits = 1 });
+        p3.Hits += 4;
+        Assert.Equal(new PlayerStats { Damage = 1, Hits = 5 }, dict[3]);
 
-        ref var p4 = ref dict.Entry(4).OrInsertWithKey(id => new PlayerStats { Score = id * 10, Visits = 1 });
-        p4.Score += 2;
-        Assert.Equal(new PlayerStats { Score = 42, Visits = 1 }, dict[4]);
+        ref var p4 = ref dict.Entry(4).OrInsertWithKey(id => new PlayerStats { Damage = id * 10, Hits = 1 });
+        p4.Damage += 2;
+        Assert.Equal(new PlayerStats { Damage = 42, Hits = 1 }, dict[4]);
     }
 
     [Fact]
@@ -245,24 +245,24 @@ public class EdgeCaseTests
     {
         var dict = new Dictionary<int, PlayerStats>
         {
-            [1] = new PlayerStats { Score = 10, Visits = 1 }
+            [1] = new PlayerStats { Damage = 10, Hits = 1 }
         };
 
         // Existing key: mutates struct fields directly in dictionary storage
         if (dict.Entry(1) is { IsOccupied: true } existing)
         {
             ref var stats = ref existing.ValueRef;
-            stats.Score += 25;
-            stats.Visits++;
+            stats.Damage += 25;
+            stats.Hits++;
         }
 
         // Missing key: skipped without inserting a default entry
         if (dict.Entry(99) is { IsOccupied: true } missing)
         {
-            missing.ValueRef.Visits++;
+            missing.ValueRef.Hits++;
         }
 
-        Assert.Equal(new PlayerStats { Score = 35, Visits = 2 }, dict[1]);
+        Assert.Equal(new PlayerStats { Damage = 35, Hits = 2 }, dict[1]);
         Assert.False(dict.ContainsKey(99));
         Assert.Single(dict);
     }
@@ -421,11 +421,4 @@ public class EdgeCaseTests
     private delegate ref int RefInserter(Dictionary<int, int> dict, int key);
 
     private readonly record struct GridCoord(int X, int Y);
-
-    private record struct PlayerStats(int Score, int Visits);
-
-    private readonly record struct CollidingKey(int Id)
-    {
-        public override int GetHashCode() => 0;
-    }
 }

@@ -1,5 +1,3 @@
-using DictionaryEntry.Tests.Stress;
-
 namespace DictionaryEntry.Tests.AdvancedUsage;
 
 public class DictionaryInternalsTests
@@ -33,7 +31,7 @@ public class DictionaryInternalsTests
             expected[key] = val;
         }
 
-        Assert.Equal(expected, actual);
+        DictionaryAssert.Equal(expected, actual);
 
         // 2. Remove every 2nd item to populate _freeList / _freeCount
         for (var i = 0; i < 80; i += 2)
@@ -51,7 +49,7 @@ public class DictionaryInternalsTests
             expected.Remove(key);
         }
 
-        Assert.Equal(expected, actual);
+        DictionaryAssert.Equal(expected, actual);
 
         // 3. Insert new keys to consume _freeList slots and then grow again
         for (var i = 80; i < 150; i++)
@@ -71,7 +69,7 @@ public class DictionaryInternalsTests
             expected[key] = val;
         }
 
-        Assert.Equal(expected, actual);
+        DictionaryAssert.Equal(expected, actual);
     }
 
     [Fact]
@@ -314,11 +312,6 @@ public class DictionaryInternalsTests
         Assert.Equal(35, o3.Insert(35));
         Assert.Equal(("k3", 35), o3.RemoveEntry());
         Assert.Empty(dict);
-    }
-
-    private sealed record RefCollidingKey(int Id)
-    {
-        public override int GetHashCode() => 42;
     }
 
     private readonly record struct MixedLayoutValue(byte Tag, string Label, long Timestamp);
