@@ -241,6 +241,79 @@ public class DictionaryInternalsTests
         Assert.Throws<InvalidOperationException>(() => enumerator.MoveNext());
     }
 
+    [Fact]
+    public void OccupiedRemove_FallsBackSafelyAcrossAllExternalStructuralMutations()
+    {
+        // 1. External Remove of ANOTHER key in the same collision chain before occupied.Remove()
+        var d1 = new Dictionary<string, int>(CollidingSpanStringComparer.Instance)
+        {
+            ["a"] = 1,
+            ["b"] = 2,
+            ["c"] = 3,
+        };
+        var occ1 = d1.Entry("a").ToOccupied();
+        d1.Remove("b"); // changes predecessor link for 'a' and changes _freeCount
+        Assert.Equal(1, occ1.Remove());
+        Assert.Equal(3, d1["c"]);
+        Assert.Single(d1);
+
+        // 2. External Remove of target key + Add of another key reusing its slot
+        var d2 = new Dictionary<string, int>(capacity: 4) { ["a"] = 1, ["b"] = 2 };
+        var occ2 = d2.Entry("a").ToOccupied();
+        d2.Remove("a");
+        d2.Add("c", 3);
+        Assert.Throws<KeyNotFoundException>(() => occ2.Remove());
+        Assert.Equal(3, d2["c"]);
+
+        // 3. External EnsureCapacity / Resize before occupied.Remove()
+        var d3 = new Dictionary<string, int>(capacity: 3) { ["a"] = 10, ["b"] = 20 };
+        var occ3 = d3.Entry("a").ToOccupied();
+        d3.EnsureCapacity(200);
+        Assert.Equal(("a", 10), occ3.RemoveEntry());
+        Assert.Single(d3);
+
+        // 4. AlternateOccupiedEntry.Remove and RemoveEntry across collision chain and external resize
+        var d4 = new Dictionary<string, int>(CollidingSpanStringComparer.Instance)
+        {
+            ["k1"] = 10,
+            ["k2"] = 20,
+            ["k3"] = 30,
+        };
+        var lookup = d4.GetAlternateLookup<ReadOnlySpan<char>>();
+        // Remove middle ('k2'), tail ('k1'), and head ('k3') via fast path
+        Assert.Equal(("k2", 20), lookup.Entry("k2".AsSpan()).ToOccupied().RemoveEntry());
+        Assert.Equal(10, lookup.Entry("k1".AsSpan()).ToOccupied().Remove());
+        Assert.Equal(30, lookup.Entry("k3".AsSpan()).ToOccupied().Remove());
+        Assert.Empty(d4);
+    }
+
+    [Fact]
+    public void LocalEntry_TransitionedFromVacantToOccupied_SupportsSubsequentOccupiedInsertAndRemove()
+    {
+        var dict = new Dictionary<string, int>(StringComparer.Ordinal);
+        var lookup = dict.GetAlternateLookup<ReadOnlySpan<char>>();
+
+        var e1 = dict.Entry("k1");
+        e1.OrInsert(10);
+        var o1 = e1.ToOccupied();
+        Assert.Equal(15, o1.Insert(15));
+        Assert.Equal(15, o1.Remove());
+        Assert.Empty(dict);
+
+        var e2 = dict.Entry("k2");
+        e2.OrDefault() = 20;
+        var o2 = e2.ToOccupied();
+        Assert.Equal(("k2", 20), o2.RemoveEntry());
+        Assert.Empty(dict);
+
+        var e3 = lookup.Entry("k3".AsSpan());
+        e3.OrInsert(30);
+        var o3 = e3.ToOccupied();
+        Assert.Equal(35, o3.Insert(35));
+        Assert.Equal(("k3", 35), o3.RemoveEntry());
+        Assert.Empty(dict);
+    }
+
     private static void AssertDictionariesEqual<TKey, TValue>(
         Dictionary<TKey, TValue> expected,
         Dictionary<TKey, TValue> actual)

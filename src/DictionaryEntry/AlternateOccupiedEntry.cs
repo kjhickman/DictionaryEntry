@@ -17,7 +17,7 @@ public readonly ref struct AlternateOccupiedEntry<TKey, TValue, TAlternateKey>
     private readonly Dictionary<TKey, TValue>.AlternateLookup<TAlternateKey> _lookup;
     private readonly TAlternateKey _key;
     private readonly TValue _value;
-    private readonly nint _byteOffset;
+    private readonly ulong _location;
     private readonly ulong _stamp;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -25,13 +25,13 @@ public readonly ref struct AlternateOccupiedEntry<TKey, TValue, TAlternateKey>
         Dictionary<TKey, TValue>.AlternateLookup<TAlternateKey> lookup,
         TAlternateKey key,
         TValue value,
-        nint byteOffset,
+        ulong location,
         ulong stamp)
     {
         _lookup = lookup;
         _key = key;
         _value = value;
-        _byteOffset = byteOffset;
+        _location = location;
         _stamp = stamp;
     }
 
@@ -86,9 +86,9 @@ public readonly ref struct AlternateOccupiedEntry<TKey, TValue, TAlternateKey>
             ThrowDefaultEntry();
         }
 
-        if (DictionaryAccess<TKey, TValue>.GetOccupiedStamp(dictionary) == _stamp)
+        if (DictionaryAccess<TKey, TValue>.GetOccupiedStamp(dictionary) == _stamp && (int)_location >= 0)
         {
-            DictionaryAccess<TKey, TValue>.WriteOccupiedValue(dictionary, _byteOffset, newValue);
+            DictionaryAccess<TKey, TValue>.WriteOccupiedValue(dictionary, _location, newValue);
             return newValue;
         }
 
@@ -117,17 +117,18 @@ public readonly ref struct AlternateOccupiedEntry<TKey, TValue, TAlternateKey>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public TValue Remove()
     {
-        if (_lookup.Dictionary is null)
+        var dictionary = _lookup.Dictionary;
+        if (dictionary is null)
         {
             ThrowDefaultEntry();
         }
 
-        if (!_lookup.Remove(_key, out _, out var value))
+        if (DictionaryAccess<TKey, TValue>.GetOccupiedStamp(dictionary) == _stamp && (int)_location >= 0)
         {
-            ThrowKeyNotFound(_lookup.Dictionary, _key);
+            return DictionaryAccess<TKey, TValue>.RemoveOccupied(dictionary, _location);
         }
 
-        return value;
+        return RemoveFallback(_lookup, _key);
     }
 
     /// <summary>
@@ -142,14 +143,42 @@ public readonly ref struct AlternateOccupiedEntry<TKey, TValue, TAlternateKey>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public (TKey Key, TValue Value) RemoveEntry()
     {
-        if (_lookup.Dictionary is null)
+        var dictionary = _lookup.Dictionary;
+        if (dictionary is null)
         {
             ThrowDefaultEntry();
         }
 
-        if (!_lookup.Remove(_key, out var actualKey, out var value))
+        if (DictionaryAccess<TKey, TValue>.GetOccupiedStamp(dictionary) == _stamp && (int)_location >= 0)
         {
-            ThrowKeyNotFound(_lookup.Dictionary, _key);
+            var value = DictionaryAccess<TKey, TValue>.RemoveOccupied(dictionary, _location, out var actualKey);
+            return (actualKey, value);
+        }
+
+        return RemoveEntryFallback(_lookup, _key);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static TValue RemoveFallback(
+        Dictionary<TKey, TValue>.AlternateLookup<TAlternateKey> lookup,
+        TAlternateKey key)
+    {
+        if (!lookup.Remove(key, out _, out var value))
+        {
+            ThrowKeyNotFound(lookup.Dictionary, key);
+        }
+
+        return value;
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static (TKey Key, TValue Value) RemoveEntryFallback(
+        Dictionary<TKey, TValue>.AlternateLookup<TAlternateKey> lookup,
+        TAlternateKey key)
+    {
+        if (!lookup.Remove(key, out var actualKey, out var value))
+        {
+            ThrowKeyNotFound(lookup.Dictionary, key);
         }
 
         return (actualKey, value);

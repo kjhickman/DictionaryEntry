@@ -80,7 +80,7 @@ public readonly ref struct AlternateVacantEntry<TKey, TValue, TAlternateKey>
 
         ref TValue slot = ref DictionaryAccess<TKey, TValue>.AddAlternateVacant(_lookup, _key, _hashAndVersion, overwriteIfStale: true);
         slot = value;
-        return DictionaryAccess<TKey, TValue>.CreateAlternateOccupied(_lookup, _key, value, ref slot);
+        return DictionaryAccess<TKey, TValue>.CreateAlternateOccupiedUnstamped(_lookup, _key, value);
     }
 
     [DoesNotReturn]

@@ -233,6 +233,7 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
         ref TValue slot = ref DictionaryAccess<TKey, TValue>.AddAlternateVacant(_lookup, _key, _hashAndVersion);
         slot = defaultValue;
         _valueRef = ref slot;
+        _hashAndVersion = ulong.MaxValue;
         return ref _valueRef;
     }
 
@@ -259,6 +260,7 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
         ref TValue slot = ref DictionaryAccess<TKey, TValue>.AddAlternateVacant(_lookup, _key, _hashAndVersion);
         slot = value;
         _valueRef = ref slot;
+        _hashAndVersion = ulong.MaxValue;
         return ref _valueRef;
     }
 
@@ -289,6 +291,7 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
         ref TValue slot = ref DictionaryAccess<TKey, TValue>.AddAlternateVacant(_lookup, _key, _hashAndVersion);
         slot = value;
         _valueRef = ref slot;
+        _hashAndVersion = ulong.MaxValue;
         return ref _valueRef;
     }
 
@@ -315,6 +318,7 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
         ref TValue slot = ref DictionaryAccess<TKey, TValue>.AddAlternateVacant(_lookup, _key, _hashAndVersion);
         slot = value;
         _valueRef = ref slot;
+        _hashAndVersion = ulong.MaxValue;
         return ref _valueRef;
     }
 
@@ -345,6 +349,7 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
         ref TValue slot = ref DictionaryAccess<TKey, TValue>.AddAlternateVacant(_lookup, _key, _hashAndVersion);
         slot = value;
         _valueRef = ref slot;
+        _hashAndVersion = ulong.MaxValue;
         return ref _valueRef;
     }
 
@@ -367,6 +372,7 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
         }
 
         _valueRef = ref DictionaryAccess<TKey, TValue>.AddAlternateVacant(_lookup, _key, _hashAndVersion);
+        _hashAndVersion = ulong.MaxValue;
         return ref _valueRef;
     }
 
@@ -382,7 +388,7 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
         if (!Unsafe.IsNullRef(ref _valueRef))
         {
             _valueRef = value;
-            return DictionaryAccess<TKey, TValue>.CreateAlternateOccupied(_lookup, _key, value, ref _valueRef);
+            return DictionaryAccess<TKey, TValue>.CreateAlternateOccupied(_lookup, _key, value, _hashAndVersion);
         }
 
         if (_lookup.Dictionary is null)
@@ -393,7 +399,8 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
         ref TValue slot = ref DictionaryAccess<TKey, TValue>.AddAlternateVacant(_lookup, _key, _hashAndVersion);
         slot = value;
         _valueRef = ref slot;
-        return DictionaryAccess<TKey, TValue>.CreateAlternateOccupied(_lookup, _key, value, ref slot);
+        _hashAndVersion = ulong.MaxValue;
+        return DictionaryAccess<TKey, TValue>.CreateAlternateOccupiedUnstamped(_lookup, _key, value);
     }
 
     /// <summary>
@@ -410,7 +417,7 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
             ThrowVacantOrDefault(_lookup.Dictionary, _key);
         }
 
-        return DictionaryAccess<TKey, TValue>.CreateAlternateOccupied(_lookup, _key, _valueRef, ref _valueRef);
+        return DictionaryAccess<TKey, TValue>.CreateAlternateOccupied(_lookup, _key, _valueRef, _hashAndVersion);
     }
 
     /// <summary>
@@ -442,7 +449,7 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
     {
         if (!Unsafe.IsNullRef(ref _valueRef))
         {
-            occupiedAction(DictionaryAccess<TKey, TValue>.CreateAlternateOccupied(_lookup, _key, _valueRef, ref _valueRef));
+            occupiedAction(DictionaryAccess<TKey, TValue>.CreateAlternateOccupied(_lookup, _key, _valueRef, _hashAndVersion));
         }
         else
         {
@@ -473,7 +480,7 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
     {
         if (!Unsafe.IsNullRef(ref _valueRef))
         {
-            occupiedAction(DictionaryAccess<TKey, TValue>.CreateAlternateOccupied(_lookup, _key, _valueRef, ref _valueRef), state);
+            occupiedAction(DictionaryAccess<TKey, TValue>.CreateAlternateOccupied(_lookup, _key, _valueRef, _hashAndVersion), state);
         }
         else
         {
@@ -501,7 +508,7 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
     {
         if (!Unsafe.IsNullRef(ref _valueRef))
         {
-            return occupiedFunc(DictionaryAccess<TKey, TValue>.CreateAlternateOccupied(_lookup, _key, _valueRef, ref _valueRef));
+            return occupiedFunc(DictionaryAccess<TKey, TValue>.CreateAlternateOccupied(_lookup, _key, _valueRef, _hashAndVersion));
         }
 
         if (_lookup.Dictionary is null)
@@ -532,7 +539,7 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
     {
         if (!Unsafe.IsNullRef(ref _valueRef))
         {
-            return occupiedFunc(DictionaryAccess<TKey, TValue>.CreateAlternateOccupied(_lookup, _key, _valueRef, ref _valueRef), state);
+            return occupiedFunc(DictionaryAccess<TKey, TValue>.CreateAlternateOccupied(_lookup, _key, _valueRef, _hashAndVersion), state);
         }
 
         if (_lookup.Dictionary is null)
@@ -553,7 +560,7 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
     {
         if (!Unsafe.IsNullRef(ref _valueRef))
         {
-            occupied = DictionaryAccess<TKey, TValue>.CreateAlternateOccupied(_lookup, _key, _valueRef, ref _valueRef);
+            occupied = DictionaryAccess<TKey, TValue>.CreateAlternateOccupied(_lookup, _key, _valueRef, _hashAndVersion);
             return true;
         }
 

@@ -7,8 +7,8 @@ namespace DictionaryEntry;
 /// <summary>
 /// Provides direct, zero-overhead access to <see cref="Dictionary{TKey, TValue}"/> internals via
 /// <see cref="UnsafeAccessorAttribute"/> so vacant insertions reuse the already-computed hash code
-/// and <see cref="OccupiedEntry{TKey, TValue}.Insert"/> / <see cref="AlternateOccupiedEntry{TKey, TValue, TAlternateKey}.Insert"/>
-/// write directly to the entry slot in O(1) when the dictionary has not been structurally modified.
+/// and <see cref="OccupiedEntry{TKey, TValue}"/> / <see cref="AlternateOccupiedEntry{TKey, TValue, TAlternateKey}"/>
+/// update or remove the entry slot in O(1) when the dictionary has not been structurally modified.
 /// </summary>
 internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
 {
@@ -56,10 +56,6 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
     public static RawEntry[]? GetEntries(Dictionary<TKey, TValue> dictionary) =>
         Unsafe.As<RawDictionary>(dictionary)._entries;
 
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    private static ref byte GetEntriesDataReference(Dictionary<TKey, TValue> dictionary) =>
-        ref Unsafe.As<RawEntry, byte>(ref MemoryMarshal.GetArrayDataReference(GetEntries(dictionary)!));
-
     /// <summary>
     /// Packs <c>(_version &lt;&lt; 32) | (_count - _freeCount)</c> for an occupied dictionary.
     /// Because insertions/resizes/trims increment <c>_version</c>, <c>Remove</c> decreases <c>_count - _freeCount</c>,
@@ -71,29 +67,121 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
         ((ulong)(uint)GetVersion(dictionary) << 32) | (uint)(GetCount(dictionary) - GetFreeCount(dictionary));
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static nint GetByteOffset(Dictionary<TKey, TValue> dictionary, ref TValue valueRef) =>
-        Unsafe.ByteOffset(
-            ref GetEntriesDataReference(dictionary),
-            ref Unsafe.As<TValue, byte>(ref valueRef));
+    public static void WriteOccupiedValue(Dictionary<TKey, TValue> dictionary, ulong location, TValue newValue) =>
+        Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(GetEntries(dictionary)!), (nint)(uint)location).value = newValue;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void WriteOccupiedValue(Dictionary<TKey, TValue> dictionary, nint byteOffset, TValue newValue) =>
-        Unsafe.As<byte, TValue>(ref Unsafe.AddByteOffset(ref GetEntriesDataReference(dictionary), byteOffset)) = newValue;
+    public static TValue RemoveOccupied(Dictionary<TKey, TValue> dictionary, ulong location)
+    {
+        int index = (int)location;
+        int prevOrBucket = (int)(location >> 32);
+        ref RawEntry firstEntry = ref MemoryMarshal.GetArrayDataReference(GetEntries(dictionary)!);
+        ref RawEntry target = ref Unsafe.Add(ref firstEntry, (nint)(uint)index);
+
+        int next = target.next;
+        TValue value = target.value;
+
+        if (prevOrBucket < 0)
+        {
+            if (typeof(TKey).IsValueType)
+            {
+                GetBucket(dictionary, target.hashCode) = next + 1;
+            }
+            else
+            {
+                ref byte firstBucket = ref Unsafe.As<int, byte>(ref MemoryMarshal.GetArrayDataReference(GetBuckets(dictionary)!));
+                Unsafe.As<byte, int>(ref Unsafe.AddByteOffset(ref firstBucket, (nint)(uint)~prevOrBucket)) = next + 1;
+            }
+        }
+        else
+        {
+            Unsafe.Add(ref firstEntry, (nint)(uint)prevOrBucket).next = next;
+        }
+
+        target.next = -3 - GetFreeList(dictionary);
+
+        if (RuntimeHelpers.IsReferenceOrContainsReferences<TKey>())
+        {
+            target.key = default!;
+        }
+
+        if (RuntimeHelpers.IsReferenceOrContainsReferences<TValue>())
+        {
+            target.value = default!;
+        }
+
+        GetFreeList(dictionary) = index;
+        GetFreeCount(dictionary)++;
+        return value;
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static TValue RemoveOccupied(Dictionary<TKey, TValue> dictionary, ulong location, out TKey actualKey)
+    {
+        int index = (int)location;
+        int prevOrBucket = (int)(location >> 32);
+        ref RawEntry firstEntry = ref MemoryMarshal.GetArrayDataReference(GetEntries(dictionary)!);
+        ref RawEntry target = ref Unsafe.Add(ref firstEntry, (nint)(uint)index);
+
+        int next = target.next;
+        actualKey = target.key;
+        TValue value = target.value;
+
+        if (prevOrBucket < 0)
+        {
+            if (typeof(TKey).IsValueType)
+            {
+                GetBucket(dictionary, target.hashCode) = next + 1;
+            }
+            else
+            {
+                ref byte firstBucket = ref Unsafe.As<int, byte>(ref MemoryMarshal.GetArrayDataReference(GetBuckets(dictionary)!));
+                Unsafe.As<byte, int>(ref Unsafe.AddByteOffset(ref firstBucket, (nint)(uint)~prevOrBucket)) = next + 1;
+            }
+        }
+        else
+        {
+            Unsafe.Add(ref firstEntry, (nint)(uint)prevOrBucket).next = next;
+        }
+
+        target.next = -3 - GetFreeList(dictionary);
+
+        if (RuntimeHelpers.IsReferenceOrContainsReferences<TKey>())
+        {
+            target.key = default!;
+        }
+
+        if (RuntimeHelpers.IsReferenceOrContainsReferences<TValue>())
+        {
+            target.value = default!;
+        }
+
+        GetFreeList(dictionary) = index;
+        GetFreeCount(dictionary)++;
+        return value;
+    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static OccupiedEntry<TKey, TValue> CreateOccupied(
         Dictionary<TKey, TValue> dictionary,
         TKey key,
         TValue value,
-        ref TValue valueRef) =>
-        new(dictionary, key, value, GetByteOffset(dictionary, ref valueRef), GetOccupiedStamp(dictionary));
+        ulong location) =>
+        new(dictionary, key, value, location, GetOccupiedStamp(dictionary));
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static OccupiedEntry<TKey, TValue> CreateOccupiedUnstamped(
+        Dictionary<TKey, TValue> dictionary,
+        TKey key,
+        TValue value) =>
+        new(dictionary, key, value, ulong.MaxValue, 0);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static AlternateOccupiedEntry<TKey, TValue, TAlternateKey> CreateAlternateOccupied<TAlternateKey>(
         Dictionary<TKey, TValue>.AlternateLookup<TAlternateKey> lookup,
         TAlternateKey key,
         TValue value,
-        ref TValue valueRef)
+        ulong location)
         where TAlternateKey : notnull, allows ref struct
     {
         var dictionary = lookup.Dictionary;
@@ -101,9 +189,17 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
             lookup,
             key,
             value,
-            GetByteOffset(dictionary, ref valueRef),
+            location,
             GetOccupiedStamp(dictionary));
     }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static AlternateOccupiedEntry<TKey, TValue, TAlternateKey> CreateAlternateOccupiedUnstamped<TAlternateKey>(
+        Dictionary<TKey, TValue>.AlternateLookup<TAlternateKey> lookup,
+        TAlternateKey key,
+        TValue value)
+        where TAlternateKey : notnull, allows ref struct =>
+        new(lookup, key, value, ulong.MaxValue, 0);
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ref TValue FindValue(
@@ -129,16 +225,18 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
             hashCode = (uint)EqualityComparer<TKey>.Default.GetHashCode(key);
             int i = GetBucket(dictionary, hashCode) - 1;
             RawEntry[] entries = GetEntries(dictionary)!;
+            int last = -1;
             uint collisionCount = 0;
             while ((uint)i < (uint)entries.Length)
             {
                 ref RawEntry entry = ref entries[i];
                 if (entry.hashCode == hashCode && EqualityComparer<TKey>.Default.Equals(entry.key, key))
                 {
-                    hashAndVersion = 0;
+                    hashAndVersion = ((ulong)(uint)last << 32) | (uint)i;
                     return ref entry.value;
                 }
 
+                last = i;
                 i = entry.next;
                 collisionCount++;
                 if (collisionCount > (uint)entries.Length)
@@ -150,35 +248,42 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
         else
         {
             hashCode = (uint)comparer!.GetHashCode(key);
-            int i = GetBucket(dictionary, hashCode) - 1;
+            ref int bucket = ref GetBucket(dictionary, hashCode);
+            int i = bucket - 1;
             RawEntry[] entries = GetEntries(dictionary)!;
-            uint collisionCount = 0;
-            while ((uint)i < (uint)entries.Length)
+            if ((uint)i < (uint)entries.Length)
             {
-                ref RawEntry entry = ref entries[i];
-                if (entry.hashCode == hashCode && comparer.Equals(entry.key, key))
+                int prevOrBucket = typeof(TKey).IsValueType
+                    ? -1
+                    : ~(int)Unsafe.ByteOffset(
+                        ref Unsafe.As<int, byte>(ref MemoryMarshal.GetArrayDataReference(GetBuckets(dictionary)!)),
+                        ref Unsafe.As<int, byte>(ref bucket));
+                uint collisionCount = 0;
+                do
                 {
-                    hashAndVersion = 0;
-                    return ref entry.value;
-                }
+                    ref RawEntry entry = ref entries[i];
+                    if (entry.hashCode == hashCode && comparer.Equals(entry.key, key))
+                    {
+                        hashAndVersion = ((ulong)(uint)prevOrBucket << 32) | (uint)i;
+                        return ref entry.value;
+                    }
 
-                i = entry.next;
-                collisionCount++;
-                if (collisionCount > (uint)entries.Length)
+                    prevOrBucket = i;
+                    i = entry.next;
+                    collisionCount++;
+                    if (collisionCount > (uint)entries.Length)
+                    {
+                        ThrowConcurrentOperations();
+                    }
+                } while ((uint)i < (uint)entries.Length);
+
+                if (typeof(TKey) == typeof(string) && collisionCount > 100)
                 {
-                    ThrowConcurrentOperations();
+                    // Force AddVacant onto the BCL path so NonRandomizedStringEqualityComparer can upgrade to randomized hashing.
+                    hashAndVersion = ((ulong)~(uint)GetVersion(dictionary) << 32) | hashCode;
+                    return ref Unsafe.NullRef<TValue>();
                 }
             }
-
-            uint version = (uint)GetVersion(dictionary);
-            if (typeof(TKey) == typeof(string) && collisionCount > 100)
-            {
-                // Force AddVacant onto the BCL path so NonRandomizedStringEqualityComparer can upgrade to randomized hashing.
-                version = ~version;
-            }
-
-            hashAndVersion = ((ulong)version << 32) | hashCode;
-            return ref Unsafe.NullRef<TValue>();
         }
 
         hashAndVersion = ((ulong)(uint)GetVersion(dictionary) << 32) | hashCode;
@@ -201,33 +306,43 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
 
         var comparer = Unsafe.As<IAlternateEqualityComparer<TAlternateKey, TKey>>(GetComparer(dictionary)!);
         uint hashCode = (uint)comparer.GetHashCode(key);
-        int i = GetBucket(dictionary, hashCode) - 1;
+        ref int bucket = ref GetBucket(dictionary, hashCode);
+        int i = bucket - 1;
         RawEntry[] entries = GetEntries(dictionary)!;
-        uint collisionCount = 0;
-        while ((uint)i < (uint)entries.Length)
+        if ((uint)i < (uint)entries.Length)
         {
-            ref RawEntry entry = ref entries[i];
-            if (entry.hashCode == hashCode && comparer.Equals(key, entry.key))
+            int prevOrBucket = typeof(TKey).IsValueType
+                ? -1
+                : ~(int)Unsafe.ByteOffset(
+                    ref Unsafe.As<int, byte>(ref MemoryMarshal.GetArrayDataReference(GetBuckets(dictionary)!)),
+                    ref Unsafe.As<int, byte>(ref bucket));
+            uint collisionCount = 0;
+            do
             {
-                hashAndVersion = 0;
-                return ref entry.value;
-            }
+                ref RawEntry entry = ref entries[i];
+                if (entry.hashCode == hashCode && comparer.Equals(key, entry.key))
+                {
+                    hashAndVersion = ((ulong)(uint)prevOrBucket << 32) | (uint)i;
+                    return ref entry.value;
+                }
 
-            i = entry.next;
-            collisionCount++;
-            if (collisionCount > (uint)entries.Length)
+                prevOrBucket = i;
+                i = entry.next;
+                collisionCount++;
+                if (collisionCount > (uint)entries.Length)
+                {
+                    ThrowConcurrentOperations();
+                }
+            } while ((uint)i < (uint)entries.Length);
+
+            if (typeof(TKey) == typeof(string) && collisionCount > 100)
             {
-                ThrowConcurrentOperations();
+                hashAndVersion = ((ulong)~(uint)GetVersion(dictionary) << 32) | hashCode;
+                return ref Unsafe.NullRef<TValue>();
             }
         }
 
-        uint version = (uint)GetVersion(dictionary);
-        if (typeof(TKey) == typeof(string) && collisionCount > 100)
-        {
-            version = ~version;
-        }
-
-        hashAndVersion = ((ulong)version << 32) | hashCode;
+        hashAndVersion = ((ulong)(uint)GetVersion(dictionary) << 32) | hashCode;
         return ref Unsafe.NullRef<TValue>();
     }
 

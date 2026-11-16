@@ -14,7 +14,7 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
     private readonly Dictionary<TKey, TValue> _dictionary;
     private readonly TKey _key;
     private readonly TValue _value;
-    private readonly nint _byteOffset;
+    private readonly ulong _location;
     private readonly ulong _stamp;
 
     internal Dictionary<TKey, TValue> Dictionary
@@ -28,13 +28,13 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
         Dictionary<TKey, TValue> dictionary,
         TKey key,
         TValue value,
-        nint byteOffset,
+        ulong location,
         ulong stamp)
     {
         _dictionary = dictionary;
         _key = key;
         _value = value;
-        _byteOffset = byteOffset;
+        _location = location;
         _stamp = stamp;
     }
 
@@ -88,9 +88,9 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
             ThrowDefaultEntry();
         }
 
-        if (DictionaryAccess<TKey, TValue>.GetOccupiedStamp(_dictionary) == _stamp)
+        if (DictionaryAccess<TKey, TValue>.GetOccupiedStamp(_dictionary) == _stamp && (int)_location >= 0)
         {
-            DictionaryAccess<TKey, TValue>.WriteOccupiedValue(_dictionary, _byteOffset, newValue);
+            DictionaryAccess<TKey, TValue>.WriteOccupiedValue(_dictionary, _location, newValue);
             return newValue;
         }
 
@@ -121,12 +121,12 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
             ThrowDefaultEntry();
         }
 
-        if (!_dictionary.Remove(_key, out var value))
+        if (DictionaryAccess<TKey, TValue>.GetOccupiedStamp(_dictionary) == _stamp && (int)_location >= 0)
         {
-            ThrowKeyNotFound(_key);
+            return DictionaryAccess<TKey, TValue>.RemoveOccupied(_dictionary, _location);
         }
 
-        return value;
+        return RemoveFallback(_dictionary, _key);
     }
 
     /// <summary>
@@ -146,12 +146,23 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
             ThrowDefaultEntry();
         }
 
-        if (!_dictionary.Remove(_key, out var value))
+        if (DictionaryAccess<TKey, TValue>.GetOccupiedStamp(_dictionary) == _stamp && (int)_location >= 0)
         {
-            ThrowKeyNotFound(_key);
+            return (_key, DictionaryAccess<TKey, TValue>.RemoveOccupied(_dictionary, _location));
         }
 
-        return (_key, value);
+        return (_key, RemoveFallback(_dictionary, _key));
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static TValue RemoveFallback(Dictionary<TKey, TValue> dictionary, TKey key)
+    {
+        if (!dictionary.Remove(key, out var value))
+        {
+            ThrowKeyNotFound(key);
+        }
+
+        return value;
     }
 
     [DoesNotReturn]

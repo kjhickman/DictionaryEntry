@@ -224,6 +224,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         ref TValue slot = ref DictionaryAccess<TKey, TValue>.AddVacant(_dictionary, _key, _hashAndVersion);
         slot = defaultValue;
         _valueRef = ref slot;
+        _hashAndVersion = ulong.MaxValue;
         return ref _valueRef;
     }
 
@@ -250,6 +251,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         ref TValue slot = ref DictionaryAccess<TKey, TValue>.AddVacant(_dictionary, _key, _hashAndVersion);
         slot = value;
         _valueRef = ref slot;
+        _hashAndVersion = ulong.MaxValue;
         return ref _valueRef;
     }
 
@@ -280,6 +282,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         ref TValue slot = ref DictionaryAccess<TKey, TValue>.AddVacant(_dictionary, _key, _hashAndVersion);
         slot = value;
         _valueRef = ref slot;
+        _hashAndVersion = ulong.MaxValue;
         return ref _valueRef;
     }
 
@@ -306,6 +309,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         ref TValue slot = ref DictionaryAccess<TKey, TValue>.AddVacant(_dictionary, _key, _hashAndVersion);
         slot = value;
         _valueRef = ref slot;
+        _hashAndVersion = ulong.MaxValue;
         return ref _valueRef;
     }
 
@@ -336,6 +340,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         ref TValue slot = ref DictionaryAccess<TKey, TValue>.AddVacant(_dictionary, _key, _hashAndVersion);
         slot = value;
         _valueRef = ref slot;
+        _hashAndVersion = ulong.MaxValue;
         return ref _valueRef;
     }
 
@@ -361,6 +366,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         }
 
         _valueRef = ref DictionaryAccess<TKey, TValue>.AddVacant(_dictionary, _key, _hashAndVersion);
+        _hashAndVersion = ulong.MaxValue;
         return ref _valueRef;
     }
 
@@ -379,7 +385,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         if (!Unsafe.IsNullRef(ref _valueRef))
         {
             _valueRef = value;
-            return DictionaryAccess<TKey, TValue>.CreateOccupied(_dictionary, _key, value, ref _valueRef);
+            return DictionaryAccess<TKey, TValue>.CreateOccupied(_dictionary, _key, value, _hashAndVersion);
         }
 
         if (_dictionary is null)
@@ -390,7 +396,8 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         ref TValue slot = ref DictionaryAccess<TKey, TValue>.AddVacant(_dictionary, _key, _hashAndVersion);
         slot = value;
         _valueRef = ref slot;
-        return DictionaryAccess<TKey, TValue>.CreateOccupied(_dictionary, _key, value, ref slot);
+        _hashAndVersion = ulong.MaxValue;
+        return DictionaryAccess<TKey, TValue>.CreateOccupiedUnstamped(_dictionary, _key, value);
     }
 
     /// <summary>
@@ -407,7 +414,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
             ThrowVacantOrDefault(_dictionary, _key);
         }
 
-        return DictionaryAccess<TKey, TValue>.CreateOccupied(_dictionary, _key, _valueRef, ref _valueRef);
+        return DictionaryAccess<TKey, TValue>.CreateOccupied(_dictionary, _key, _valueRef, _hashAndVersion);
     }
 
     /// <summary>
@@ -438,7 +445,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     {
         if (!Unsafe.IsNullRef(ref _valueRef))
         {
-            occupiedAction(DictionaryAccess<TKey, TValue>.CreateOccupied(_dictionary, _key, _valueRef, ref _valueRef));
+            occupiedAction(DictionaryAccess<TKey, TValue>.CreateOccupied(_dictionary, _key, _valueRef, _hashAndVersion));
         }
         else
         {
@@ -469,7 +476,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     {
         if (!Unsafe.IsNullRef(ref _valueRef))
         {
-            occupiedAction(DictionaryAccess<TKey, TValue>.CreateOccupied(_dictionary, _key, _valueRef, ref _valueRef), state);
+            occupiedAction(DictionaryAccess<TKey, TValue>.CreateOccupied(_dictionary, _key, _valueRef, _hashAndVersion), state);
         }
         else
         {
@@ -496,7 +503,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     {
         if (!Unsafe.IsNullRef(ref _valueRef))
         {
-            return occupiedFunc(DictionaryAccess<TKey, TValue>.CreateOccupied(_dictionary, _key, _valueRef, ref _valueRef));
+            return occupiedFunc(DictionaryAccess<TKey, TValue>.CreateOccupied(_dictionary, _key, _valueRef, _hashAndVersion));
         }
 
         if (_dictionary is null)
@@ -527,7 +534,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     {
         if (!Unsafe.IsNullRef(ref _valueRef))
         {
-            return occupiedFunc(DictionaryAccess<TKey, TValue>.CreateOccupied(_dictionary, _key, _valueRef, ref _valueRef), state);
+            return occupiedFunc(DictionaryAccess<TKey, TValue>.CreateOccupied(_dictionary, _key, _valueRef, _hashAndVersion), state);
         }
 
         if (_dictionary is null)
@@ -578,7 +585,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     {
         if (!Unsafe.IsNullRef(ref _valueRef))
         {
-            occupied = DictionaryAccess<TKey, TValue>.CreateOccupied(_dictionary, _key, _valueRef, ref _valueRef);
+            occupied = DictionaryAccess<TKey, TValue>.CreateOccupied(_dictionary, _key, _valueRef, _hashAndVersion);
             return true;
         }
 
@@ -646,7 +653,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     private readonly object? GetBoxedValue() => _dictionary is null
         ? null
         : !Unsafe.IsNullRef(ref _valueRef)
-            ? DictionaryAccess<TKey, TValue>.CreateOccupied(_dictionary, _key, _valueRef, ref _valueRef)
+            ? DictionaryAccess<TKey, TValue>.CreateOccupied(_dictionary, _key, _valueRef, _hashAndVersion)
             : new VacantEntry<TKey, TValue>(_dictionary, _key, _hashAndVersion);
 
     readonly object? IUnionMembers.Value => GetBoxedValue();
@@ -666,7 +673,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     {
         if (!Unsafe.IsNullRef(ref _valueRef))
         {
-            value = DictionaryAccess<TKey, TValue>.CreateOccupied(_dictionary, _key, _valueRef, ref _valueRef);
+            value = DictionaryAccess<TKey, TValue>.CreateOccupied(_dictionary, _key, _valueRef, _hashAndVersion);
             return true;
         }
 

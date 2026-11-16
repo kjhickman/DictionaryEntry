@@ -81,7 +81,7 @@ public readonly struct VacantEntry<TKey, TValue> where TKey : notnull
 
         ref TValue slot = ref DictionaryAccess<TKey, TValue>.AddVacant(_dictionary, _key, _hashAndVersion, overwriteIfStale: true);
         slot = value;
-        return DictionaryAccess<TKey, TValue>.CreateOccupied(_dictionary, _key, value, ref slot);
+        return DictionaryAccess<TKey, TValue>.CreateOccupiedUnstamped(_dictionary, _key, value);
     }
 
     [DoesNotReturn]
