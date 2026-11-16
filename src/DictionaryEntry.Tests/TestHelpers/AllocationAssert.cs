@@ -2,13 +2,14 @@ namespace DictionaryEntry.Tests.TestHelpers;
 
 internal static class AllocationAssert
 {
+    private const int WarmupIterations = 200;
+
     public static TResult ZeroAllocations<TState, TResult>(
         TState state,
-        Func<TState, TResult> action,
-        int warmupIterations = 200)
+        Func<TState, TResult> action)
         where TState : allows ref struct
     {
-        for (var i = 0; i < warmupIterations; i++)
+        for (var i = 0; i < WarmupIterations; i++)
         {
             _ = action(state);
         }
@@ -27,11 +28,10 @@ internal static class AllocationAssert
     public static TResult ZeroAllocations<TArg1, TArg2, TResult>(
         TArg1 arg1,
         TArg2 arg2,
-        Func<TArg1, TArg2, TResult> action,
-        int warmupIterations = 200)
+        Func<TArg1, TArg2, TResult> action)
         where TArg2 : allows ref struct
     {
-        for (var i = 0; i < warmupIterations; i++)
+        for (var i = 0; i < WarmupIterations; i++)
         {
             _ = action(arg1, arg2);
         }

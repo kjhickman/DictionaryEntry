@@ -6,7 +6,6 @@
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <EnablePackageValidation>true</EnablePackageValidation>
-        <EmbedUntrackedSources>true</EmbedUntrackedSources>
 
         <Version>0.4.0</Version>
         <Authors>Kyle Hickman</Authors>
