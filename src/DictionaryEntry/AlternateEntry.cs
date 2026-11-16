@@ -38,11 +38,7 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
     /// <summary>
     /// Gets the alternate key associated with this entry.
     /// </summary>
-    public readonly TAlternateKey Key
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => _key;
-    }
+    public readonly TAlternateKey Key => _key;
 
     /// <summary>
     /// Gets a value indicating whether the entry exists in the dictionary.

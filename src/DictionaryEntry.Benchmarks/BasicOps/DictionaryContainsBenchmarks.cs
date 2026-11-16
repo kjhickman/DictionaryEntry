@@ -2,7 +2,6 @@ using BenchmarkDotNet.Attributes;
 
 namespace DictionaryEntry.Benchmarks.BasicOps;
 
-[BenchmarkCategory("BasicOps")]
 public class DictionaryContainsBenchmarks : IntIntBenchmarkBase
 {
     [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize)]

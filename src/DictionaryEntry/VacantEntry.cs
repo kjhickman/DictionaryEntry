@@ -10,15 +10,9 @@ namespace DictionaryEntry;
 /// <typeparam name="TValue">The type of the value in the dictionary.</typeparam>
 public readonly struct VacantEntry<TKey, TValue> where TKey : notnull
 {
-    private readonly Dictionary<TKey, TValue> _dictionary;
+    internal readonly Dictionary<TKey, TValue> _dictionary;
     private readonly TKey _key;
     private readonly ulong _hashAndVersion;
-
-    internal Dictionary<TKey, TValue> Dictionary
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => _dictionary;
-    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal VacantEntry(Dictionary<TKey, TValue> dictionary, TKey key, ulong hashAndVersion)
@@ -31,11 +25,7 @@ public readonly struct VacantEntry<TKey, TValue> where TKey : notnull
     /// <summary>
     /// Gets the key associated with this entry.
     /// </summary>
-    public TKey Key
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => _key;
-    }
+    public TKey Key => _key;
 
     /// <summary>
     /// Inserts a value into the dictionary with the key associated with this entry.

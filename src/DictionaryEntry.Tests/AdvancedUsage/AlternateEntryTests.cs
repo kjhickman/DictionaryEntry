@@ -275,42 +275,31 @@ public class AlternateEntryTests
 
             // Default AlternateEntry, AlternateOccupiedEntry, AlternateVacantEntry
             var invoked = false;
-            AlternateEntry<string, int, ReadOnlySpan<char>> defaultEntry = default;
+            static AlternateEntry<string, int, ReadOnlySpan<char>> Default() => default;
+            var defaultEntry = Default();
             Assert.False(defaultEntry.IsOccupied);
             Assert.False(defaultEntry.IsVacant);
             Assert.False(defaultEntry.TryGetOccupied(out _));
             Assert.False(defaultEntry.TryGetVacant(out _));
 
-            Assert.Throws<InvalidOperationException>(() => _ = default(AlternateEntry<string, int, ReadOnlySpan<char>>).ValueRef);
-            Assert.Throws<InvalidOperationException>(() => default(AlternateEntry<string, int, ReadOnlySpan<char>>).ToOccupied());
-            Assert.Throws<InvalidOperationException>(() => default(AlternateEntry<string, int, ReadOnlySpan<char>>).ToVacant());
-            Assert.Throws<InvalidOperationException>(() => default(AlternateEntry<string, int, ReadOnlySpan<char>>).OrInsert(1));
-            Assert.Throws<InvalidOperationException>(() => default(AlternateEntry<string, int, ReadOnlySpan<char>>).OrDefault());
-            Assert.Throws<InvalidOperationException>(() => default(AlternateEntry<string, int, ReadOnlySpan<char>>).InsertEntry(1));
-            Assert.Throws<InvalidOperationException>(() =>
-                default(AlternateEntry<string, int, ReadOnlySpan<char>>).OrInsertWith(() => { invoked = true; return 1; }));
-            Assert.Throws<InvalidOperationException>(() =>
-                default(AlternateEntry<string, int, ReadOnlySpan<char>>).OrInsertWith(1, s => { invoked = true; return s; }));
-            Assert.Throws<InvalidOperationException>(() =>
-                default(AlternateEntry<string, int, ReadOnlySpan<char>>).OrInsertWithKey(_ => { invoked = true; return 1; }));
-            Assert.Throws<InvalidOperationException>(() =>
-                default(AlternateEntry<string, int, ReadOnlySpan<char>>).OrInsertWithKey(1, (_, s) => { invoked = true; return s; }));
-            Assert.Throws<InvalidOperationException>(() =>
-                default(AlternateEntry<string, int, ReadOnlySpan<char>>).AndModify(v => { invoked = true; return v; }));
-            Assert.Throws<InvalidOperationException>(() =>
-                default(AlternateEntry<string, int, ReadOnlySpan<char>>).AndModify(1, (v, s) => { invoked = true; return v + s; }));
-            Assert.Throws<InvalidOperationException>(() =>
-                default(AlternateEntry<string, int, ReadOnlySpan<char>>).AndModify((ref v) => { invoked = true; v++; }));
-            Assert.Throws<InvalidOperationException>(() =>
-                default(AlternateEntry<string, int, ReadOnlySpan<char>>).AndModify(1, (ref v, s) => { invoked = true; v += s; }));
-            Assert.Throws<InvalidOperationException>(() =>
-                default(AlternateEntry<string, int, ReadOnlySpan<char>>).Match(_ => invoked = true, _ => invoked = true));
-            Assert.Throws<InvalidOperationException>(() =>
-                default(AlternateEntry<string, int, ReadOnlySpan<char>>).Match(1, (_, _) => invoked = true, (_, _) => invoked = true));
-            Assert.Throws<InvalidOperationException>(() =>
-                default(AlternateEntry<string, int, ReadOnlySpan<char>>).Match(_ => { invoked = true; return 1; }, _ => { invoked = true; return 2; }));
-            Assert.Throws<InvalidOperationException>(() =>
-                default(AlternateEntry<string, int, ReadOnlySpan<char>>).Match(1, (_, s) => { invoked = true; return s; }, (_, s) => { invoked = true; return s; }));
+            Assert.Throws<InvalidOperationException>(() => _ = Default().ValueRef);
+            Assert.Throws<InvalidOperationException>(() => Default().ToOccupied());
+            Assert.Throws<InvalidOperationException>(() => Default().ToVacant());
+            Assert.Throws<InvalidOperationException>(() => Default().OrInsert(1));
+            Assert.Throws<InvalidOperationException>(() => Default().OrDefault());
+            Assert.Throws<InvalidOperationException>(() => Default().InsertEntry(1));
+            Assert.Throws<InvalidOperationException>(() => Default().OrInsertWith(() => { invoked = true; return 1; }));
+            Assert.Throws<InvalidOperationException>(() => Default().OrInsertWith(1, s => { invoked = true; return s; }));
+            Assert.Throws<InvalidOperationException>(() => Default().OrInsertWithKey(_ => { invoked = true; return 1; }));
+            Assert.Throws<InvalidOperationException>(() => Default().OrInsertWithKey(1, (_, s) => { invoked = true; return s; }));
+            Assert.Throws<InvalidOperationException>(() => Default().AndModify(v => { invoked = true; return v; }));
+            Assert.Throws<InvalidOperationException>(() => Default().AndModify(1, (v, s) => { invoked = true; return v + s; }));
+            Assert.Throws<InvalidOperationException>(() => Default().AndModify((ref v) => { invoked = true; v++; }));
+            Assert.Throws<InvalidOperationException>(() => Default().AndModify(1, (ref v, s) => { invoked = true; v += s; }));
+            Assert.Throws<InvalidOperationException>(() => Default().Match(_ => invoked = true, _ => invoked = true));
+            Assert.Throws<InvalidOperationException>(() => Default().Match(1, (_, _) => invoked = true, (_, _) => invoked = true));
+            Assert.Throws<InvalidOperationException>(() => Default().Match(_ => { invoked = true; return 1; }, _ => { invoked = true; return 2; }));
+            Assert.Throws<InvalidOperationException>(() => Default().Match(1, (_, s) => { invoked = true; return s; }, (_, s) => { invoked = true; return s; }));
 
             Assert.Throws<InvalidOperationException>(() => default(AlternateOccupiedEntry<string, int, ReadOnlySpan<char>>).Insert(1));
             Assert.Throws<InvalidOperationException>(() => default(AlternateOccupiedEntry<string, int, ReadOnlySpan<char>>).Remove());
@@ -511,19 +500,9 @@ public class AlternateEntryTests
 
         public bool Equals(string? x, string? y) => string.Equals(x, y, StringComparison.Ordinal);
 
-        public int GetHashCode(string obj)
-        {
-            Span<byte> buf = stackalloc byte[Encoding.UTF8.GetMaxByteCount(obj.Length)];
-            var written = Encoding.UTF8.GetBytes(obj, buf);
-            return GetHashCode(buf[..written]);
-        }
+        public int GetHashCode(string obj) => GetHashCode(Encoding.UTF8.GetBytes(obj));
 
-        public bool Equals(ReadOnlySpan<byte> alternate, string other)
-        {
-            Span<byte> buf = stackalloc byte[Encoding.UTF8.GetMaxByteCount(other.Length)];
-            var written = Encoding.UTF8.GetBytes(other, buf);
-            return alternate.SequenceEqual(buf[..written]);
-        }
+        public bool Equals(ReadOnlySpan<byte> alternate, string other) => alternate.SequenceEqual(Encoding.UTF8.GetBytes(other));
 
         public int GetHashCode(ReadOnlySpan<byte> alternate)
         {

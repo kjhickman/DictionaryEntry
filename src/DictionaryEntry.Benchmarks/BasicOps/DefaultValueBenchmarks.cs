@@ -2,7 +2,6 @@ using BenchmarkDotNet.Attributes;
 
 namespace DictionaryEntry.Benchmarks.BasicOps;
 
-[BenchmarkCategory("BasicOps")]
 public class DefaultValueBenchmarks : StringIntBenchmarkBase
 {
     private Dictionary<string, string?> _emptyStringDictionary = null!;

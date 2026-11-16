@@ -2,7 +2,6 @@ using BenchmarkDotNet.Attributes;
 
 namespace DictionaryEntry.Benchmarks.BasicOps;
 
-[BenchmarkCategory("BasicOps")]
 public class TryGetEntryBenchmarks : StringIntBenchmarkBase
 {
     private static int? TryLookupTraditional(Dictionary<string, int> dict, string key)

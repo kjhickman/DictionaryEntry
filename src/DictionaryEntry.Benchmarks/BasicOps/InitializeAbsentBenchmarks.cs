@@ -2,7 +2,6 @@ using BenchmarkDotNet.Attributes;
 
 namespace DictionaryEntry.Benchmarks.BasicOps;
 
-[BenchmarkCategory("BasicOps")]
 public class InitializeAbsentBenchmarks : StringIntBenchmarkBase
 {
     private static bool InitializeAbsentTraditional(Dictionary<string, int> dict, string key)

@@ -33,11 +33,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// <summary>
     /// Gets the key associated with this entry.
     /// </summary>
-    public readonly TKey Key
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => _key;
-    }
+    public readonly TKey Key => _key;
 
     /// <summary>
     /// Gets a value indicating whether the entry exists in the dictionary.
@@ -532,7 +528,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         static Entry<TKey, TValue> Create(OccupiedEntry<TKey, TValue> value) =>
-            value.Dictionary is not null ? new Entry<TKey, TValue>(value.Dictionary, value.Key) : default;
+            value._dictionary is not null ? new Entry<TKey, TValue>(value._dictionary, value.Key) : default;
 
         /// <summary>Creates an <see cref="Entry{TKey, TValue}"/> from a <see cref="VacantEntry{TKey, TValue}"/>.</summary>
         /// <remarks>
@@ -541,7 +537,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         /// </remarks>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         static Entry<TKey, TValue> Create(VacantEntry<TKey, TValue> value) =>
-            value.Dictionary is not null ? new Entry<TKey, TValue>(value.Dictionary, value.Key) : default;
+            value._dictionary is not null ? new Entry<TKey, TValue>(value._dictionary, value.Key) : default;
 
         /// <summary>Gets the boxed case value of the union, or <c>null</c> for a default instance.</summary>
         object? Value { get; }
@@ -565,11 +561,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     readonly object? IUnion.Value => GetBoxedValue();
 #endif
 
-    readonly bool IUnionMembers.HasValue
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => _dictionary is not null;
-    }
+    readonly bool IUnionMembers.HasValue => _dictionary is not null;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     readonly bool IUnionMembers.TryGetValue(out OccupiedEntry<TKey, TValue> value) => TryGetOccupied(out value);

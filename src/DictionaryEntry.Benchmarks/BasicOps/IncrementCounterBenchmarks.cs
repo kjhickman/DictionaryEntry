@@ -2,7 +2,6 @@ using BenchmarkDotNet.Attributes;
 
 namespace DictionaryEntry.Benchmarks.BasicOps;
 
-[BenchmarkCategory("BasicOps")]
 public class IncrementCounterBenchmarks : StringIntMutableBenchmarkBase
 {
     private int _amount = 5;

@@ -2,7 +2,6 @@ using BenchmarkDotNet.Attributes;
 
 namespace DictionaryEntry.Benchmarks.ConditionalOps;
 
-[BenchmarkCategory("ConditionalOps")]
 public class UpsertBenchmarks : StringIntBenchmarkBase
 {
     private static void UpsertTraditional(Dictionary<string, int> dict, string key)

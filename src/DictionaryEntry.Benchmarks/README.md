@@ -122,15 +122,6 @@ MaxWarmupIterationCount=8  MinWarmupIterationCount=5  RunStrategy=Throughput
 | `Update_EntryValueRef_Exists` | `4.143 ns` | `-` |
 | `Update_EntryValueRef_NotExists` | `3.155 ns` | `-` |
 
-#### `InsertOrUpdateBenchmarks` (`Dictionary<string, int>`)
-
-| Method | Mean | Allocated |
-|---|---:|---:|
-| `InsertOrUpdate_Traditional_Exists` | `8.109 ns` | `-` |
-| `InsertOrUpdate_Traditional_NotExists` | `11.747 ns` | `-` |
-| `InsertOrUpdate_Entry_Exists` | `5.669 ns` | `-` |
-| `InsertOrUpdate_Entry_NotExists` | `8.623 ns` | `-` |
-
 #### `UpsertBenchmarks` (`Dictionary<string, int>`)
 
 | Method | Mean | Allocated |
@@ -148,19 +139,6 @@ MaxWarmupIterationCount=8  MinWarmupIterationCount=5  RunStrategy=Throughput
 | `ConditionalModify_Traditional_NotExists` | `11.690 ns` | `-` |
 | `ConditionalModify_Entry_Exists` | `8.109 ns` | `-` |
 | `ConditionalModify_Entry_NotExists` | `10.163 ns` | `-` |
-
-#### `ConditionalGetOrComputeBenchmarks` (`Dictionary<string, int>`)
-
-| Method | Mean | Allocated |
-|---|---:|---:|
-| `GetOrCompute_Traditional_Exists` | `4.104 ns` | `-` |
-| `GetOrCompute_Traditional_NotExists` | `33.131 ns` | `-` |
-| `GetOrCompute_Entry_Exists` | `4.375 ns` | `-` |
-| `GetOrCompute_Entry_NotExists` | `30.141 ns` | `-` |
-| `GetOrCompute_Extra_Traditional_Exists` | `4.195 ns` | `-` |
-| `GetOrCompute_Extra_Traditional_NotExists` | `11.808 ns` | `-` |
-| `GetOrCompute_Extra_Entry_Exists` | `4.358 ns` | `-` |
-| `GetOrCompute_Extra_Entry_NotExists` | `10.218 ns` | `-` |
 
 ### Factory Operations
 
@@ -218,12 +196,3 @@ MaxWarmupIterationCount=8  MinWarmupIterationCount=5  RunStrategy=Throughput
 | `SpanLookup_TraditionalToString_NotExists` | `22.141 ns` | `53 B` |
 | `SpanLookup_DirectEntry_NotExists` | `22.140 ns` | `53 B` |
 | `SpanLookup_AlternateLookupEntry_NotExists` | `20.386 ns` | `53 B` |
-
-#### `BatchOperationsBenchmarks` (`Dictionary<string, int>`)
-
-| Method | Mean | Allocated |
-|---|---:|---:|
-| `BatchOperations_Traditional_Exists` | `10.145 ns` | `-` |
-| `BatchOperations_Traditional_NotExists` | `11.791 ns` | `-` |
-| `BatchOperations_Entry_Exists` | `5.590 ns` | `-` |
-| `BatchOperations_Entry_NotExists` | `16.883 ns` | `-` |

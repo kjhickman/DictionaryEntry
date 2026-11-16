@@ -373,7 +373,7 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
         ref var slot = ref CollectionsMarshal.GetValueRefOrAddDefault(dictionary, key, out var existed);
         if (existed && !overwriteIfStale)
         {
-            ThrowKeyAlreadyAdded(key);
+            throw new ArgumentException($"An item with the same key has already been added. Key: {key}");
         }
 
         return ref slot!;
@@ -389,7 +389,7 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
         ref var slot = ref CollectionsMarshal.GetValueRefOrAddDefault(lookup, key, out var existed);
         if (existed && !overwriteIfStale)
         {
-            ThrowAlternateKeyAlreadyAdded(lookup.Dictionary, key);
+            throw new ArgumentException($"An item with the same key has already been added. Key: {FormatAlternateKey(lookup.Dictionary, key)}");
         }
 
         return ref slot!;
@@ -406,20 +406,10 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
 
     [DoesNotReturn]
     [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void ThrowKeyAlreadyAdded(TKey key) =>
-        throw new ArgumentException($"An item with the same key has already been added. Key: {key}");
-
-    [DoesNotReturn]
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    public static void ThrowKeyNotFound(TKey key) =>
-        throw new KeyNotFoundException($"The key '{key}' was not found in the dictionary.");
-
-    [DoesNotReturn]
-    [MethodImpl(MethodImplOptions.NoInlining)]
     public static void ThrowVacantOrDefault(Dictionary<TKey, TValue>? dictionary, TKey key)
     {
         DictionaryThrowHelper.ThrowIfDefault(dictionary);
-        ThrowKeyNotFound(key);
+        throw new KeyNotFoundException($"The key '{key}' was not found in the dictionary.");
     }
 
     [DoesNotReturn]
@@ -429,14 +419,6 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
         DictionaryThrowHelper.ThrowIfDefault(dictionary);
         throw new InvalidOperationException($"The key '{key}' already exists in the dictionary.");
     }
-
-    [DoesNotReturn]
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void ThrowAlternateKeyAlreadyAdded<TAlternateKey>(Dictionary<TKey, TValue> dictionary, TAlternateKey key)
-        where TAlternateKey : notnull, allows ref struct =>
-        throw new ArgumentException(dictionary.Comparer is IAlternateEqualityComparer<TAlternateKey, TKey> alt
-            ? $"An item with the same key has already been added. Key: {alt.Create(key)}"
-            : "An item with the same key has already been added.");
 
     [DoesNotReturn]
     [MethodImpl(MethodImplOptions.NoInlining)]

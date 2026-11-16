@@ -21,11 +21,8 @@ jobs:
           10.0.x
           11.0.x
 
-    - name: Restore dependencies
-      run: dotnet restore
-
     - name: Build
-      run: dotnet build --configuration Release --no-restore
+      run: dotnet build --configuration Release
 
     - name: Test
       run: dotnet test --configuration Release --no-build --verbosity normal

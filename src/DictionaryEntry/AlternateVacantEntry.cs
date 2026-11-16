@@ -31,11 +31,7 @@ public readonly ref struct AlternateVacantEntry<TKey, TValue, TAlternateKey>
     /// <summary>
     /// Gets the alternate key associated with this entry.
     /// </summary>
-    public TAlternateKey Key
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => _key;
-    }
+    public TAlternateKey Key => _key;
 
     /// <summary>
     /// Inserts a value into the dictionary using the alternate key associated with this entry.

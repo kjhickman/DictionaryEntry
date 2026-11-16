@@ -2,7 +2,6 @@ using BenchmarkDotNet.Attributes;
 
 namespace DictionaryEntry.Benchmarks.BasicOps;
 
-[BenchmarkCategory("BasicOps")]
 public class GetOrAddBenchmarks : IntIntBenchmarkBase
 {
     private static int GetOrAddTraditional(Dictionary<int, int> dict, int key)

@@ -9,8 +9,6 @@ namespace DictionaryEntry.Benchmarks;
 [Config(typeof(BenchmarkConfig))]
 [MemoryDiagnoser(displayGenColumns: false)]
 [HideColumns("Error", "StdDev", "Median", "Ratio", "Alloc Ratio", "RatioSD")]
-[GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByJob)]
-[CategoriesColumn]
 public abstract class BenchmarkBase
 {
     protected const int BatchSize = 256;

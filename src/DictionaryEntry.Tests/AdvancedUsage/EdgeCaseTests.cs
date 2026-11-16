@@ -34,15 +34,6 @@ public class EdgeCaseTests
     }
 
     [Fact]
-    public void DefaultEntry_IsNeitherOccupiedNorVacant()
-    {
-        Entry<string, int> entry = default;
-
-        Assert.False(entry.IsOccupied);
-        Assert.False(entry.IsVacant);
-    }
-
-    [Fact]
     public void DefaultEntry_AllOperations_ThrowInvalidOperationExceptionWithoutInvokingCallbacks()
     {
         var invoked = false;

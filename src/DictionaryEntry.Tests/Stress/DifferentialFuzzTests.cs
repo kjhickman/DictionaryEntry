@@ -506,7 +506,8 @@ public class DifferentialFuzzTests
 
             if ((step & 31) == 31 || step == steps - 1)
             {
-                AssertValueTypeParityAndInvariants(oracle, sut, seed, step);
+                Assert.Equal(oracle, sut);
+                DictionaryStructureVerifier<int, FuzzRecord>.Verify(sut, seed, step);
             }
         }
     }
@@ -518,46 +519,14 @@ public class DifferentialFuzzTests
         int seed,
         int step)
     {
-        if (oracle.Count != sut.Count)
-        {
-            throw new Xunit.Sdk.XunitException($"Count mismatch at seed={seed}, step={step}: expected {oracle.Count}, actual {sut.Count}");
-        }
-
+        Assert.Equal(oracle, sut);
         foreach (var (k, expectedVal) in oracle)
         {
-            if (!sut.TryGetValue(k, out var actualVal) || actualVal != expectedVal)
-            {
-                throw new Xunit.Sdk.XunitException($"Value mismatch for '{k}' at seed={seed}, step={step}");
-            }
-
-            if (!lookup.TryGetValue(k.AsSpan(), out var spanVal) || spanVal != expectedVal)
-            {
-                throw new Xunit.Sdk.XunitException($"Span lookup mismatch for '{k}' at seed={seed}, step={step}");
-            }
+            Assert.True(lookup.TryGetValue(k.AsSpan(), out var spanVal));
+            Assert.Equal(expectedVal, spanVal);
         }
 
-        var enumerated = 0;
-        foreach (var (k, v) in sut)
-        {
-            if (!oracle.TryGetValue(k, out var expectedVal) || expectedVal != v)
-            {
-                throw new Xunit.Sdk.XunitException($"Enumerator mismatch for '{k}' at seed={seed}, step={step}");
-            }
-            enumerated++;
-        }
-
-        Assert.Equal(oracle.Count, enumerated);
         DictionaryStructureVerifier<string, int>.Verify(sut, seed, step);
-    }
-
-    private static void AssertValueTypeParityAndInvariants(
-        Dictionary<int, FuzzRecord> oracle,
-        Dictionary<int, FuzzRecord> sut,
-        int seed,
-        int step)
-    {
-        Assert.Equal(oracle, sut);
-        DictionaryStructureVerifier<int, FuzzRecord>.Verify(sut, seed, step);
     }
 
     private record struct FuzzRecord(int Counter, string? Tag, long Checksum);

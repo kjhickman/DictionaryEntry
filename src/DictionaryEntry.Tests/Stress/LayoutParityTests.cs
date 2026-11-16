@@ -19,34 +19,34 @@ public class LayoutParityTests
     [Fact]
     public void AllPathologicalKeyAndValueTypeCombinations_HaveIdenticalBclAndRawEntryLayouts()
     {
-        ReadOnlySpan<KeySample> keys =
+        ReadOnlySpan<TypeSample> keys =
         [
-            KeySample.Create<byte>(1, 2),
-            KeySample.Create<short>(10, 20),
-            KeySample.Create<int>(100, 200),
-            KeySample.Create<long>(1000L, 2000L),
-            KeySample.Create(new Int128(1, 2), new Int128(3, 4)),
-            KeySample.Create(Vector128.Create((byte)1), Vector128.Create((byte)2)),
-            KeySample.Create(Vector256.Create(1L), Vector256.Create(2L)),
-            KeySample.Create("alpha", "beta"),
-            KeySample.Create(new PackedKeyStruct(1, 100), new PackedKeyStruct(2, 200)),
-            KeySample.Create(new RefBearingKeyStruct(1, "k1"), new RefBearingKeyStruct(2, "k2")),
+            TypeSample.Create<byte>(1, 2),
+            TypeSample.Create<short>(10, 20),
+            TypeSample.Create<int>(100, 200),
+            TypeSample.Create<long>(1000L, 2000L),
+            TypeSample.Create(new Int128(1, 2), new Int128(3, 4)),
+            TypeSample.Create(Vector128.Create((byte)1), Vector128.Create((byte)2)),
+            TypeSample.Create(Vector256.Create(1L), Vector256.Create(2L)),
+            TypeSample.Create("alpha", "beta"),
+            TypeSample.Create(new PackedKeyStruct(1, 100), new PackedKeyStruct(2, 200)),
+            TypeSample.Create(new RefBearingKeyStruct(1, "k1"), new RefBearingKeyStruct(2, "k2")),
         ];
 
-        ReadOnlySpan<ValueSample> values =
+        ReadOnlySpan<TypeSample> values =
         [
-            ValueSample.Create(false, true),
-            ValueSample.Create(ValueTuple.Create(), ValueTuple.Create()),
-            ValueSample.Create<byte>(7, 9),
-            ValueSample.Create<int?>(null, 42),
-            ValueSample.Create<Guid?>(null, Guid.NewGuid()),
-            ValueSample.Create(12.34m, 56.78m),
-            ValueSample.Create(new Int128(9, 10), new Int128(11, 12)),
-            ValueSample.Create(Vector128.Create(1.5, 2.5), Vector128.Create(3.5, 4.5)),
-            ValueSample.Create(Vector256.Create(10L, 20L, 30L, 40L), Vector256.Create(50L, 60L, 70L, 80L)),
-            ValueSample.Create(new ExplicitUnionStruct { LongValue = 0x1122334455667788L }, new ExplicitUnionStruct { LongValue = 0x99AABBCCL }),
-            ValueSample.Create(new PackedOddStruct(3, 0x123456789ABCDEF0L), new PackedOddStruct(4, 0x0FEDCBA987654321L)),
-            ValueSample.Create(
+            TypeSample.Create(false, true),
+            TypeSample.Create(ValueTuple.Create(), ValueTuple.Create()),
+            TypeSample.Create<byte>(7, 9),
+            TypeSample.Create<int?>(null, 42),
+            TypeSample.Create<Guid?>(null, Guid.NewGuid()),
+            TypeSample.Create(12.34m, 56.78m),
+            TypeSample.Create(new Int128(9, 10), new Int128(11, 12)),
+            TypeSample.Create(Vector128.Create(1.5, 2.5), Vector128.Create(3.5, 4.5)),
+            TypeSample.Create(Vector256.Create(10L, 20L, 30L, 40L), Vector256.Create(50L, 60L, 70L, 80L)),
+            TypeSample.Create(new ExplicitUnionStruct { LongValue = 0x1122334455667788L }, new ExplicitUnionStruct { LongValue = 0x99AABBCCL }),
+            TypeSample.Create(new PackedOddStruct(3, 0x123456789ABCDEF0L), new PackedOddStruct(4, 0x0FEDCBA987654321L)),
+            TypeSample.Create(
                 new MixedGcStruct(1, "v1", 99.5m, new int[] { 1, 2 }, 7),
                 new MixedGcStruct(2, null, -42.25m, "boxed", 8)),
         ];
@@ -154,14 +154,9 @@ public class LayoutParityTests
         nint KeyOffset,
         nint ValueOffset);
 
-    private readonly record struct KeySample(Type Type, object First, object Second)
+    private readonly record struct TypeSample(Type Type, object? First, object? Second)
     {
-        public static KeySample Create<T>(T first, T second) where T : notnull => new(typeof(T), first, second);
-    }
-
-    private readonly record struct ValueSample(Type Type, object? First, object? Second)
-    {
-        public static ValueSample Create<T>(T first, T second) => new(typeof(T), first, second);
+        public static TypeSample Create<T>(T first, T second) => new(typeof(T), first, second);
     }
 
     [StructLayout(LayoutKind.Sequential, Pack = 1)]

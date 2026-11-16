@@ -2,7 +2,6 @@ using BenchmarkDotNet.Attributes;
 
 namespace DictionaryEntry.Benchmarks.AdvancedOps;
 
-[BenchmarkCategory("AdvancedOps")]
 public class SpanLookupBenchmarks : BenchmarkBase
 {
     private Dictionary<string, int> _existingDictionary = null!;

@@ -2,7 +2,6 @@ using BenchmarkDotNet.Attributes;
 
 namespace DictionaryEntry.Benchmarks.ConditionalOps;
 
-[BenchmarkCategory("ConditionalOps")]
 public class UpdateExistingBenchmarks : StringIntMutableBenchmarkBase
 {
     private static void UpdateTraditional(Dictionary<string, int> dict, string key)

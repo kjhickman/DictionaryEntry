@@ -86,33 +86,21 @@ public class EntryTests
     }
 
     [Fact]
-    public void AndModify_WhenNotExists_DoesNothing()
-    {
-        // Arrange
-        var dict = new Dictionary<string, int>();
-
-        // Act
-        var entry = dict.Entry("key").AndModify(value => value + 1);
-
-        // Assert
-        Assert.True(entry.IsVacant);
-    }
-
-    [Fact]
-    public void AndModify_WhenNotExists_DoesNotInvokeCallback()
+    public void AndModify_WhenNotExists_DoesNothingWithoutInvokingCallback()
     {
         // Arrange
         var dict = new Dictionary<string, int>();
         var invoked = false;
 
         // Act
-        dict.Entry("key").AndModify(value =>
+        var entry = dict.Entry("key").AndModify(value =>
         {
             invoked = true;
             return value + 1;
         });
 
         // Assert
+        Assert.True(entry.IsVacant);
         Assert.False(invoked);
         Assert.Empty(dict);
     }
@@ -154,66 +142,32 @@ public class EntryTests
     }
 
     [Fact]
-    public void OrInsert_WhenNotExists_InsertsValue()
+    public void OrInsert_WhenNotExists_InsertsValueAndReturnsMutableReference()
     {
         // Arrange
         var dict = new Dictionary<string, int>();
 
-        // Act
-        var value = dict.Entry("key").OrInsert(42);
-
-        // Assert
-        Assert.True(dict.ContainsKey("key"));
-        Assert.Equal(42, dict["key"]);
-        Assert.Equal(42, value);
-    }
-
-    [Fact]
-    public void OrInsert_ReturnsReferenceToInsertedValue()
-    {
-        // Arrange
-        var dict = new Dictionary<string, int>();
-
-        // Act
+        // Act & Assert
         ref var valueRef = ref dict.Entry("key").OrInsert(42);
-        valueRef = 100;
+        Assert.Equal(42, valueRef);
+        Assert.Equal(42, dict["key"]);
 
-        // Assert
+        valueRef = 100;
         Assert.Equal(100, dict["key"]);
     }
 
     [Fact]
-    public void OrInsert_WhenExists_DoesNothing()
+    public void OrInsert_WhenExists_PreservesValueAndReturnsMutableReference()
     {
         // Arrange
-        var dict = new Dictionary<string, int>
-        {
-            ["key"] = 42
-        };
+        var dict = new Dictionary<string, int> { ["key"] = 42 };
 
-        // Act
-        var value = dict.Entry("key").OrInsert(43);
-
-        // Assert
-        Assert.True(dict.ContainsKey("key"));
-        Assert.Equal(42, dict["key"]);
-        Assert.Equal(42, value);
-    }
-
-    [Fact]
-    public void OrInsert_WhenExists_ReturnsReferenceToExistingValue()
-    {
-        // Arrange
-        var dict = new Dictionary<string, int>
-        {
-            ["key"] = 42
-        };
-
-        // Act
+        // Act & Assert
         ref var valueRef = ref dict.Entry("key").OrInsert(43);
-        valueRef = 100;
+        Assert.Equal(42, valueRef);
+        Assert.Equal(42, dict["key"]);
 
-        // Assert
+        valueRef = 100;
         Assert.Equal(100, dict["key"]);
     }
 
@@ -257,66 +211,32 @@ public class EntryTests
     }
 
     [Fact]
-    public void OrDefault_WhenNotExists_InsertsDefaultValue()
+    public void OrDefault_WhenNotExists_InsertsDefaultAndReturnsMutableReference()
     {
         // Arrange
         var dict = new Dictionary<string, int>();
 
-        // Act
-        var value = dict.Entry("key").OrDefault();
-
-        // Assert
-        Assert.True(dict.ContainsKey("key"));
-        Assert.Equal(0, dict["key"]);
-        Assert.Equal(0, value);
-    }
-
-    [Fact]
-    public void OrDefault_ReturnsReferenceAllowingMutation()
-    {
-        // Arrange
-        var dict = new Dictionary<string, int>();
-
-        // Act
+        // Act & Assert
         ref var valueRef = ref dict.Entry("key").OrDefault();
-        valueRef = 7;
+        Assert.Equal(0, valueRef);
+        Assert.Equal(0, dict["key"]);
 
-        // Assert
+        valueRef = 7;
         Assert.Equal(7, dict["key"]);
     }
 
     [Fact]
-    public void OrDefault_WhenExists_DoesNothing()
+    public void OrDefault_WhenExists_PreservesValueAndReturnsMutableReference()
     {
         // Arrange
-        var dict = new Dictionary<string, int>
-        {
-            ["key"] = 42
-        };
+        var dict = new Dictionary<string, int> { ["key"] = 42 };
 
-        // Act
-        var value = dict.Entry("key").OrDefault();
-
-        // Assert
-        Assert.True(dict.ContainsKey("key"));
-        Assert.Equal(42, dict["key"]);
-        Assert.Equal(42, value);
-    }
-
-    [Fact]
-    public void OrDefault_WhenExists_ReturnsReferenceAllowingMutation()
-    {
-        // Arrange
-        var dict = new Dictionary<string, int>
-        {
-            ["key"] = 42
-        };
-
-        // Act
+        // Act & Assert
         ref var valueRef = ref dict.Entry("key").OrDefault();
-        valueRef += 8;
+        Assert.Equal(42, valueRef);
+        Assert.Equal(42, dict["key"]);
 
-        // Assert
+        valueRef += 8;
         Assert.Equal(50, dict["key"]);
     }
 

@@ -49,11 +49,7 @@ public readonly ref struct AlternateOccupiedEntry<TKey, TValue, TAlternateKey>
     /// <summary>
     /// Gets the alternate key associated with this entry.
     /// </summary>
-    public TAlternateKey Key
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => _key;
-    }
+    public TAlternateKey Key => _key;
 
     /// <summary>
     /// Gets the value associated with this entry at the time the entry was obtained.
@@ -61,11 +57,7 @@ public readonly ref struct AlternateOccupiedEntry<TKey, TValue, TAlternateKey>
     /// <remarks>
     /// This is a snapshot: it is not updated by <see cref="Insert"/> or by later changes to the dictionary.
     /// </remarks>
-    public TValue Value
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => _value;
-    }
+    public TValue Value => _value;
 
     /// <summary>
     /// Deconstructs this entry into its alternate key and snapshot value.

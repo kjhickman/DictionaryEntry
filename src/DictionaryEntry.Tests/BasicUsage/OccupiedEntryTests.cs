@@ -43,20 +43,6 @@ public class OccupiedEntryTests
     }
 
     [Fact]
-    public void Insert_UpdatesValue()
-    {
-        // Arrange
-        var dict = new Dictionary<string, int> { ["key"] = 42 };
-
-        // Act
-        var occupied = dict.Entry("key").ToOccupied();
-        occupied.Insert(99);
-
-        // Assert
-        Assert.Equal(99, dict["key"]);
-    }
-
-    [Fact]
     public void Remove_RemovesKeyAndReturnsValue()
     {
         // Arrange

@@ -2,7 +2,6 @@ using BenchmarkDotNet.Attributes;
 
 namespace DictionaryEntry.Benchmarks.BasicOps;
 
-[BenchmarkCategory("BasicOps")]
 public class RetrieveAndRemoveBenchmarks : StringIntBenchmarkBase
 {
     private static int? GetAndRemoveTraditional(Dictionary<string, int> dict, string key)

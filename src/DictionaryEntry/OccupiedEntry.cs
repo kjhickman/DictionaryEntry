@@ -10,17 +10,11 @@ namespace DictionaryEntry;
 /// <typeparam name="TValue">The type of the value in the dictionary.</typeparam>
 public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
 {
-    private readonly Dictionary<TKey, TValue> _dictionary;
+    internal readonly Dictionary<TKey, TValue> _dictionary;
     private readonly TKey _key;
     private readonly TValue _value;
     private readonly ulong _location;
     private readonly ulong _stamp;
-
-    internal Dictionary<TKey, TValue> Dictionary
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => _dictionary;
-    }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal OccupiedEntry(
@@ -52,11 +46,7 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
     /// <summary>
     /// Gets the key associated with this entry.
     /// </summary>
-    public TKey Key
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => _key;
-    }
+    public TKey Key => _key;
 
     /// <summary>
     /// Gets the value associated with this entry at the time the entry was obtained.
@@ -64,11 +54,7 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
     /// <remarks>
     /// This is a snapshot: it is not updated by <see cref="Insert"/> or by later changes to the dictionary.
     /// </remarks>
-    public TValue Value
-    {
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        get => _value;
-    }
+    public TValue Value => _value;
 
     /// <summary>
     /// Deconstructs this entry into its key and value.
@@ -151,7 +137,7 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
     {
         if (!dictionary.Remove(key, out var value))
         {
-            DictionaryAccess<TKey, TValue>.ThrowKeyNotFound(key);
+            DictionaryAccess<TKey, TValue>.ThrowVacantOrDefault(dictionary, key);
         }
 
         return value;

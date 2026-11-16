@@ -2,7 +2,6 @@ using BenchmarkDotNet.Attributes;
 
 namespace DictionaryEntry.Benchmarks.AdvancedOps;
 
-[BenchmarkCategory("AdvancedOps")]
 public class PatternMatchingBenchmarks : StringIntMutableBenchmarkBase
 {
     private Dictionary<string, int> _readOnlyDictionary = null!;

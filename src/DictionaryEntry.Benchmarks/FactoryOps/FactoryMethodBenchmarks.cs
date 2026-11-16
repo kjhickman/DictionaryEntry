@@ -2,7 +2,6 @@ using BenchmarkDotNet.Attributes;
 
 namespace DictionaryEntry.Benchmarks.FactoryOps;
 
-[BenchmarkCategory("FactoryOps")]
 public class FactoryMethodBenchmarks : StringIntBenchmarkBase
 {
     private int _multiplier = 10;

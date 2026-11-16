@@ -2,7 +2,6 @@ using BenchmarkDotNet.Attributes;
 
 namespace DictionaryEntry.Benchmarks.ConditionalOps;
 
-[BenchmarkCategory("ConditionalOps")]
 public class ConditionalModificationBenchmarks : StringIntBenchmarkBase
 {
     private const int Threshold = 5;
