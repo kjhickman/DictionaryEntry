@@ -42,7 +42,7 @@ public readonly ref struct AlternateOccupiedEntry<TKey, TValue, TAlternateKey>
         _lookup = lookup;
         _key = key;
         _value = value;
-        _location = ulong.MaxValue;
+        _location = DictionaryAccess.UnknownLocation;
         _stamp = 0;
     }
 
@@ -86,7 +86,7 @@ public readonly ref struct AlternateOccupiedEntry<TKey, TValue, TAlternateKey>
         var dictionary = _lookup.Dictionary;
         DictionaryThrowHelper.ThrowIfDefault(dictionary);
 
-        if (DictionaryAccess<TKey, TValue>.GetOccupiedStamp(dictionary) == _stamp && (int)_location >= 0)
+        if (DictionaryAccess<TKey, TValue>.GetOccupiedStamp(dictionary) == _stamp && DictionaryAccess.HasKnownLocation(_location))
         {
             DictionaryAccess<TKey, TValue>.WriteOccupiedValue(dictionary, _location, newValue);
             return newValue;
@@ -132,7 +132,7 @@ public readonly ref struct AlternateOccupiedEntry<TKey, TValue, TAlternateKey>
         var dictionary = _lookup.Dictionary;
         DictionaryThrowHelper.ThrowIfDefault(dictionary);
 
-        if (DictionaryAccess<TKey, TValue>.GetOccupiedStamp(dictionary) == _stamp && (int)_location >= 0)
+        if (DictionaryAccess<TKey, TValue>.GetOccupiedStamp(dictionary) == _stamp && DictionaryAccess.HasKnownLocation(_location))
         {
             var value = DictionaryAccess<TKey, TValue>.RemoveOccupied(dictionary, _location, out var actualKey);
             return (actualKey, value);
@@ -148,7 +148,7 @@ public readonly ref struct AlternateOccupiedEntry<TKey, TValue, TAlternateKey>
     {
         if (!lookup.Remove(key, out var actualKey, out var value))
         {
-            DictionaryAccess<TKey, TValue>.ThrowAlternateKeyNotFound(lookup.Dictionary, key);
+            DictionaryThrowHelper.ThrowAlternateVacantOrDefault<TKey, TValue, TAlternateKey>(lookup.Dictionary, key);
         }
 
         return (actualKey, value);

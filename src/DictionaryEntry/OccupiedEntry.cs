@@ -39,13 +39,17 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
         _dictionary = dictionary;
         _key = key;
         _value = value;
-        _location = ulong.MaxValue;
+        _location = DictionaryAccess.UnknownLocation;
         _stamp = 0;
     }
 
     /// <summary>
-    /// Gets the key associated with this entry.
+    /// Gets the lookup key associated with this entry.
     /// </summary>
+    /// <remarks>
+    /// Returns the key passed to <see cref="DictionaryExtensions.Entry{TKey, TValue}(Dictionary{TKey, TValue}, TKey)"/>,
+    /// which may differ in representation from the key stored in the dictionary when using a custom <see cref="IEqualityComparer{T}"/>.
+    /// </remarks>
     public TKey Key => _key;
 
     /// <summary>
@@ -82,7 +86,7 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
     {
         DictionaryThrowHelper.ThrowIfDefault(_dictionary);
 
-        if (DictionaryAccess<TKey, TValue>.GetOccupiedStamp(_dictionary) == _stamp && (int)_location >= 0)
+        if (DictionaryAccess<TKey, TValue>.GetOccupiedStamp(_dictionary) == _stamp && DictionaryAccess.HasKnownLocation(_location))
         {
             DictionaryAccess<TKey, TValue>.WriteOccupiedValue(_dictionary, _location, newValue);
             return newValue;
@@ -112,7 +116,7 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
     {
         DictionaryThrowHelper.ThrowIfDefault(_dictionary);
 
-        if (DictionaryAccess<TKey, TValue>.GetOccupiedStamp(_dictionary) == _stamp && (int)_location >= 0)
+        if (DictionaryAccess<TKey, TValue>.GetOccupiedStamp(_dictionary) == _stamp && DictionaryAccess.HasKnownLocation(_location))
         {
             return DictionaryAccess<TKey, TValue>.RemoveOccupied(_dictionary, _location, out _);
         }
@@ -121,23 +125,24 @@ public readonly struct OccupiedEntry<TKey, TValue> where TKey : notnull
     }
 
     /// <summary>
-    /// Removes this entry from the dictionary and returns both the key and the value.
+    /// Removes this entry from the dictionary and returns its lookup key and the removed value.
     /// </summary>
     /// <returns>
-    /// A tuple containing the key and the value that was actually removed from the dictionary, which reflects any
-    /// changes made since the entry was obtained and may therefore differ from <see cref="Value"/>.
+    /// A tuple containing <see cref="Key"/> (the lookup key passed to <c>Entry(key)</c>) and the value that was actually
+    /// removed from the dictionary, which reflects any changes made since the entry was obtained and may therefore
+    /// differ from <see cref="Value"/>.
     /// </returns>
     /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
     /// <exception cref="KeyNotFoundException">Thrown if the key is no longer present in the dictionary.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public (TKey, TValue) RemoveEntry() => (_key, Remove());
+    public (TKey Key, TValue Value) RemoveEntry() => (_key, Remove());
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static TValue RemoveFallback(Dictionary<TKey, TValue> dictionary, TKey key)
     {
         if (!dictionary.Remove(key, out var value))
         {
-            DictionaryAccess<TKey, TValue>.ThrowVacantOrDefault(dictionary, key);
+            DictionaryThrowHelper.ThrowVacantOrDefault(dictionary, key);
         }
 
         return value;

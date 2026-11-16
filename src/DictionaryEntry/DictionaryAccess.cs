@@ -1,8 +1,30 @@
-using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 
 namespace DictionaryEntry;
+
+internal static class DictionaryAccess
+{
+    /// <summary>
+    /// Sentinel location indicating that an occupied entry's slot index is not cached
+    /// (for example, after an in-place vacant-to-occupied transition on <see cref="Entry{TKey, TValue}"/>).
+    /// </summary>
+    internal const ulong UnknownLocation = ulong.MaxValue;
+
+    /// <summary>
+    /// Matches <c>Dictionary&lt;TKey, TValue&gt;.StartOfFreeList</c> (<c>-3</c>).
+    /// </summary>
+    internal const int StartOfFreeList = -3;
+
+    /// <summary>
+    /// Matches <c>HashHelpers.HashCollisionThreshold</c> (<c>100</c>), above which <see cref="string"/>-keyed
+    /// dictionaries may upgrade from non-randomized to randomized hashing during insertion.
+    /// </summary>
+    internal const uint HashCollisionThreshold = 100;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    internal static bool HasKnownLocation(ulong location) => (int)location >= 0;
+}
 
 /// <summary>
 /// Provides direct, zero-overhead access to <see cref="Dictionary{TKey, TValue}"/> internals via
@@ -98,7 +120,7 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
             Unsafe.Add(ref firstEntry, (nint)(uint)prevOrBucket).next = next;
         }
 
-        target.next = -3 - GetFreeList(dictionary);
+        target.next = DictionaryAccess.StartOfFreeList - GetFreeList(dictionary);
 
         if (RuntimeHelpers.IsReferenceOrContainsReferences<TKey>())
         {
@@ -119,16 +141,16 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
     public static ref TValue FindValue(
         Dictionary<TKey, TValue> dictionary,
         TKey key,
-        out ulong hashAndVersion)
+        out ulong packedState)
     {
         if (key is null)
         {
-            ThrowKeyNull();
+            DictionaryThrowHelper.ThrowKeyNull();
         }
 
         if (GetBuckets(dictionary) is null)
         {
-            hashAndVersion = 0;
+            packedState = 0;
             return ref Unsafe.NullRef<TValue>();
         }
 
@@ -146,7 +168,7 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
                 ref RawEntry entry = ref entries[i];
                 if (entry.hashCode == hashCode && EqualityComparer<TKey>.Default.Equals(entry.key, key))
                 {
-                    hashAndVersion = ((ulong)(uint)last << 32) | (uint)i;
+                    packedState = ((ulong)(uint)last << 32) | (uint)i;
                     return ref entry.value;
                 }
 
@@ -155,7 +177,7 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
                 collisionCount++;
                 if (collisionCount > (uint)entries.Length)
                 {
-                    ThrowConcurrentOperations();
+                    DictionaryThrowHelper.ThrowConcurrentOperations();
                 }
             }
         }
@@ -176,7 +198,7 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
                     ref RawEntry entry = ref entries[i];
                     if (entry.hashCode == hashCode && comparer.Equals(entry.key, key))
                     {
-                        hashAndVersion = ((ulong)(uint)prevOrBucket << 32) | (uint)i;
+                        packedState = ((ulong)(uint)prevOrBucket << 32) | (uint)i;
                         return ref entry.value;
                     }
 
@@ -185,20 +207,20 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
                     collisionCount++;
                     if (collisionCount > (uint)entries.Length)
                     {
-                        ThrowConcurrentOperations();
+                        DictionaryThrowHelper.ThrowConcurrentOperations();
                     }
                 } while ((uint)i < (uint)entries.Length);
 
-                if (typeof(TKey) == typeof(string) && collisionCount > 100)
+                if (typeof(TKey) == typeof(string) && collisionCount > DictionaryAccess.HashCollisionThreshold)
                 {
                     // Force AddVacant onto the BCL path so NonRandomizedStringEqualityComparer can upgrade to randomized hashing.
-                    hashAndVersion = ((ulong)~(uint)GetVersion(dictionary) << 32) | hashCode;
+                    packedState = ((ulong)~(uint)GetVersion(dictionary) << 32) | hashCode;
                     return ref Unsafe.NullRef<TValue>();
                 }
             }
         }
 
-        hashAndVersion = ((ulong)(uint)GetVersion(dictionary) << 32) | hashCode;
+        packedState = ((ulong)(uint)GetVersion(dictionary) << 32) | hashCode;
         return ref Unsafe.NullRef<TValue>();
     }
 
@@ -206,13 +228,13 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
     public static ref TValue FindAlternateValue<TAlternateKey>(
         Dictionary<TKey, TValue>.AlternateLookup<TAlternateKey> lookup,
         TAlternateKey key,
-        out ulong hashAndVersion)
+        out ulong packedState)
         where TAlternateKey : notnull, allows ref struct
     {
         Dictionary<TKey, TValue> dictionary = lookup.Dictionary;
         if (GetBuckets(dictionary) is null)
         {
-            hashAndVersion = 0;
+            packedState = 0;
             return ref Unsafe.NullRef<TValue>();
         }
 
@@ -232,7 +254,7 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
                 ref RawEntry entry = ref entries[i];
                 if (entry.hashCode == hashCode && comparer.Equals(key, entry.key))
                 {
-                    hashAndVersion = ((ulong)(uint)prevOrBucket << 32) | (uint)i;
+                    packedState = ((ulong)(uint)prevOrBucket << 32) | (uint)i;
                     return ref entry.value;
                 }
 
@@ -241,18 +263,18 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
                 collisionCount++;
                 if (collisionCount > (uint)entries.Length)
                 {
-                    ThrowConcurrentOperations();
+                    DictionaryThrowHelper.ThrowConcurrentOperations();
                 }
             } while ((uint)i < (uint)entries.Length);
 
-            if (typeof(TKey) == typeof(string) && collisionCount > 100)
+            if (typeof(TKey) == typeof(string) && collisionCount > DictionaryAccess.HashCollisionThreshold)
             {
-                hashAndVersion = ((ulong)~(uint)GetVersion(dictionary) << 32) | hashCode;
+                packedState = ((ulong)~(uint)GetVersion(dictionary) << 32) | hashCode;
                 return ref Unsafe.NullRef<TValue>();
             }
         }
 
-        hashAndVersion = ((ulong)(uint)GetVersion(dictionary) << 32) | hashCode;
+        packedState = ((ulong)(uint)GetVersion(dictionary) << 32) | hashCode;
         return ref Unsafe.NullRef<TValue>();
     }
 
@@ -291,7 +313,7 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
         TKey actualKey = comparer.Create(key);
         if (actualKey is null)
         {
-            ThrowKeyNull();
+            DictionaryThrowHelper.ThrowKeyNull();
         }
 
         return ref InsertWithKnownHash(dictionary, actualKey, (uint)hashAndVersion);
@@ -336,7 +358,7 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
         if (freeCount > 0)
         {
             index = GetFreeList(dictionary);
-            GetFreeList(dictionary) = -3 - entries[index].next;
+            GetFreeList(dictionary) = DictionaryAccess.StartOfFreeList - entries[index].next;
             freeCount--;
         }
         else
@@ -389,71 +411,9 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
         ref var slot = ref CollectionsMarshal.GetValueRefOrAddDefault(lookup, key, out var existed);
         if (existed && !overwriteIfStale)
         {
-            throw new ArgumentException($"An item with the same key has already been added. Key: {FormatAlternateKey(lookup.Dictionary, key)}");
+            throw new ArgumentException($"An item with the same key has already been added. Key: {DictionaryThrowHelper.FormatAlternateKey(lookup.Dictionary, key)}");
         }
 
         return ref slot!;
     }
-
-    [DoesNotReturn]
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void ThrowKeyNull() => throw new ArgumentNullException("key");
-
-    [DoesNotReturn]
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    private static void ThrowConcurrentOperations() =>
-        throw new InvalidOperationException("Operations that change non-concurrent collections must have exclusive access.");
-
-    [DoesNotReturn]
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    public static void ThrowVacantOrDefault(Dictionary<TKey, TValue>? dictionary, TKey key)
-    {
-        DictionaryThrowHelper.ThrowIfDefault(dictionary);
-        throw new KeyNotFoundException($"The key '{key}' was not found in the dictionary.");
-    }
-
-    [DoesNotReturn]
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    public static void ThrowOccupiedOrDefault(Dictionary<TKey, TValue>? dictionary, TKey key)
-    {
-        DictionaryThrowHelper.ThrowIfDefault(dictionary);
-        throw new InvalidOperationException($"The key '{key}' already exists in the dictionary.");
-    }
-
-    [DoesNotReturn]
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    public static void ThrowAlternateKeyNotFound<TAlternateKey>(Dictionary<TKey, TValue>? dictionary, TAlternateKey key)
-        where TAlternateKey : notnull, allows ref struct
-    {
-        DictionaryThrowHelper.ThrowIfDefault(dictionary);
-        throw new KeyNotFoundException($"The key {FormatAlternateKey(dictionary, key)} was not found in the dictionary.");
-    }
-
-    [DoesNotReturn]
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    public static void ThrowAlternateOccupiedOrDefault<TAlternateKey>(Dictionary<TKey, TValue>? dictionary, TAlternateKey key)
-        where TAlternateKey : notnull, allows ref struct
-    {
-        DictionaryThrowHelper.ThrowIfDefault(dictionary);
-        throw new InvalidOperationException($"The key {FormatAlternateKey(dictionary, key)} already exists in the dictionary.");
-    }
-
-    private static string FormatAlternateKey<TAlternateKey>(Dictionary<TKey, TValue> dictionary, TAlternateKey key)
-        where TAlternateKey : notnull, allows ref struct =>
-        dictionary.Comparer is IAlternateEqualityComparer<TAlternateKey, TKey> alt ? $"'{alt.Create(key)}'" : "given";
-}
-
-internal static class DictionaryThrowHelper
-{
-    [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public static void ThrowIfDefault([NotNull] object? dictionary)
-    {
-        if (dictionary is null) ThrowDefaultEntry();
-    }
-
-    [DoesNotReturn]
-    [MethodImpl(MethodImplOptions.NoInlining)]
-    public static void ThrowDefaultEntry() =>
-        throw new InvalidOperationException(
-            "The entry is not associated with a dictionary. Obtain entries with Dictionary.Entry(key) rather than default.");
 }

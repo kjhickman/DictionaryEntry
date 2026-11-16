@@ -14,12 +14,14 @@ public static class DictionaryExtensions
     /// </summary>
     /// <typeparam name="TKey">The type of keys in the dictionary.</typeparam>
     /// <typeparam name="TValue">The type of values in the dictionary.</typeparam>
-    /// <param name="dictionary">The dictionary to operate on.</param>
+    /// <param name="dictionary">The non-null dictionary to operate on.</param>
     /// <param name="key">The key to look up in the dictionary.</param>
     /// <returns>An <see cref="Entry{TKey, TValue}"/> that can be used to manipulate the dictionary.</returns>
+    /// <exception cref="ArgumentNullException">Thrown if <paramref name="key"/> is <c>null</c>.</exception>
     /// <remarks>
     /// This method performs a single dictionary lookup and returns an entry that can be used
-    /// for conditional operations without additional lookups.
+    /// for conditional operations without additional lookups. Passing a <c>null</c> <paramref name="dictionary"/>
+    /// or <c>null</c> callback delegates to entry operations is unsupported and throws <see cref="NullReferenceException"/>.
     /// </remarks>
     /// <example>
     /// <code>
@@ -43,7 +45,9 @@ public static class DictionaryExtensions
     /// <returns>An <see cref="AlternateEntry{TKey, TValue, TAlternateKey}"/> that can be used to manipulate the dictionary without allocating <typeparamref name="TKey"/> on hits.</returns>
     /// <remarks>
     /// This method performs a single dictionary lookup using the alternate key and only materializes a
-    /// <typeparamref name="TKey"/> instance if an insertion occurs on a missing key.
+    /// <typeparamref name="TKey"/> instance if an insertion occurs on a missing key. Passing a <c>default</c>
+    /// <paramref name="lookup"/> or <c>null</c> callback delegates to entry operations is unsupported and throws
+    /// <see cref="NullReferenceException"/>.
     /// </remarks>
     /// <example>
     /// <code>
