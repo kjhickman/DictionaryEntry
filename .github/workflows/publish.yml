@@ -3,7 +3,12 @@ name: Publish NuGet Package
 on:
   release:
     types: [ published ]
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to publish (e.g. v0.4.1)
+        required: true
+        type: string
 
 jobs:
   build-and-publish:
@@ -12,9 +17,22 @@ jobs:
       contents: read
       id-token: write
     runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
 
     steps:
+      - name: Resolve package version
+        shell: bash
+        run: |
+          if [[ ! "$RELEASE_TAG" =~ ^v(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(-([0-9A-Za-z-]+\.)*[0-9A-Za-z-]+)?$ ]]; then
+            echo "::error::Expected a release tag like v0.4.1 or v0.4.1-rc.1."
+            exit 1
+          fi
+          echo "PACKAGE_VERSION=${RELEASE_TAG#v}" >> "$GITHUB_ENV"
+
       - uses: actions/checkout@v7
+        with:
+          ref: refs/tags/${{ env.RELEASE_TAG }}
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
@@ -24,26 +42,14 @@ jobs:
             10.0.x
             11.0.x
 
-      - name: Validate release version
-        if: github.event_name == 'release'
-        env:
-          RELEASE_TAG: ${{ github.ref_name }}
-        run: |
-          EXPECTED_VERSION="${RELEASE_TAG#v}"
-          PROJECT_VERSION="$(dotnet msbuild src/DictionaryEntry/DictionaryEntry.csproj -getProperty:Version)"
-          if [[ "$EXPECTED_VERSION" != "$PROJECT_VERSION" ]]; then
-            echo "::error::Release tag '$RELEASE_TAG' does not match <Version>$PROJECT_VERSION</Version> in DictionaryEntry.csproj."
-            exit 1
-          fi
-
       - name: Build
-        run: dotnet build --configuration Release
+        run: dotnet build --configuration Release -p:Version="$PACKAGE_VERSION"
 
       - name: Test
-        run: dotnet test --configuration Release --no-build --verbosity normal
+        run: dotnet test --configuration Release --no-build --verbosity normal -p:Version="$PACKAGE_VERSION"
 
       - name: Pack
-        run: dotnet pack src/DictionaryEntry/DictionaryEntry.csproj --configuration Release --no-build --output ./nupkgs
+        run: dotnet pack src/DictionaryEntry/DictionaryEntry.csproj --configuration Release --no-build --output ./nupkgs -p:Version="$PACKAGE_VERSION"
 
       - name: Upload package artifacts
         uses: actions/upload-artifact@v7

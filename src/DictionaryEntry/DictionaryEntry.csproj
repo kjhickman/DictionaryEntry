@@ -7,7 +7,7 @@
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
         <EnablePackageValidation>true</EnablePackageValidation>
 
-        <Version>0.4.0</Version>
+        <Version Condition="'$(Version)' == ''">0.0.0-dev</Version>
         <Authors>Kyle Hickman</Authors>
         <Description>Rust-inspired single-lookup Dictionary.Entry(key) API for C# with zero-allocation ReadOnlySpan&lt;char&gt; lookups, C# 15 [Union] pattern matching, and NativeAOT support.</Description>
         <PackageTags>dictionary;collections;entry;fluent;extension;union;span;aot</PackageTags>
