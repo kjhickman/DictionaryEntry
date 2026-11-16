@@ -131,15 +131,6 @@ MaxWarmupIterationCount=8  MinWarmupIterationCount=5  RunStrategy=Throughput
 | `Upsert_Entry_Exists` | `4.278 ns` | `-` |
 | `Upsert_Entry_NotExists` | `8.598 ns` | `-` |
 
-#### `ConditionalModificationBenchmarks` (`Dictionary<string, int>`)
-
-| Method | Mean | Allocated |
-|---|---:|---:|
-| `ConditionalModify_Traditional_Exists` | `8.007 ns` | `-` |
-| `ConditionalModify_Traditional_NotExists` | `11.690 ns` | `-` |
-| `ConditionalModify_Entry_Exists` | `8.109 ns` | `-` |
-| `ConditionalModify_Entry_NotExists` | `10.163 ns` | `-` |
-
 ### Factory Operations
 
 #### `FactoryMethodBenchmarks` (`Dictionary<string, int>`)
@@ -183,8 +174,6 @@ MaxWarmupIterationCount=8  MinWarmupIterationCount=5  RunStrategy=Throughput
 | `StatefulActions_EntryMatchCapturing_NotExists` | `29.411 ns` | `136 B` |
 | `StatefulActions_EntryMatchState_Exists` | `5.374 ns` | `-` |
 | `StatefulActions_EntryMatchState_NotExists` | `10.251 ns` | `-` |
-| `StatefulActions_EntrySwitch_Exists` | `5.166 ns` | `-` |
-| `StatefulActions_EntrySwitch_NotExists` | `8.550 ns` | `-` |
 
 #### `SpanLookupBenchmarks` (`Dictionary<string, int>` / `ReadOnlySpan<char>`)
 

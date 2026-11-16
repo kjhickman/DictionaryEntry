@@ -3,44 +3,19 @@ namespace DictionaryEntry.Tests.BasicUsage;
 public class EntryTests
 {
     [Fact]
-    public void Entry_WithExistingKey_IsOccupied()
+    public void Entry_WithExistingAndMissingKeys_ReportsOccupancyAndKey()
     {
-        // Arrange
-        var dict = new Dictionary<string, int> { ["key"] = 42 };
+        var dict = new Dictionary<string, int> { ["existing"] = 42 };
 
-        // Act
-        var entry = dict.Entry("key");
+        var occupied = dict.Entry("existing");
+        Assert.True(occupied.IsOccupied);
+        Assert.False(occupied.IsVacant);
+        Assert.Equal("existing", occupied.Key);
 
-        // Assert
-        Assert.True(entry.IsOccupied);
-        Assert.False(entry.IsVacant);
-    }
-
-    [Fact]
-    public void Entry_WithNonExistingKey_IsVacant()
-    {
-        // Arrange
-        var dict = new Dictionary<string, int>();
-
-        // Act
-        var entry = dict.Entry("key");
-
-        // Assert
-        Assert.False(entry.IsOccupied);
-        Assert.True(entry.IsVacant);
-    }
-
-    [Fact]
-    public void Key_ReturnsEntryKey()
-    {
-        // Arrange
-        var dict = new Dictionary<string, int>();
-
-        // Act
-        var entry = dict.Entry("key");
-
-        // Assert
-        Assert.Equal("key", entry.Key);
+        var vacant = dict.Entry("missing");
+        Assert.False(vacant.IsOccupied);
+        Assert.True(vacant.IsVacant);
+        Assert.Equal("missing", vacant.Key);
     }
 
     [Fact]
@@ -172,42 +147,37 @@ public class EntryTests
     }
 
     [Fact]
-    public void OrInsertWithKey_WhenNotExists_InsertsValue()
+    public void OrInsertWithKey_WhenNotExists_InsertsValueAndReturnsMutableReference()
     {
-        // Arrange
         var dict = new Dictionary<string, int>();
 
-        // Act
-        var value = dict.Entry("key").OrInsertWithKey(key => key.Length);
+        ref var value = ref dict.Entry("key").OrInsertWithKey(key => key.Length);
 
-        // Assert
-        Assert.True(dict.ContainsKey("key"));
         Assert.Equal(3, dict["key"]);
         Assert.Equal(3, value);
+
+        value *= 10;
+        Assert.Equal(30, dict["key"]);
     }
 
     [Fact]
-    public void OrInsertWithKey_WhenExists_DoesNotInvokeFactory()
+    public void OrInsertWithKey_WhenExists_DoesNotInvokeFactoryAndReturnsMutableReference()
     {
-        // Arrange
-        var dict = new Dictionary<string, int>
-        {
-            ["key"] = 42
-        };
+        var dict = new Dictionary<string, int> { ["key"] = 42 };
         var factoryCalled = false;
 
-        // Act
         ref var value = ref dict.Entry("key").OrInsertWithKey(key =>
         {
             factoryCalled = true;
             return key.Length;
         });
 
-        // Assert
         Assert.False(factoryCalled);
-        Assert.True(dict.ContainsKey("key"));
         Assert.Equal(42, dict["key"]);
         Assert.Equal(42, value);
+
+        value += 2;
+        Assert.Equal(44, dict["key"]);
     }
 
     [Fact]
@@ -274,66 +244,18 @@ public class EntryTests
     }
 
     [Fact]
-    public void TryGetOccupied_WhenExists_ReturnsValue()
+    public void TryGetOccupied_AndTryGetVacant_ReturnExpectedCaseOrDefault()
     {
-        // Arrange
-        var dict = new Dictionary<string, int>
-        {
-            ["key"] = 42
-        };
+        var dict = new Dictionary<string, int> { ["existing"] = 42 };
 
-        // Act
-        var success = dict.Entry("key").TryGetOccupied(out var occupied);
-
-        // Assert
-        Assert.True(success);
+        Assert.True(dict.Entry("existing").TryGetOccupied(out var occupied));
         Assert.Equal(42, occupied.Value);
-    }
+        Assert.False(dict.Entry("existing").TryGetVacant(out var nonVacant));
+        Assert.Equal(default, nonVacant);
 
-    [Fact]
-    public void TryGetOccupied_WhenNotExists_ReturnsFalse()
-    {
-        // Arrange
-        var dict = new Dictionary<string, int>();
-
-        // Act
-        var success = dict.Entry("key").TryGetOccupied(out var occupied);
-
-        // Assert
-        Assert.False(success);
-        Assert.Equal(default, occupied);
-    }
-
-    [Fact]
-    public void TryGetVacant_WhenExists_ReturnsFalse()
-    {
-        // Arrange
-        const string expectedKey = "key";
-        var dict = new Dictionary<string, int>
-        {
-            [expectedKey] = 42
-        };
-
-        // Act
-        var success = dict.Entry("key").TryGetVacant(out var vacant);
-
-        // Assert
-        Assert.False(success);
-        Assert.Equal(default, vacant);
-    }
-
-    [Fact]
-    public void TryGetVacant_WhenNotExists_ReturnsValue()
-    {
-        // Arrange
-        const string expectedKey = "key";
-        var dict = new Dictionary<string, int>();
-
-        // Act
-        var success = dict.Entry("key").TryGetVacant(out var vacant);
-
-        // Assert
-        Assert.True(success);
-        Assert.Equal(expectedKey, vacant.Key);
+        Assert.False(dict.Entry("missing").TryGetOccupied(out var nonOccupied));
+        Assert.Equal(default, nonOccupied);
+        Assert.True(dict.Entry("missing").TryGetVacant(out var vacant));
+        Assert.Equal("missing", vacant.Key);
     }
 }

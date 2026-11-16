@@ -13,22 +13,10 @@ public class VacantEntryTests
         var inserted = vacant.Insert(42);
 
         // Assert
+        Assert.Equal("key", vacant.Key);
         Assert.Equal(42, inserted);
         Assert.True(dict.ContainsKey("key"));
         Assert.Equal(42, dict["key"]);
-    }
-
-    [Fact]
-    public void Key_ReturnsEntryKey()
-    {
-        // Arrange
-        var dict = new Dictionary<string, int>();
-
-        // Act
-        var vacant = dict.Entry("key").ToVacant();
-
-        // Assert
-        Assert.Equal("key", vacant.Key);
     }
 
     [Fact]

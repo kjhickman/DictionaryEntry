@@ -3,83 +3,41 @@ namespace DictionaryEntry.Tests.AdvancedUsage;
 public class FactoryMethodTests
 {
     [Fact]
-    public void OrInsertWith_WithVacantEntry_CallsFactoryAndInsertsValue()
+    public void OrInsertWith_WithVacantEntry_CallsFactoryInsertsValueAndReturnsMutableReference()
     {
-        // Arrange
         var dict = new Dictionary<string, int>();
         var factoryCalled = false;
 
-        // Act
         ref var value = ref dict.Entry("key").OrInsertWith(() => {
             factoryCalled = true;
             return 42;
         });
 
-        // Assert
         Assert.True(factoryCalled);
         Assert.Equal(42, dict["key"]);
         Assert.Equal(42, value);
+
+        value += 5;
+        Assert.Equal(47, dict["key"]);
     }
 
     [Fact]
-    public void OrInsertWith_WithOccupiedEntry_DoesNotCallFactory()
+    public void OrInsertWith_WithOccupiedEntry_DoesNotCallFactoryAndReturnsMutableReference()
     {
-        // Arrange
         var dict = new Dictionary<string, int> { ["key"] = 42 };
         var factoryCalled = false;
 
-        // Act
         ref var value = ref dict.Entry("key").OrInsertWith(() => {
             factoryCalled = true;
             return 99;
         });
 
-        // Assert
         Assert.False(factoryCalled);
         Assert.Equal(42, dict["key"]);
         Assert.Equal(42, value);
-    }
 
-    [Fact]
-    public void OrInsertWith_ReturnsMutableReference_ForVacantAndOccupiedEntries()
-    {
-        // Arrange
-        var dict = new Dictionary<string, int>();
-
-        // Act: mutate through ref returned from vacant insertion
-        ref var insertedRef = ref dict.Entry("key").OrInsertWith(() => 10);
-        insertedRef += 5;
-
-        // Assert
-        Assert.Equal(15, dict["key"]);
-
-        // Act: mutate through ref returned from existing entry
-        ref var existingRef = ref dict.Entry("key").OrInsertWith(() => 999);
-        existingRef += 10;
-
-        // Assert
-        Assert.Equal(25, dict["key"]);
-    }
-
-    [Fact]
-    public void OrInsertWithKey_ReturnsMutableReference_ForVacantAndOccupiedEntries()
-    {
-        // Arrange
-        var dict = new Dictionary<string, int>();
-
-        // Act: mutate through ref returned from vacant insertion
-        ref var insertedRef = ref dict.Entry("key").OrInsertWithKey(k => k.Length);
-        insertedRef *= 10;
-
-        // Assert
-        Assert.Equal(30, dict["key"]);
-
-        // Act: mutate through ref returned from existing entry
-        ref var existingRef = ref dict.Entry("key").OrInsertWithKey(_ => 999);
-        existingRef += 2;
-
-        // Assert
-        Assert.Equal(32, dict["key"]);
+        value += 10;
+        Assert.Equal(52, dict["key"]);
     }
 
     [Fact]

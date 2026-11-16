@@ -366,9 +366,14 @@ public class AlternateEntryTests
             {
                 lookup.Entry(hitA).AndModify(1, static (ref v, dlt) => v += dlt).OrInsert(0);
                 total += lookup.Entry(hitB).OrInsert(0);
+                total += d.Entry(hitA).OrInsert(0);
                 if (lookup.Entry(miss).TryGetOccupied(out var occ))
                 {
                     total += occ.Value;
+                }
+                if (d.Entry(miss).IsOccupied)
+                {
+                    total++;
                 }
             }
 
@@ -429,47 +434,6 @@ public class AlternateEntryTests
         // Null dictionary throws NullReferenceException
         Dictionary<string, int> nullDict = null!;
         Assert.Throws<NullReferenceException>(() => nullDict.Entry("alpha".AsSpan()));
-    }
-
-    [Fact]
-    public void DirectReadOnlySpanCharExtension_AllocatesZeroBytesOnHitsAndMisses()
-    {
-        var dict = new Dictionary<string, int>(StringComparer.Ordinal)
-        {
-            ["alpha"] = 1,
-            ["beta"] = 2,
-        };
-        const string buffer = "alpha,beta,gamma";
-
-        for (var i = 0; i < 200; i++)
-        {
-            _ = DirectHotLoop(dict, buffer.AsSpan());
-        }
-
-        var before = GC.GetAllocatedBytesForCurrentThread();
-        var sum = DirectHotLoop(dict, buffer.AsSpan());
-        var allocated = GC.GetAllocatedBytesForCurrentThread() - before;
-
-        Assert.True(sum > 0);
-        Assert.Equal(0, allocated);
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        static int DirectHotLoop(Dictionary<string, int> d, ReadOnlySpan<char> csv)
-        {
-            var hit = csv[..5];
-            var miss = csv[11..];
-            var total = 0;
-            for (var i = 0; i < 200; i++)
-            {
-                total += d.Entry(hit).OrInsert(0);
-                if (d.Entry(miss).IsOccupied)
-                {
-                    total++;
-                }
-            }
-
-            return total;
-        }
     }
 
     [Fact]

@@ -168,32 +168,6 @@ public class StateOverloadTests
     }
 
     [Fact]
-    public void DefaultEntry_AllStateOverloads_ThrowInvalidOperationExceptionWithoutInvokingCallbacks()
-    {
-        var invoked = false;
-
-        Assert.Throws<InvalidOperationException>(() =>
-            default(Entry<string, int>).AndModify(1, (v, s) => { invoked = true; return v + s; }));
-        Assert.Throws<InvalidOperationException>(() =>
-            default(Entry<string, int>).AndModify((ref v) => { invoked = true; v++; }));
-        Assert.Throws<InvalidOperationException>(() =>
-            default(Entry<string, int>).AndModify(1, (ref v, s) => { invoked = true; v += s; }));
-        Assert.Throws<InvalidOperationException>(() =>
-            default(Entry<string, int>).OrInsertWith(1, s => { invoked = true; return s; }));
-        Assert.Throws<InvalidOperationException>(() =>
-            default(Entry<string, int>).OrInsertWithKey(1, (_, s) => { invoked = true; return s; }));
-        Assert.Throws<InvalidOperationException>(() =>
-            default(Entry<string, int>).Match(1, (_, _) => invoked = true, (_, _) => invoked = true));
-        Assert.Throws<InvalidOperationException>(() =>
-            default(Entry<string, int>).Match(
-                1,
-                (_, s) => { invoked = true; return s; },
-                (_, s) => { invoked = true; return s; }));
-
-        Assert.False(invoked);
-    }
-
-    [Fact]
     public void StateOverloads_WithStaticLambdas_AllocateZeroBytesAcrossAllOperations()
     {
         var dict = new Dictionary<string, int> { ["existing"] = 1 };

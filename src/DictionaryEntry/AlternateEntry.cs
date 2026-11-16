@@ -354,15 +354,8 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
     /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
     /// <exception cref="KeyNotFoundException">Thrown if the entry does not exist in the dictionary.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly AlternateOccupiedEntry<TKey, TValue, TAlternateKey> ToOccupied()
-    {
-        if (Unsafe.IsNullRef(ref _valueRef))
-        {
-            DictionaryAccess<TKey, TValue>.ThrowAlternateKeyNotFound(_lookup.Dictionary, _key);
-        }
-
-        return new AlternateOccupiedEntry<TKey, TValue, TAlternateKey>(_lookup, _key, _valueRef, _hashAndVersion);
-    }
+    public readonly AlternateOccupiedEntry<TKey, TValue, TAlternateKey> ToOccupied() =>
+        new(_lookup, _key, ValueRef, _hashAndVersion);
 
     /// <summary>
     /// Converts the entry to a vacant entry if it does not exist in the dictionary.

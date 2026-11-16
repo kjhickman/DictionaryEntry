@@ -111,19 +111,6 @@ public class PatternMatchingBenchmarks : StringIntMutableBenchmarkBase
             static (vacant, f) => vacant.Insert(f));
     }
 
-    private static void StatefulActionsEntrySwitch(Dictionary<string, int> dict, string key, int factor)
-    {
-        switch (dict.Entry(key))
-        {
-            case OccupiedEntry<string, int> occupied:
-                occupied.Insert(occupied.Value + factor);
-                break;
-            case VacantEntry<string, int> vacant:
-                vacant.Insert(factor);
-                break;
-        }
-    }
-
     [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize)]
     public string PatternMatching_Traditional_Exists()
     {
@@ -292,27 +279,6 @@ public class PatternMatchingBenchmarks : StringIntMutableBenchmarkBase
         for (var i = 0; i < BatchSize; i++)
         {
             StatefulActionsEntryMatchState(_emptyDictionary, _keys[i], factor);
-        }
-    }
-
-    [Benchmark(OperationsPerInvoke = BatchSize)]
-    public void StatefulActions_EntrySwitch_Exists()
-    {
-        var factor = _factor;
-        for (var i = 0; i < BatchSize; i++)
-        {
-            StatefulActionsEntrySwitch(_existingDictionary, _keys[i], factor);
-        }
-    }
-
-    [Benchmark(OperationsPerInvoke = BatchSize)]
-    public void StatefulActions_EntrySwitch_NotExists()
-    {
-        _emptyDictionary.Clear();
-        var factor = _factor;
-        for (var i = 0; i < BatchSize; i++)
-        {
-            StatefulActionsEntrySwitch(_emptyDictionary, _keys[i], factor);
         }
     }
 }

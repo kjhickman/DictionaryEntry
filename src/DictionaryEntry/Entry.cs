@@ -351,15 +351,8 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     /// <exception cref="InvalidOperationException">Thrown if this is a <c>default</c> entry.</exception>
     /// <exception cref="KeyNotFoundException">Thrown if the entry does not exist in the dictionary.</exception>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
-    public readonly OccupiedEntry<TKey, TValue> ToOccupied()
-    {
-        if (Unsafe.IsNullRef(ref _valueRef))
-        {
-            DictionaryAccess<TKey, TValue>.ThrowVacantOrDefault(_dictionary, _key);
-        }
-
-        return new OccupiedEntry<TKey, TValue>(_dictionary, _key, _valueRef, _hashAndVersion);
-    }
+    public readonly OccupiedEntry<TKey, TValue> ToOccupied() =>
+        new(_dictionary, _key, ValueRef, _hashAndVersion);
 
     /// <summary>
     /// Converts the entry to a vacant entry if it does not exist in the dictionary.

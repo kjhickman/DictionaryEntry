@@ -37,45 +37,38 @@ public class EdgeCaseTests
     public void DefaultEntry_AllOperations_ThrowInvalidOperationExceptionWithoutInvokingCallbacks()
     {
         var invoked = false;
+        static Entry<string, int> Default() => default;
 
         Assert.Contains("not associated with a dictionary",
-            Assert.Throws<InvalidOperationException>(() => default(Entry<string, int>).ToOccupied()).Message);
+            Assert.Throws<InvalidOperationException>(() => Default().ToOccupied()).Message);
         Assert.Contains("not associated with a dictionary",
-            Assert.Throws<InvalidOperationException>(() => _ = default(Entry<string, int>).ValueRef).Message);
+            Assert.Throws<InvalidOperationException>(() => _ = Default().ValueRef).Message);
         Assert.Contains("not associated with a dictionary",
-            Assert.Throws<InvalidOperationException>(() => default(Entry<string, int>).ToVacant()).Message);
+            Assert.Throws<InvalidOperationException>(() => Default().ToVacant()).Message);
         Assert.Contains("not associated with a dictionary",
-            Assert.Throws<InvalidOperationException>(() =>
-                default(Entry<string, int>).AndModify(v => { invoked = true; return v; })).Message);
+            Assert.Throws<InvalidOperationException>(() => Default().AndModify(v => { invoked = true; return v; })).Message);
 
-        Assert.Throws<InvalidOperationException>(() =>
-            default(Entry<string, int>).Match(_ => invoked = true, _ => invoked = true));
-        Assert.Throws<InvalidOperationException>(() =>
-            default(Entry<string, int>).Match(_ => { invoked = true; return 1; }, _ => { invoked = true; return 2; }));
+        Assert.Throws<InvalidOperationException>(() => Default().AndModify(1, (v, s) => { invoked = true; return v + s; }));
+        Assert.Throws<InvalidOperationException>(() => Default().AndModify((ref v) => { invoked = true; v++; }));
+        Assert.Throws<InvalidOperationException>(() => Default().AndModify(1, (ref v, s) => { invoked = true; v += s; }));
+        Assert.Throws<InvalidOperationException>(() => Default().Match(_ => invoked = true, _ => invoked = true));
+        Assert.Throws<InvalidOperationException>(() => Default().Match(1, (_, _) => invoked = true, (_, _) => invoked = true));
+        Assert.Throws<InvalidOperationException>(() => Default().Match(_ => { invoked = true; return 1; }, _ => { invoked = true; return 2; }));
+        Assert.Throws<InvalidOperationException>(() => Default().Match(1, (_, s) => { invoked = true; return s; }, (_, s) => { invoked = true; return s; }));
+        Assert.Throws<InvalidOperationException>(() => Default().OrInsert(1));
+        Assert.Throws<InvalidOperationException>(() => Default().OrDefault());
+        Assert.Throws<InvalidOperationException>(() => Default().InsertEntry(1));
+        Assert.Throws<InvalidOperationException>(() => Default().OrInsertWith(() => { invoked = true; return 1; }));
+        Assert.Throws<InvalidOperationException>(() => Default().OrInsertWith(1, s => { invoked = true; return s; }));
+        Assert.Throws<InvalidOperationException>(() => Default().OrInsertWithKey(_ => { invoked = true; return 1; }));
+        Assert.Throws<InvalidOperationException>(() => Default().OrInsertWithKey(1, (_, s) => { invoked = true; return s; }));
 
-        Assert.Throws<InvalidOperationException>(() => default(Entry<string, int>).OrInsert(1));
-        Assert.Throws<InvalidOperationException>(() => default(Entry<string, int>).OrDefault());
-        Assert.Throws<InvalidOperationException>(() => default(Entry<string, int>).InsertEntry(1));
-        Assert.Throws<InvalidOperationException>(() =>
-            default(Entry<string, int>).OrInsertWith(() => { invoked = true; return 1; }));
-        Assert.Throws<InvalidOperationException>(() =>
-            default(Entry<string, int>).OrInsertWithKey(_ => { invoked = true; return 1; }));
-
+        Assert.Throws<InvalidOperationException>(() => default(OccupiedEntry<string, int>).Insert(1));
+        Assert.Throws<InvalidOperationException>(() => default(OccupiedEntry<string, int>).Remove());
+        Assert.Throws<InvalidOperationException>(() => default(OccupiedEntry<string, int>).RemoveEntry());
+        Assert.Throws<InvalidOperationException>(() => default(VacantEntry<string, int>).Insert(1));
+        Assert.Throws<InvalidOperationException>(() => default(VacantEntry<string, int>).InsertEntry(1));
         Assert.False(invoked);
-    }
-
-    [Fact]
-    public void DefaultOccupiedAndVacantEntries_MutatingMethods_ThrowInvalidOperationException()
-    {
-        OccupiedEntry<string, int> defaultOccupied = default;
-        VacantEntry<string, int> defaultVacant = default;
-
-        Assert.Throws<InvalidOperationException>(() => defaultOccupied.Insert(1));
-        Assert.Throws<InvalidOperationException>(() => defaultOccupied.Remove());
-        Assert.Throws<InvalidOperationException>(() => defaultOccupied.RemoveEntry());
-
-        Assert.Throws<InvalidOperationException>(() => defaultVacant.Insert(1));
-        Assert.Throws<InvalidOperationException>(() => defaultVacant.InsertEntry(1));
     }
 
     [Fact]

@@ -33,7 +33,7 @@ public class DictionaryInternalsTests
             expected[key] = val;
         }
 
-        AssertDictionariesEqual(expected, actual);
+        Assert.Equal(expected, actual);
 
         // 2. Remove every 2nd item to populate _freeList / _freeCount
         for (var i = 0; i < 80; i += 2)
@@ -51,7 +51,7 @@ public class DictionaryInternalsTests
             expected.Remove(key);
         }
 
-        AssertDictionariesEqual(expected, actual);
+        Assert.Equal(expected, actual);
 
         // 3. Insert new keys to consume _freeList slots and then grow again
         for (var i = 80; i < 150; i++)
@@ -71,7 +71,7 @@ public class DictionaryInternalsTests
             expected[key] = val;
         }
 
-        AssertDictionariesEqual(expected, actual);
+        Assert.Equal(expected, actual);
     }
 
     [Fact]
@@ -314,15 +314,6 @@ public class DictionaryInternalsTests
         Assert.Equal(35, o3.Insert(35));
         Assert.Equal(("k3", 35), o3.RemoveEntry());
         Assert.Empty(dict);
-    }
-
-    private static void AssertDictionariesEqual<TKey, TValue>(
-        Dictionary<TKey, TValue> expected,
-        Dictionary<TKey, TValue> actual)
-        where TKey : notnull
-    {
-        Assert.Equal(expected, actual);
-        Assert.Equal(expected, actual.ToDictionary());
     }
 
     private sealed record RefCollidingKey(int Id)

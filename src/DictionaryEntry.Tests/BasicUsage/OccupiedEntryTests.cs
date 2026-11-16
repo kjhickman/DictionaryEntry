@@ -3,41 +3,15 @@ namespace DictionaryEntry.Tests.BasicUsage;
 public class OccupiedEntryTests
 {
     [Fact]
-    public void Key_ReturnsCurrentKey()
+    public void Key_Value_AndDeconstruct_ReturnOccupiedSnapshot()
     {
-        // Arrange
         var dict = new Dictionary<string, int> { ["key"] = 42 };
-
-        // Act
         var occupied = dict.Entry("key").ToOccupied();
 
-        // Assert
         Assert.Equal("key", occupied.Key);
-    }
-
-    [Fact]
-    public void Value_ReturnsCurrentValue()
-    {
-        // Arrange
-        var dict = new Dictionary<string, int> { ["key"] = 42 };
-
-        // Act
-        var occupied = dict.Entry("key").ToOccupied();
-
-        // Assert
         Assert.Equal(42, occupied.Value);
-    }
 
-    [Fact]
-    public void Deconstruct_ReturnsKeyAndValue()
-    {
-        // Arrange
-        var dict = new Dictionary<string, int> { ["key"] = 42 };
-
-        // Act
-        var (key, value) = dict.Entry("key").ToOccupied();
-
-        // Assert
+        var (key, value) = occupied;
         Assert.Equal("key", key);
         Assert.Equal(42, value);
     }

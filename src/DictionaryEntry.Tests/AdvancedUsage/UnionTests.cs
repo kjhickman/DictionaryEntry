@@ -125,13 +125,17 @@ public class UnionTests
     public void ImplicitUnionConversion_FromRemovedOccupiedEntry_IsVacant()
     {
         // Entry is a live view; converting a case re-reads the dictionary rather than trusting the snapshot
-        var dict = new Dictionary<string, int> { ["key"] = 42 };
-        var occupied = dict.Entry("key").ToOccupied();
-        dict.Remove("key");
+        var dict = new Dictionary<string, int> { ["a"] = 42, ["b"] = 99 };
 
-        Entry<string, int> entry = occupied;
+        var occupiedA = dict.Entry("a").ToOccupied();
+        dict.Remove("a");
+        Entry<string, int> entryA = occupiedA;
+        Assert.True(entryA is VacantEntry<string, int> { Key: "a" });
 
-        Assert.True(entry is VacantEntry<string, int> { Key: "key" });
+        var occupiedB = dict.Entry("b").ToOccupied();
+        occupiedB.Remove();
+        Entry<string, int> entryB = occupiedB;
+        Assert.True(entryB is VacantEntry<string, int> { Key: "b" });
     }
 
     [Fact]
@@ -384,26 +388,6 @@ public class UnionTests
         Assert.True(viaInsertEntry is VacantEntry<string, int>);
         viaInsertEntry.InsertEntry(99);
         Assert.True(viaInsertEntry is OccupiedEntry<string, int> { Key: "d", Value: 99 });
-    }
-
-    [Fact]
-    public void ImplicitUnionConversion_AfterOccupiedRemove_IsVacant()
-    {
-        var dict = new Dictionary<string, int>
-        {
-            ["a"] = 1,
-            ["b"] = 2,
-        };
-
-        var occupiedA = dict.Entry("a").ToOccupied();
-        occupiedA.Remove();
-        Entry<string, int> entryA = occupiedA;
-        Assert.True(entryA is VacantEntry<string, int> { Key: "a" });
-
-        var occupiedB = dict.Entry("b").ToOccupied();
-        occupiedB.RemoveEntry();
-        Entry<string, int> entryB = occupiedB;
-        Assert.True(entryB is VacantEntry<string, int> { Key: "b" });
     }
 
     [Fact]

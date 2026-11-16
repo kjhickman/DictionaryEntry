@@ -21,35 +21,22 @@ public class PatternMatchingTests
     }
 
     [Fact]
-    public void Match_WithVacantEntry_CallsVacantAction()
+    public void Match_WithVacantEntry_CallsVacantActionAndSupportsInsert()
     {
-        // Arrange
         var dict = new Dictionary<string, int>();
         var occupiedCalled = false;
         var vacantCalled = false;
 
-        // Act
         dict.Entry("key").Match(
-            occupied => { occupiedCalled = true; },
-            vacant => { vacantCalled = true; });
+            _ => { occupiedCalled = true; },
+            vacant =>
+            {
+                vacantCalled = true;
+                vacant.Insert(10);
+            });
 
-        // Assert
         Assert.False(occupiedCalled);
         Assert.True(vacantCalled);
-    }
-
-    [Fact]
-    public void Match_WithVacantEntry_CanInsertThroughVacantAction()
-    {
-        // Arrange
-        var dict = new Dictionary<string, int>();
-
-        // Act
-        dict.Entry("key").Match(
-            occupied => { },
-            vacant => vacant.Insert(10));
-
-        // Assert
         Assert.Equal(10, dict["key"]);
     }
 
