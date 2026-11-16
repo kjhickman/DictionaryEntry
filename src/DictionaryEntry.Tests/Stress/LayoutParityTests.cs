@@ -16,6 +16,8 @@ public class LayoutParityTests
     private static readonly Type OpenBclEntryType =
         typeof(Dictionary<,>).GetNestedType("Entry", BindingFlags.NonPublic)!;
 
+    private static readonly int[] SampleIntArray = [1, 2];
+
     [Fact]
     public void AllPathologicalKeyAndValueTypeCombinations_HaveIdenticalBclAndRawEntryLayouts()
     {
@@ -47,7 +49,7 @@ public class LayoutParityTests
             TypeSample.Create(new ExplicitUnionStruct { LongValue = 0x1122334455667788L }, new ExplicitUnionStruct { LongValue = 0x99AABBCCL }),
             TypeSample.Create(new PackedOddStruct(3, 0x123456789ABCDEF0L), new PackedOddStruct(4, 0x0FEDCBA987654321L)),
             TypeSample.Create(
-                new MixedGcStruct(1, "v1", 99.5m, new int[] { 1, 2 }, 7),
+                new MixedGcStruct(1, "v1", 99.5m, SampleIntArray, 7),
                 new MixedGcStruct(2, null, -42.25m, "boxed", 8)),
         ];
 

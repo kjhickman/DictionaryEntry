@@ -416,10 +416,10 @@ public class UnionTests
             bool useOccupied,
             OccupiedEntry<string, int> occupied,
             VacantEntry<string, int> vacant) => useOccupied switch
-        {
-            true => occupied,
-            false => vacant,
-        };
+            {
+                true => occupied,
+                false => vacant,
+            };
     }
 
 #if NET11_0_OR_GREATER

@@ -1,4 +1,5 @@
 using System.ComponentModel;
+using System.Diagnostics.CodeAnalysis;
 using System.Runtime.CompilerServices;
 
 namespace DictionaryEntry;
@@ -520,6 +521,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         /// the result is vacant; if the value changed, the result carries the current value.
         /// A <c>default</c> occupied entry produces a <c>default</c> (null) entry.
         /// </remarks>
+        [SuppressMessage("Design", "CA1000:Do not declare static members on generic types", Justification = "Required by the C# 15 [Union] compiler pattern.")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         static Entry<TKey, TValue> Create(OccupiedEntry<TKey, TValue> value) =>
             value._dictionary is not null ? new Entry<TKey, TValue>(value._dictionary, value.Key) : default;
@@ -529,6 +531,7 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
         /// Performs a fresh dictionary lookup: if the key was inserted since the vacant entry was obtained,
         /// the result is occupied. A <c>default</c> vacant entry produces a <c>default</c> (null) entry.
         /// </remarks>
+        [SuppressMessage("Design", "CA1000:Do not declare static members on generic types", Justification = "Required by the C# 15 [Union] compiler pattern.")]
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         static Entry<TKey, TValue> Create(VacantEntry<TKey, TValue> value) =>
             value._dictionary is not null ? new Entry<TKey, TValue>(value._dictionary, value.Key) : default;

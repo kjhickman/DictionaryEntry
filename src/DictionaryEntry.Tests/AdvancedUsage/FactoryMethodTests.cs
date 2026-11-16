@@ -8,7 +8,8 @@ public class FactoryMethodTests
         var dict = new Dictionary<string, int>();
         var factoryCalled = false;
 
-        ref var value = ref dict.Entry("key").OrInsertWith(() => {
+        ref var value = ref dict.Entry("key").OrInsertWith(() =>
+        {
             factoryCalled = true;
             return 42;
         });
@@ -27,7 +28,8 @@ public class FactoryMethodTests
         var dict = new Dictionary<string, int> { ["key"] = 42 };
         var factoryCalled = false;
 
-        ref var value = ref dict.Entry("key").OrInsertWith(() => {
+        ref var value = ref dict.Entry("key").OrInsertWith(() =>
+        {
             factoryCalled = true;
             return 99;
         });

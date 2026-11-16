@@ -2,18 +2,17 @@
 
     <PropertyGroup>
         <TargetFrameworks>net9.0;net10.0;net11.0</TargetFrameworks>
-        <ImplicitUsings>enable</ImplicitUsings>
-        <Nullable>enable</Nullable>
         <IsAotCompatible>true</IsAotCompatible>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
         <GenerateDocumentationFile>true</GenerateDocumentationFile>
-        <LangVersion>latest</LangVersion>
+        <EnablePackageValidation>true</EnablePackageValidation>
+        <EmbedUntrackedSources>true</EmbedUntrackedSources>
 
         <Version>0.4.0</Version>
         <Authors>Kyle Hickman</Authors>
-        <Description>Dictionary manipulation with a fluent, expressive syntax.</Description>
+        <Description>Rust-inspired single-lookup Dictionary.Entry(key) API for C# with zero-allocation ReadOnlySpan&lt;char&gt; lookups, C# 15 [Union] pattern matching, and NativeAOT support.</Description>
         <PackageTags>dictionary;collections;entry;fluent;extension;union;span;aot</PackageTags>
-        <Copyright>Copyright © Kyle Hickman</Copyright>
+        <Copyright>Copyright (c) 2025-2026 Kyle Hickman</Copyright>
         <PackageLicenseExpression>MIT</PackageLicenseExpression>
         <PackageProjectUrl>https://github.com/kjhickman/DictionaryEntry</PackageProjectUrl>
         <RepositoryUrl>https://github.com/kjhickman/DictionaryEntry.git</RepositoryUrl>

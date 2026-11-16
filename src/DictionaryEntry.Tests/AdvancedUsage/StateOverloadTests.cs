@@ -1,5 +1,5 @@
+using System.Globalization;
 using System.Runtime.CompilerServices;
-using System.Text;
 
 namespace DictionaryEntry.Tests.AdvancedUsage;
 
@@ -278,14 +278,14 @@ public class StateOverloadTests
         Assert.Equal(20, dict["alpha"]);
 
         // 2. OrInsertWith with ReadOnlySpan<byte>
-        var parsed = dict.Entry("beta").OrInsertWith(utf8Bytes, static bytes => int.Parse(Encoding.UTF8.GetString(bytes)));
+        var parsed = dict.Entry("beta").OrInsertWith(utf8Bytes, static bytes => int.Parse(bytes, CultureInfo.InvariantCulture));
         Assert.Equal(42, parsed);
 
         // 3. OrInsertWithKey with custom ref struct
         var ctx = new ParseContext("99".AsSpan(), Multiplier: 2);
         var computed = dict.Entry("gamma").OrInsertWithKey(
             ctx,
-            static (key, c) => key.Length + int.Parse(c.Digits) * c.Multiplier);
+            static (key, c) => key.Length + int.Parse(c.Digits, CultureInfo.InvariantCulture) * c.Multiplier);
         Assert.Equal(5 + 198, computed);
 
         // 4. Match (Action) & Match (Func) with ReadOnlySpan<char>
