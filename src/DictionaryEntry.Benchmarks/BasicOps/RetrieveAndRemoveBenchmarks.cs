@@ -21,7 +21,7 @@ public class RetrieveAndRemoveBenchmarks : StringIntBenchmarkBase
 
     // Note: Because each removal deletes the key, Exists batches re-populate the 256 keys before removing them;
     // both Traditional and Entry pay the identical re-population cost so their relative delta reflects removal overhead.
-    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize), BenchmarkCategory("Exists")]
     public int GetAndRemove_Traditional_Exists()
     {
         for (var i = 0; i < BatchSize; i++)
@@ -38,7 +38,7 @@ public class RetrieveAndRemoveBenchmarks : StringIntBenchmarkBase
         return sum;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize), BenchmarkCategory("NotExists")]
     public int GetAndRemove_Traditional_NotExists()
     {
         var sum = 0;
@@ -50,7 +50,7 @@ public class RetrieveAndRemoveBenchmarks : StringIntBenchmarkBase
         return sum;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("Exists")]
     public int GetAndRemove_Entry_Exists()
     {
         for (var i = 0; i < BatchSize; i++)
@@ -67,7 +67,7 @@ public class RetrieveAndRemoveBenchmarks : StringIntBenchmarkBase
         return sum;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("NotExists")]
     public int GetAndRemove_Entry_NotExists()
     {
         var sum = 0;

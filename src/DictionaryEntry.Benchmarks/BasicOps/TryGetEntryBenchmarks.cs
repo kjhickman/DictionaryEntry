@@ -29,7 +29,7 @@ public class TryGetEntryBenchmarks : StringIntBenchmarkBase
         return null;
     }
 
-    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize), BenchmarkCategory("Exists")]
     public int TryLookup_Traditional_Exists()
     {
         var sum = 0;
@@ -41,7 +41,7 @@ public class TryGetEntryBenchmarks : StringIntBenchmarkBase
         return sum;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize), BenchmarkCategory("NotExists")]
     public int TryLookup_Traditional_NotExists()
     {
         var sum = 0;
@@ -53,7 +53,7 @@ public class TryGetEntryBenchmarks : StringIntBenchmarkBase
         return sum;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("Exists")]
     public int TryLookup_TryGetOccupied_Exists()
     {
         var sum = 0;
@@ -65,7 +65,7 @@ public class TryGetEntryBenchmarks : StringIntBenchmarkBase
         return sum;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("NotExists")]
     public int TryLookup_TryGetOccupied_NotExists()
     {
         var sum = 0;
@@ -77,7 +77,7 @@ public class TryGetEntryBenchmarks : StringIntBenchmarkBase
         return sum;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("Exists")]
     public int TryLookup_IsPattern_Exists()
     {
         var sum = 0;
@@ -89,7 +89,7 @@ public class TryGetEntryBenchmarks : StringIntBenchmarkBase
         return sum;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("NotExists")]
     public int TryLookup_IsPattern_NotExists()
     {
         var sum = 0;

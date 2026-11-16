@@ -26,7 +26,7 @@ public class UpdateExistingBenchmarks : StringIntMutableBenchmarkBase
         }
     }
 
-    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize), BenchmarkCategory("Exists")]
     public void Update_Traditional_Exists()
     {
         for (var i = 0; i < BatchSize; i++)
@@ -35,7 +35,7 @@ public class UpdateExistingBenchmarks : StringIntMutableBenchmarkBase
         }
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize), BenchmarkCategory("NotExists")]
     public void Update_Traditional_NotExists()
     {
         for (var i = 0; i < BatchSize; i++)
@@ -44,7 +44,7 @@ public class UpdateExistingBenchmarks : StringIntMutableBenchmarkBase
         }
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("Exists")]
     public void Update_Entry_Exists()
     {
         for (var i = 0; i < BatchSize; i++)
@@ -53,7 +53,7 @@ public class UpdateExistingBenchmarks : StringIntMutableBenchmarkBase
         }
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("NotExists")]
     public void Update_Entry_NotExists()
     {
         for (var i = 0; i < BatchSize; i++)
@@ -62,7 +62,7 @@ public class UpdateExistingBenchmarks : StringIntMutableBenchmarkBase
         }
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("Exists")]
     public void Update_EntryValueRef_Exists()
     {
         for (var i = 0; i < BatchSize; i++)
@@ -71,7 +71,7 @@ public class UpdateExistingBenchmarks : StringIntMutableBenchmarkBase
         }
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("NotExists")]
     public void Update_EntryValueRef_NotExists()
     {
         for (var i = 0; i < BatchSize; i++)

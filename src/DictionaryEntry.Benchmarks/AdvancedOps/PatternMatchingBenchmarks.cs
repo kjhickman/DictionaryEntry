@@ -111,7 +111,7 @@ public class PatternMatchingBenchmarks : StringIntMutableBenchmarkBase
             static (vacant, f) => vacant.Insert(f));
     }
 
-    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize), BenchmarkCategory("Classify_Exists")]
     public string PatternMatching_Traditional_Exists()
     {
         var last = "";
@@ -123,7 +123,7 @@ public class PatternMatchingBenchmarks : StringIntMutableBenchmarkBase
         return last;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize), BenchmarkCategory("Classify_NotExists")]
     public string PatternMatching_Traditional_NotExists()
     {
         var last = "";
@@ -135,7 +135,7 @@ public class PatternMatchingBenchmarks : StringIntMutableBenchmarkBase
         return last;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("Classify_Exists")]
     public string PatternMatching_EntryMatch_Exists()
     {
         var last = "";
@@ -147,7 +147,7 @@ public class PatternMatchingBenchmarks : StringIntMutableBenchmarkBase
         return last;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("Classify_NotExists")]
     public string PatternMatching_EntryMatch_NotExists()
     {
         var last = "";
@@ -159,7 +159,7 @@ public class PatternMatchingBenchmarks : StringIntMutableBenchmarkBase
         return last;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("Classify_Exists")]
     public string PatternMatching_EntrySwitch_Exists()
     {
         var last = "";
@@ -171,7 +171,7 @@ public class PatternMatchingBenchmarks : StringIntMutableBenchmarkBase
         return last;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("Classify_NotExists")]
     public string PatternMatching_EntrySwitch_NotExists()
     {
         var last = "";
@@ -183,7 +183,7 @@ public class PatternMatchingBenchmarks : StringIntMutableBenchmarkBase
         return last;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize), BenchmarkCategory("Actions_Exists")]
     public void DifferentActions_Traditional_Exists()
     {
         for (var i = 0; i < BatchSize; i++)
@@ -192,7 +192,7 @@ public class PatternMatchingBenchmarks : StringIntMutableBenchmarkBase
         }
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize), BenchmarkCategory("Actions_NotExists")]
     public void DifferentActions_Traditional_NotExists()
     {
         _emptyDictionary.Clear();
@@ -202,7 +202,7 @@ public class PatternMatchingBenchmarks : StringIntMutableBenchmarkBase
         }
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("Actions_Exists")]
     public void DifferentActions_EntryMatch_Exists()
     {
         for (var i = 0; i < BatchSize; i++)
@@ -211,7 +211,7 @@ public class PatternMatchingBenchmarks : StringIntMutableBenchmarkBase
         }
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("Actions_NotExists")]
     public void DifferentActions_EntryMatch_NotExists()
     {
         _emptyDictionary.Clear();
@@ -221,7 +221,7 @@ public class PatternMatchingBenchmarks : StringIntMutableBenchmarkBase
         }
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("Actions_Exists")]
     public void DifferentActions_EntrySwitch_Exists()
     {
         for (var i = 0; i < BatchSize; i++)
@@ -230,7 +230,7 @@ public class PatternMatchingBenchmarks : StringIntMutableBenchmarkBase
         }
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("Actions_NotExists")]
     public void DifferentActions_EntrySwitch_NotExists()
     {
         _emptyDictionary.Clear();
@@ -240,7 +240,7 @@ public class PatternMatchingBenchmarks : StringIntMutableBenchmarkBase
         }
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("Actions_Exists")]
     public void StatefulActions_EntryMatchCapturing_Exists()
     {
         var factor = _factor;
@@ -250,7 +250,7 @@ public class PatternMatchingBenchmarks : StringIntMutableBenchmarkBase
         }
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("Actions_NotExists")]
     public void StatefulActions_EntryMatchCapturing_NotExists()
     {
         _emptyDictionary.Clear();
@@ -261,7 +261,7 @@ public class PatternMatchingBenchmarks : StringIntMutableBenchmarkBase
         }
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("Actions_Exists")]
     public void StatefulActions_EntryMatchState_Exists()
     {
         var factor = _factor;
@@ -271,7 +271,7 @@ public class PatternMatchingBenchmarks : StringIntMutableBenchmarkBase
         }
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("Actions_NotExists")]
     public void StatefulActions_EntryMatchState_NotExists()
     {
         _emptyDictionary.Clear();

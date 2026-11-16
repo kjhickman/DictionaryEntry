@@ -20,7 +20,7 @@ public class InitializeAbsentBenchmarks : StringIntBenchmarkBase
         return false;
     }
 
-    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize), BenchmarkCategory("Exists")]
     public int InitializeAbsent_Traditional_Exists()
     {
         var count = 0;
@@ -32,7 +32,7 @@ public class InitializeAbsentBenchmarks : StringIntBenchmarkBase
         return count;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize), BenchmarkCategory("NotExists")]
     public int InitializeAbsent_Traditional_NotExists()
     {
         _emptyDictionary.Clear();
@@ -45,7 +45,7 @@ public class InitializeAbsentBenchmarks : StringIntBenchmarkBase
         return count;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("Exists")]
     public int InitializeAbsent_Entry_Exists()
     {
         var count = 0;
@@ -57,7 +57,7 @@ public class InitializeAbsentBenchmarks : StringIntBenchmarkBase
         return count;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("NotExists")]
     public int InitializeAbsent_Entry_NotExists()
     {
         _emptyDictionary.Clear();

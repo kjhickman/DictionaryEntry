@@ -58,7 +58,7 @@ public class IncrementCounterBenchmarks : StringIntMutableBenchmarkBase
         }
     }
 
-    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize), BenchmarkCategory("Counter_Exists")]
     public void IncrementCounter_Traditional_Exists()
     {
         for (var i = 0; i < BatchSize; i++)
@@ -67,7 +67,7 @@ public class IncrementCounterBenchmarks : StringIntMutableBenchmarkBase
         }
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize), BenchmarkCategory("Counter_NotExists")]
     public void IncrementCounter_Traditional_NotExists()
     {
         _emptyDictionary.Clear();
@@ -77,7 +77,7 @@ public class IncrementCounterBenchmarks : StringIntMutableBenchmarkBase
         }
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("Counter_Exists")]
     public void IncrementCounter_EntryAndModify_Exists()
     {
         for (var i = 0; i < BatchSize; i++)
@@ -86,7 +86,7 @@ public class IncrementCounterBenchmarks : StringIntMutableBenchmarkBase
         }
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("Counter_NotExists")]
     public void IncrementCounter_EntryAndModify_NotExists()
     {
         _emptyDictionary.Clear();
@@ -96,7 +96,7 @@ public class IncrementCounterBenchmarks : StringIntMutableBenchmarkBase
         }
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize), BenchmarkCategory("ByAmount_Exists")]
     public void IncrementByAmount_Traditional_Exists()
     {
         var amount = _amount;
@@ -106,7 +106,7 @@ public class IncrementCounterBenchmarks : StringIntMutableBenchmarkBase
         }
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize), BenchmarkCategory("ByAmount_NotExists")]
     public void IncrementByAmount_Traditional_NotExists()
     {
         _emptyDictionary.Clear();
@@ -117,7 +117,7 @@ public class IncrementCounterBenchmarks : StringIntMutableBenchmarkBase
         }
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("ByAmount_Exists")]
     public void IncrementByAmount_EntryAndModify_Exists()
     {
         var amount = _amount;
@@ -127,7 +127,7 @@ public class IncrementCounterBenchmarks : StringIntMutableBenchmarkBase
         }
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("ByAmount_NotExists")]
     public void IncrementByAmount_EntryAndModify_NotExists()
     {
         _emptyDictionary.Clear();
@@ -138,7 +138,7 @@ public class IncrementCounterBenchmarks : StringIntMutableBenchmarkBase
         }
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("ByAmount_Exists")]
     public void IncrementByAmount_EntryAndModifyState_Exists()
     {
         var amount = _amount;
@@ -148,7 +148,7 @@ public class IncrementCounterBenchmarks : StringIntMutableBenchmarkBase
         }
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("ByAmount_NotExists")]
     public void IncrementByAmount_EntryAndModifyState_NotExists()
     {
         _emptyDictionary.Clear();
@@ -159,7 +159,7 @@ public class IncrementCounterBenchmarks : StringIntMutableBenchmarkBase
         }
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("ByAmount_Exists")]
     public void IncrementByAmount_EntrySwitch_Exists()
     {
         var amount = _amount;
@@ -169,7 +169,7 @@ public class IncrementCounterBenchmarks : StringIntMutableBenchmarkBase
         }
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("ByAmount_NotExists")]
     public void IncrementByAmount_EntrySwitch_NotExists()
     {
         _emptyDictionary.Clear();

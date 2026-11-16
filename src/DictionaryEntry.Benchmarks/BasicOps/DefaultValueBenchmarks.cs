@@ -44,7 +44,7 @@ public class DefaultValueBenchmarks : StringIntBenchmarkBase
         return dict.Entry(key).OrDefault();
     }
 
-    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize), BenchmarkCategory("Exists")]
     public int DefaultValue_Traditional_Exists()
     {
         var sum = 0;
@@ -56,7 +56,7 @@ public class DefaultValueBenchmarks : StringIntBenchmarkBase
         return sum;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize), BenchmarkCategory("NotExists")]
     public int DefaultValue_Traditional_NotExists()
     {
         _emptyDictionary.Clear();
@@ -69,7 +69,7 @@ public class DefaultValueBenchmarks : StringIntBenchmarkBase
         return sum;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("Exists")]
     public int DefaultValue_Entry_Exists()
     {
         var sum = 0;
@@ -81,7 +81,7 @@ public class DefaultValueBenchmarks : StringIntBenchmarkBase
         return sum;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("NotExists")]
     public int DefaultValue_Entry_NotExists()
     {
         _emptyDictionary.Clear();
@@ -94,7 +94,7 @@ public class DefaultValueBenchmarks : StringIntBenchmarkBase
         return sum;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize), BenchmarkCategory("String_NotExists")]
     public string? DefaultValue_TraditionalString_NotExists()
     {
         _emptyStringDictionary.Clear();
@@ -107,7 +107,7 @@ public class DefaultValueBenchmarks : StringIntBenchmarkBase
         return last;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("String_NotExists")]
     public string? DefaultValue_EntryString_NotExists()
     {
         _emptyStringDictionary.Clear();

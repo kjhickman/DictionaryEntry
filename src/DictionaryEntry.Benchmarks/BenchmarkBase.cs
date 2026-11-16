@@ -8,32 +8,39 @@ namespace DictionaryEntry.Benchmarks;
 
 [Config(typeof(BenchmarkConfig))]
 [MemoryDiagnoser(displayGenColumns: false)]
-[HideColumns("Error", "StdDev", "Median", "Ratio", "Alloc Ratio", "RatioSD")]
+[GroupBenchmarksBy(BenchmarkLogicalGroupRule.ByCategory)]
+[HideColumns("Error", "StdDev", "Median", "Alloc Ratio", "RatioSD")]
 public abstract class BenchmarkBase
 {
     protected const int BatchSize = 256;
 
+    internal static Job CreateBaseJob(int invocationCount) =>
+        Job.Default
+            .WithStrategy(RunStrategy.Throughput)
+            .WithMinWarmupCount(5)
+            .WithMaxWarmupCount(8)
+            .WithMinIterationCount(8)
+            .WithMaxIterationCount(15)
+            .WithMaxRelativeError(0.01)
+            .WithInvocationCount(invocationCount)
+            .WithToolchain(InProcessNoEmitToolchain.Instance);
+
     private sealed class BenchmarkConfig : ManualConfig
     {
-        public BenchmarkConfig()
-        {
-            AddJob(Job.Default
-                .WithStrategy(RunStrategy.Throughput)
-                .WithMinWarmupCount(5)
-                .WithMaxWarmupCount(8)
-                .WithMinIterationCount(8)
-                .WithMaxIterationCount(15)
-                .WithMaxRelativeError(0.01)
-                .WithInvocationCount(64_000)
-                .WithToolchain(InProcessNoEmitToolchain.Instance));
-        }
+        public BenchmarkConfig() => AddJob(CreateBaseJob(128_000));
     }
 }
 
+[Config(typeof(IntBenchmarkConfig))]
 public abstract class IntIntBenchmarkBase : BenchmarkBase
 {
     protected Dictionary<int, int> _existingDictionary = null!;
     protected Dictionary<int, int> _emptyDictionary = null!;
+
+    private sealed class IntBenchmarkConfig : ManualConfig
+    {
+        public IntBenchmarkConfig() => AddJob(CreateBaseJob(384_000));
+    }
 
     [GlobalSetup]
     public void GlobalSetup()

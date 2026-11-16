@@ -69,7 +69,7 @@ public class FactoryMethodBenchmarks : StringIntBenchmarkBase
         return dict.Entry(key).OrInsertWithKey(multiplier, static (k, mult) => k.Length * mult);
     }
 
-    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize), BenchmarkCategory("Expensive_Exists")]
     public int FactoryMethod_Traditional_Exists()
     {
         var sum = 0;
@@ -81,7 +81,7 @@ public class FactoryMethodBenchmarks : StringIntBenchmarkBase
         return sum;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize), BenchmarkCategory("Expensive_NotExists")]
     public int FactoryMethod_Traditional_NotExists()
     {
         _emptyDictionary.Clear();
@@ -94,7 +94,7 @@ public class FactoryMethodBenchmarks : StringIntBenchmarkBase
         return sum;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("Expensive_Exists")]
     public int FactoryMethod_Entry_Exists()
     {
         var sum = 0;
@@ -106,7 +106,7 @@ public class FactoryMethodBenchmarks : StringIntBenchmarkBase
         return sum;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("Expensive_NotExists")]
     public int FactoryMethod_Entry_NotExists()
     {
         _emptyDictionary.Clear();
@@ -119,7 +119,7 @@ public class FactoryMethodBenchmarks : StringIntBenchmarkBase
         return sum;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize), BenchmarkCategory("KeyBased_Exists")]
     public int KeyBasedFactory_Traditional_Exists()
     {
         var sum = 0;
@@ -131,7 +131,7 @@ public class FactoryMethodBenchmarks : StringIntBenchmarkBase
         return sum;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize), BenchmarkCategory("KeyBased_NotExists")]
     public int KeyBasedFactory_Traditional_NotExists()
     {
         _emptyDictionary.Clear();
@@ -144,7 +144,7 @@ public class FactoryMethodBenchmarks : StringIntBenchmarkBase
         return sum;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("KeyBased_Exists")]
     public int KeyBasedFactory_Entry_Exists()
     {
         var sum = 0;
@@ -156,7 +156,7 @@ public class FactoryMethodBenchmarks : StringIntBenchmarkBase
         return sum;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("KeyBased_NotExists")]
     public int KeyBasedFactory_Entry_NotExists()
     {
         _emptyDictionary.Clear();
@@ -169,7 +169,7 @@ public class FactoryMethodBenchmarks : StringIntBenchmarkBase
         return sum;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize), BenchmarkCategory("Stateful_Exists")]
     public int StatefulFactory_Traditional_Exists()
     {
         var multiplier = _multiplier;
@@ -182,7 +182,7 @@ public class FactoryMethodBenchmarks : StringIntBenchmarkBase
         return sum;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize), BenchmarkCategory("Stateful_NotExists")]
     public int StatefulFactory_Traditional_NotExists()
     {
         _emptyDictionary.Clear();
@@ -196,7 +196,7 @@ public class FactoryMethodBenchmarks : StringIntBenchmarkBase
         return sum;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("Stateful_Exists")]
     public int StatefulFactory_EntryCapturing_Exists()
     {
         var multiplier = _multiplier;
@@ -209,7 +209,7 @@ public class FactoryMethodBenchmarks : StringIntBenchmarkBase
         return sum;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("Stateful_NotExists")]
     public int StatefulFactory_EntryCapturing_NotExists()
     {
         _emptyDictionary.Clear();
@@ -223,7 +223,7 @@ public class FactoryMethodBenchmarks : StringIntBenchmarkBase
         return sum;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("Stateful_Exists")]
     public int StatefulFactory_EntryState_Exists()
     {
         var multiplier = _multiplier;
@@ -236,7 +236,7 @@ public class FactoryMethodBenchmarks : StringIntBenchmarkBase
         return sum;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("Stateful_NotExists")]
     public int StatefulFactory_EntryState_NotExists()
     {
         _emptyDictionary.Clear();

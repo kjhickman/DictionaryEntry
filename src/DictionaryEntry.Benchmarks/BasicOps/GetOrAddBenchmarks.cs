@@ -21,7 +21,7 @@ public class GetOrAddBenchmarks : IntIntBenchmarkBase
         return dict.Entry(key).OrInsert(1);
     }
 
-    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize), BenchmarkCategory("Exists")]
     public int GetOrAdd_Traditional_Exists()
     {
         var sum = 0;
@@ -33,7 +33,7 @@ public class GetOrAddBenchmarks : IntIntBenchmarkBase
         return sum;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize), BenchmarkCategory("NotExists")]
     public int GetOrAdd_Traditional_NotExists()
     {
         _emptyDictionary.Clear();
@@ -46,7 +46,7 @@ public class GetOrAddBenchmarks : IntIntBenchmarkBase
         return sum;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("Exists")]
     public int GetOrAdd_Entry_Exists()
     {
         var sum = 0;
@@ -58,7 +58,7 @@ public class GetOrAddBenchmarks : IntIntBenchmarkBase
         return sum;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("NotExists")]
     public int GetOrAdd_Entry_NotExists()
     {
         _emptyDictionary.Clear();

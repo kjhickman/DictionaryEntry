@@ -14,7 +14,7 @@ public class UpsertBenchmarks : StringIntBenchmarkBase
         dict.Entry(key).InsertEntry(15);
     }
 
-    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize), BenchmarkCategory("Exists")]
     public void Upsert_Traditional_Exists()
     {
         for (var i = 0; i < BatchSize; i++)
@@ -23,7 +23,7 @@ public class UpsertBenchmarks : StringIntBenchmarkBase
         }
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize), BenchmarkCategory("NotExists")]
     public void Upsert_Traditional_NotExists()
     {
         _emptyDictionary.Clear();
@@ -33,7 +33,7 @@ public class UpsertBenchmarks : StringIntBenchmarkBase
         }
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("Exists")]
     public void Upsert_Entry_Exists()
     {
         for (var i = 0; i < BatchSize; i++)
@@ -42,7 +42,7 @@ public class UpsertBenchmarks : StringIntBenchmarkBase
         }
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("NotExists")]
     public void Upsert_Entry_NotExists()
     {
         _emptyDictionary.Clear();

@@ -31,7 +31,7 @@ public class SpanLookupBenchmarks : BenchmarkBase
         _concatenatedBuffer = sb.ToString();
     }
 
-    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize), BenchmarkCategory("Exists")]
     public int SpanLookup_TraditionalToString_Exists()
     {
         var buffer = _concatenatedBuffer.AsSpan();
@@ -51,7 +51,7 @@ public class SpanLookupBenchmarks : BenchmarkBase
         return sum;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("Exists")]
     public int SpanLookup_DirectEntry_Exists()
     {
         var buffer = _concatenatedBuffer.AsSpan();
@@ -65,7 +65,7 @@ public class SpanLookupBenchmarks : BenchmarkBase
         return sum;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("Exists")]
     public int SpanLookup_AlternateLookupEntry_Exists()
     {
         var buffer = _concatenatedBuffer.AsSpan();
@@ -80,7 +80,7 @@ public class SpanLookupBenchmarks : BenchmarkBase
         return sum;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize), BenchmarkCategory("NotExists")]
     public int SpanLookup_TraditionalToString_NotExists()
     {
         _emptyDictionary.Clear();
@@ -101,7 +101,7 @@ public class SpanLookupBenchmarks : BenchmarkBase
         return sum;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("NotExists")]
     public int SpanLookup_DirectEntry_NotExists()
     {
         _emptyDictionary.Clear();
@@ -116,7 +116,7 @@ public class SpanLookupBenchmarks : BenchmarkBase
         return sum;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("NotExists")]
     public int SpanLookup_AlternateLookupEntry_NotExists()
     {
         _emptyDictionary.Clear();

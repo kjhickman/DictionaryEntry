@@ -4,7 +4,7 @@ namespace DictionaryEntry.Benchmarks.BasicOps;
 
 public class DictionaryContainsBenchmarks : IntIntBenchmarkBase
 {
-    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize), BenchmarkCategory("Exists")]
     public int TryGetValue_Found()
     {
         var count = 0;
@@ -16,7 +16,7 @@ public class DictionaryContainsBenchmarks : IntIntBenchmarkBase
         return count;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("Exists")]
     public int Entry_IsOccupied_Found()
     {
         var count = 0;
@@ -28,7 +28,7 @@ public class DictionaryContainsBenchmarks : IntIntBenchmarkBase
         return count;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(Baseline = true, OperationsPerInvoke = BatchSize), BenchmarkCategory("NotExists")]
     public int TryGetValue_NotFound()
     {
         var count = 0;
@@ -40,7 +40,7 @@ public class DictionaryContainsBenchmarks : IntIntBenchmarkBase
         return count;
     }
 
-    [Benchmark(OperationsPerInvoke = BatchSize)]
+    [Benchmark(OperationsPerInvoke = BatchSize), BenchmarkCategory("NotExists")]
     public int Entry_IsOccupied_NotFound()
     {
         var count = 0;
