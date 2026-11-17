@@ -1,6 +1,6 @@
 # DictionaryEntry Benchmarks
 
-Full BenchmarkDotNet results for source revision `af9e3b9`, measured on November 17, 2026, comparing idiomatic hand-written `Dictionary<TKey, TValue>` code against `DictionaryEntry`.
+Full BenchmarkDotNet results for source revision `af9e3b9`, measured on v0.4.2, comparing idiomatic hand-written `Dictionary<TKey, TValue>` code against `DictionaryEntry`.
 
 ## Running the Benchmarks
 
