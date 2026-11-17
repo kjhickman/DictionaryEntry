@@ -22,11 +22,7 @@
         "files": [
           "index.md",
           "benchmarks.md",
-          "toc.yml"
-        ]
-      },
-      {
-        "files": [
+          "toc.yml",
           "api/**.yml"
         ]
       }
@@ -34,7 +30,8 @@
     "output": "_site",
     "template": [
       "default",
-      "modern"
+      "modern",
+      "template"
     ],
     "globalMetadata": {
       "_appName": "DictionaryEntry",

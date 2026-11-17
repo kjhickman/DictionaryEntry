@@ -1,0 +1,485 @@
+/* ==========================================================================
+   DictionaryEntry — Minimal Modern Theme Overrides for DocFX
+   ========================================================================== */
+
+/* Self-hosted variable fonts (Latin subset, SIL OFL 1.1 — see fonts/OFL-*.txt) */
+@font-face {
+  font-family: "Inter";
+  font-style: normal;
+  font-weight: 100 900;
+  font-display: swap;
+  src: url("fonts/inter-var.woff2") format("woff2");
+}
+
+@font-face {
+  font-family: "JetBrains Mono";
+  font-style: normal;
+  font-weight: 100 800;
+  font-display: swap;
+  src: url("fonts/jetbrains-mono-var.woff2") format("woff2");
+}
+
+code,
+pre {
+  font-variant-ligatures: none;
+}
+
+:root {
+  --bs-font-sans-serif: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  --bs-font-monospace: "JetBrains Mono", ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+
+  --bs-body-color: #18181b;
+  --bs-body-color-rgb: 24, 24, 27;
+  --bs-secondary-color: #52525b;
+  --bs-border-color: #e4e4e7;
+
+  --bs-primary: #2563eb;
+  --bs-primary-rgb: 37, 99, 235;
+  --bs-link-color: #2563eb;
+  --bs-link-color-rgb: 37, 99, 235;
+  --bs-link-hover-color: #1d4ed8;
+  --bs-link-hover-color-rgb: 29, 78, 216;
+
+  --de-surface: #f8fafc;
+  --de-surface-hover: #f1f5f9;
+  --de-muted: #71717a;
+  --de-accent-soft: #eff6ff;
+
+  --de-inline-code-bg: #f1f5f9;
+  --de-inline-code-border: #e2e8f0;
+
+  --de-code-bg: #f8fafc;
+  --de-code-fg: #1e293b;
+
+  /* GitHub-inspired syntax palette */
+  --de-hl-keyword: #cf222e;
+  --de-hl-title: #8250df;
+  --de-hl-type: #0550ae;
+  --de-hl-string: #0a3069;
+  --de-hl-comment: #6e7781;
+}
+
+[data-bs-theme="dark"] {
+  --bs-body-bg: #0b0f17;
+  --bs-body-bg-rgb: 11, 15, 23;
+  --bs-body-color: #e4e4e7;
+  --bs-body-color-rgb: 228, 228, 231;
+  --bs-secondary-color: #a1a1aa;
+  --bs-border-color: #1e293b;
+
+  --bs-primary: #60a5fa;
+  --bs-primary-rgb: 96, 165, 250;
+  --bs-link-color: #60a5fa;
+  --bs-link-color-rgb: 96, 165, 250;
+  --bs-link-hover-color: #93c5fd;
+  --bs-link-hover-color-rgb: 147, 197, 253;
+
+  --de-surface: #111827;
+  --de-surface-hover: #1e293b;
+  --de-muted: #94a3b8;
+  --de-accent-soft: rgba(59, 130, 246, 0.14);
+
+  --de-inline-code-bg: rgba(148, 163, 184, 0.13);
+  --de-inline-code-border: rgba(148, 163, 184, 0.22);
+
+  --de-code-bg: #0f1623;
+  --de-code-fg: #e2e8f0;
+
+  --de-hl-keyword: #ff7b72;
+  --de-hl-title: #d2a8ff;
+  --de-hl-type: #79c0ff;
+  --de-hl-string: #a5d6ff;
+  --de-hl-comment: #8b949e;
+}
+
+/* --------------------------------------------------------------------------
+   1. Base Typography, Links & Reading Measure
+   -------------------------------------------------------------------------- */
+
+body {
+  font-size: 0.975rem;
+  line-height: 1.68;
+  -webkit-font-smoothing: antialiased;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  letter-spacing: -0.022em;
+  font-weight: 650;
+}
+
+article h1 {
+  font-size: 2.15rem;
+  font-weight: 700;
+  letter-spacing: -0.03em;
+  margin-bottom: 1rem;
+}
+
+article > h2 {
+  font-size: 1.45rem;
+  margin-top: 2.6rem;
+  margin-bottom: 0.9rem;
+  padding-bottom: 0.45rem;
+  border-bottom: 1px solid var(--bs-border-color);
+}
+
+article > h3 {
+  font-size: 1.15rem;
+  margin-top: 1.85rem;
+  margin-bottom: 0.65rem;
+}
+
+/* Calm links: underline only inside body prose or on hover */
+a {
+  text-decoration: none;
+}
+
+article p a:not(.xref, :has(> code)),
+article li a:not(.xref, :has(> code)) {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+  text-decoration-color: color-mix(in srgb, currentColor 38%, transparent);
+}
+
+article a:not(:has(> code)):hover {
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+
+/* Comfortable width on single-column conceptual pages (Home, Benchmarks) */
+body:not([data-yaml-mime="ManagedReference"]) main.container-xxl {
+  max-width: 1140px;
+}
+
+body:not([data-yaml-mime="ManagedReference"]) main > .content {
+  max-width: 52rem;
+  margin-inline: auto;
+}
+
+/* Crisp tables with aligned benchmark numbers */
+article table {
+  width: 100%;
+  margin: 1.25rem 0 1.6rem;
+  border-collapse: collapse;
+  font-size: 0.9rem;
+  font-variant-numeric: tabular-nums;
+}
+
+article table th,
+article table td {
+  padding: 0.6rem 0.85rem;
+  border-bottom: 1px solid var(--bs-border-color);
+}
+
+article table thead th {
+  font-weight: 600;
+  color: var(--bs-secondary-color);
+  background-color: var(--de-surface);
+  border-top: 1px solid var(--bs-border-color);
+}
+
+/* --------------------------------------------------------------------------
+   2. Inline Code Pills (Replaces Bootstrap Magenta)
+   -------------------------------------------------------------------------- */
+
+:not(pre) > code {
+  font-size: 0.85em;
+  font-weight: 500;
+  color: var(--de-code-fg);
+  background-color: var(--de-inline-code-bg);
+  border: 1px solid var(--de-inline-code-border);
+  border-radius: 5px;
+  padding: 0.13em 0.38em;
+  word-break: break-word;
+}
+
+/* Linked code (e.g. [`entry()`](...)): same neutral pill, link-colored text,
+   no underline; tints on hover instead */
+a > code {
+  color: inherit;
+  transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+a:hover > code {
+  background-color: var(--de-accent-soft);
+  border-color: color-mix(in srgb, currentColor 40%, transparent);
+}
+
+/* --------------------------------------------------------------------------
+   3. Code Blocks & Syntax Highlighting
+   -------------------------------------------------------------------------- */
+
+pre {
+  background-color: var(--de-code-bg);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 10px;
+  margin: 1rem 0 1.4rem;
+}
+
+.hljs {
+  background: transparent !important;
+  color: var(--de-code-fg);
+  font-size: 0.86rem;
+  line-height: 1.62;
+  padding: 1rem 1.2rem !important;
+}
+
+/* [data-bs-theme] prefix matches DocFX's own theme-scoped hljs specificity */
+[data-bs-theme] .hljs-keyword,
+[data-bs-theme] .hljs-doctag,
+[data-bs-theme] .hljs-meta .hljs-keyword {
+  color: var(--de-hl-keyword);
+}
+
+[data-bs-theme] .hljs-title {
+  color: var(--de-hl-title);
+}
+
+[data-bs-theme] .hljs-type,
+[data-bs-theme] .hljs-built_in,
+[data-bs-theme] .hljs-literal,
+[data-bs-theme] .hljs-number,
+[data-bs-theme] .hljs-attr {
+  color: var(--de-hl-type);
+}
+
+[data-bs-theme] .hljs-string,
+[data-bs-theme] .hljs-meta .hljs-string {
+  color: var(--de-hl-string);
+}
+
+[data-bs-theme] .hljs-comment,
+[data-bs-theme] .hljs-quote {
+  color: var(--de-hl-comment);
+  font-style: normal;
+}
+
+/* --------------------------------------------------------------------------
+   4. Header, Wordmark, Search & Outline Rail
+   -------------------------------------------------------------------------- */
+
+body > header.bg-body {
+  background-color: color-mix(in srgb, var(--bs-body-bg) 84%, transparent) !important;
+  backdrop-filter: saturate(180%) blur(12px);
+  border-bottom-color: var(--bs-border-color) !important;
+}
+
+#logo {
+  display: none;
+}
+
+.navbar .navbar-brand {
+  font-weight: 700;
+  font-size: 1.08rem;
+  letter-spacing: -0.025em;
+  margin-right: 1.5rem;
+}
+
+.navbar .navbar-nav .nav-link {
+  font-size: 0.9rem;
+  font-weight: 500;
+  padding-inline: 0.7rem !important;
+  color: var(--bs-secondary-color);
+}
+
+.navbar .navbar-nav .nav-link:hover,
+.navbar .navbar-nav .nav-link.active {
+  color: var(--bs-body-color);
+}
+
+.navbar .navbar-nav .nav-link.active {
+  font-weight: 600;
+}
+
+#search-query,
+#toc form.filter input.form-control {
+  font-size: 0.86rem;
+  border-radius: 8px;
+  background-color: var(--de-surface);
+  border: 1px solid var(--bs-border-color);
+}
+
+#search-query:focus,
+#toc form.filter input.form-control:focus {
+  background-color: var(--bs-body-bg);
+  border-color: var(--bs-primary);
+  box-shadow: 0 0 0 3px var(--de-accent-soft);
+}
+
+/* Right-hand "In this article" rail */
+.affix {
+  font-size: 0.82rem;
+}
+
+.affix h5 {
+  font-size: 0.72rem;
+  font-weight: 600;
+  letter-spacing: 0.08em;
+  color: var(--de-muted);
+  border-bottom: none !important;
+  padding-bottom: 0.35rem;
+}
+
+.affix ul {
+  border-left: 1px solid var(--bs-border-color);
+  padding-left: 0.85rem;
+}
+
+.affix ul li {
+  margin: 0.3rem 0;
+}
+
+/* Top-level sections (h2): darker, bolder, with breathing room between groups */
+.affix ul li a.link-body-emphasis {
+  color: var(--bs-body-color) !important;
+  font-weight: 600;
+}
+
+.affix ul li:has(> a.link-body-emphasis):not(:first-child) {
+  margin-top: 0.85rem;
+}
+
+/* Child sections (h3): indented and muted */
+.affix ul li a.link-secondary {
+  display: block;
+  padding-left: 0.85rem;
+  color: var(--bs-secondary-color) !important;
+}
+
+.affix ul li a:hover {
+  color: var(--bs-primary) !important;
+  text-decoration: none;
+}
+
+/* --------------------------------------------------------------------------
+   5. API Reference Decluttering, Sidebar & Overload Dividers
+   -------------------------------------------------------------------------- */
+
+/* Hide noisy boxed ValueType/Object inherited members */
+body[data-yaml-mime="ManagedReference"] article dl.typelist.inheritedMembers {
+  display: none;
+}
+
+/* Compact Namespace / Assembly metadata strip */
+body[data-yaml-mime="ManagedReference"] article div.facts {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.5rem 1.25rem;
+  font-size: 0.84rem;
+  margin: 0.75rem 0 1.25rem;
+  padding: 0.5rem 0.85rem;
+  background-color: var(--de-surface);
+  border: 1px solid var(--bs-border-color);
+  border-radius: 8px;
+}
+
+body[data-yaml-mime="ManagedReference"] article div.facts > dl > dt {
+  color: var(--de-muted);
+  font-weight: 500;
+}
+
+/* Clear overload hierarchy */
+body[data-yaml-mime="ManagedReference"] article h3[data-uid] {
+  font-family: var(--bs-font-monospace);
+  font-size: 1.02rem;
+  font-weight: 600;
+  letter-spacing: -0.015em;
+  margin-top: 2.25rem;
+  padding-top: 1.75rem;
+  border-top: 1px solid var(--bs-border-color);
+}
+
+body[data-yaml-mime="ManagedReference"] article h2.section + h3[data-uid],
+body[data-yaml-mime="ManagedReference"] article h2.section + a + h3[data-uid] {
+  margin-top: 1.15rem;
+  padding-top: 0;
+  border-top: none;
+}
+
+body[data-yaml-mime="ManagedReference"] article h4.section {
+  font-size: 0.74rem;
+  font-weight: 650;
+  text-transform: uppercase;
+  letter-spacing: 0.07em;
+  color: var(--de-muted);
+  margin-top: 1.25rem;
+  margin-bottom: 0.45rem;
+}
+
+body[data-yaml-mime="ManagedReference"] article dl.parameters > dt {
+  margin: 0.65rem 0 0.2rem;
+  font-size: 0.9rem;
+}
+
+body[data-yaml-mime="ManagedReference"] article dl.parameters > dt > code {
+  font-size: 0.85em;
+}
+
+body[data-yaml-mime="ManagedReference"] article dl.parameters > dd {
+  margin-left: 0;
+  margin-bottom: 0.65rem;
+  color: var(--bs-secondary-color);
+}
+
+body[data-yaml-mime="ManagedReference"] article .header-action {
+  font-size: 1rem;
+  opacity: 0.45;
+  transition: opacity 0.15s ease;
+}
+
+body[data-yaml-mime="ManagedReference"] article .header-action:hover {
+  opacity: 1;
+}
+
+/* Left API Sidebar */
+body:not([data-search])[data-layout=""] > main > .toc-offcanvas {
+  max-width: 280px;
+}
+
+#toc ul {
+  font-size: 0.83rem;
+}
+
+#toc li {
+  margin: 0.15rem 0;
+  padding-left: 0.75rem;
+}
+
+#toc li > a {
+  display: block;
+  padding: 0.32rem 0.55rem;
+  border-radius: 6px;
+  line-height: 1.38;
+  color: var(--bs-secondary-color);
+  transition: background-color 0.12s ease, color 0.12s ease;
+}
+
+#toc li > a:hover {
+  text-decoration: none;
+  color: var(--bs-body-color);
+  background-color: var(--de-surface-hover);
+}
+
+#toc li.expander > a {
+  font-weight: 600;
+  color: var(--bs-body-color);
+}
+
+#toc li.active:not(.expander) > a {
+  font-weight: 600;
+  color: var(--bs-primary);
+  background-color: var(--de-accent-soft);
+}
+
+/* Nested sidebar items: guide line + extra indent under their parent */
+#toc li > ul {
+  margin-left: 0.55rem;
+  border-left: 1px solid var(--bs-border-color);
+}
+
+#toc li li {
+  padding-left: 0.5rem;
+}
+
+#toc .expand-stub::before {
+  margin-top: 0.48rem;
+}

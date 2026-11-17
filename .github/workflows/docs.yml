@@ -1,24 +1,36 @@
 name: Docs
 
 on:
-  push:
-    branches: [ main ]
   pull_request:
     branches: [ main ]
+  release:
+    types: [ published ]
   workflow_dispatch:
+    inputs:
+      tag:
+        description: Existing release tag to deploy docs for (e.g. v0.4.1)
+        required: true
+        type: string
 
 permissions:
   contents: read
 
+# PRs: cancel superseded builds. Deploys: one shared queue so the newest release wins.
 concurrency:
-  group: pages-${{ github.ref }}
-  cancel-in-progress: ${{ github.ref != 'refs/heads/main' }}
+  group: ${{ github.event_name == 'pull_request' && format('docs-{0}', github.ref) || 'pages' }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
   build:
+    # Docs track the stable package on NuGet; prereleases don't redeploy them.
+    if: ${{ !github.event.release.prerelease }}
     runs-on: ubuntu-latest
+    env:
+      RELEASE_TAG: ${{ github.event.release.tag_name || inputs.tag }}
     steps:
       - uses: actions/checkout@v7
+        with:
+          ref: ${{ env.RELEASE_TAG && format('refs/tags/{0}', env.RELEASE_TAG) || '' }}
 
       - name: Setup .NET
         uses: actions/setup-dotnet@v6
@@ -30,6 +42,9 @@ jobs:
 
       - name: Build docs
         run: dotnet docfx docs/docfx.json --warningsAsErrors
+        env:
+          # Pin "View source" links to the released tag (empty on PRs = current branch).
+          DOCFX_SOURCE_BRANCH_NAME: ${{ env.RELEASE_TAG }}
 
       - name: Upload Pages artifact
         if: github.event_name != 'pull_request'
@@ -38,7 +53,7 @@ jobs:
           path: docs/_site
 
   deploy:
-    if: github.event_name != 'pull_request' && github.ref == 'refs/heads/main'
+    if: github.event_name != 'pull_request'
     needs: build
     permissions:
       pages: write
