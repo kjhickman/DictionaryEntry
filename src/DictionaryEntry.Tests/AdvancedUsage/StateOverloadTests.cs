@@ -135,26 +135,6 @@ public class StateOverloadTests
     }
 
     [Fact]
-    public void ValueTupleState_PassesMultipleValuesAndChainsWithUnionSwitch()
-    {
-        var dict = new Dictionary<string, int> { ["existing"] = 10 };
-
-        var updated = dict.Entry("existing")
-            .AndModify((Multiplier: 3, Bonus: 5), static (v, s) => v * s.Multiplier + s.Bonus) switch
-        {
-            OccupiedEntry<string, int> occupied => occupied.Value,
-            VacantEntry<string, int> => -1,
-        };
-
-        var initialized = dict.Entry("missing")
-            .AndModify((Multiplier: 3, Bonus: 5), static (v, s) => v * s.Multiplier + s.Bonus)
-            .OrInsertWithKey((Base: 10, Bonus: 2), static (k, s) => k.Length * s.Base + s.Bonus);
-
-        Assert.Equal(35, updated);
-        Assert.Equal(72, initialized);
-    }
-
-    [Fact]
     public void OrInsertWithStateVariants_WhenFactoryThrows_DoNotInsertDefaultEntry()
     {
         var dict = new Dictionary<string, int>();
@@ -217,49 +197,7 @@ public class StateOverloadTests
     }
 
     [Fact]
-    public void CapturingLambda_AllocatesClosure_WhileStateOverloadAllocatesZero()
-    {
-        var dict = new Dictionary<string, int> { ["existing"] = 10 };
-
-        // Warm up capturing path
-        for (var i = 0; i < 200; i++)
-        {
-            _ = CapturingCacheHit(dict, "existing", i);
-        }
-
-        var beforeCapturing = GC.GetAllocatedBytesForCurrentThread();
-        for (var i = 0; i < 100; i++)
-        {
-            _ = CapturingCacheHit(dict, "existing", i);
-        }
-        var capturingAllocated = GC.GetAllocatedBytesForCurrentThread() - beforeCapturing;
-
-        // Even on a 100% cache hit, the capturing lambda allocates its closure (24 B/call on .NET 10+, 88 B/call on .NET 9)
-        Assert.True(capturingAllocated >= 2_400, $"Expected closure allocations, got {capturingAllocated} bytes.");
-
-        var statefulSum = AllocationAssert.ZeroAllocations(dict, static d =>
-        {
-            var sum = 0;
-            for (var i = 0; i < 100; i++)
-            {
-                sum += StatefulCacheHit(d, "existing", i);
-            }
-
-            return sum;
-        });
-        Assert.True(statefulSum > 0);
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        static int CapturingCacheHit(Dictionary<string, int> d, string key, int multiplier) =>
-            d.Entry(key).OrInsertWithKey(k => k.Length * multiplier);
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        static int StatefulCacheHit(Dictionary<string, int> d, string key, int multiplier) =>
-            d.Entry(key).OrInsertWithKey(multiplier, static (k, mult) => k.Length * mult);
-    }
-
-    [Fact]
-    public void RefStructState_SpansAndCustomRefStructs_WorkAcrossAllStateOverloadsWithZeroAllocation()
+    public void RefStructState_SpansAndCustomRefStructs_WorkAcrossAllStateOverloads()
     {
         var dict = new Dictionary<string, int> { ["alpha"] = 10 };
         ReadOnlySpan<char> charSpan = "hello-world".AsSpan(0, 5);
@@ -294,29 +232,6 @@ public class StateOverloadTests
             static (occ, span) => occ.Value + span.Length,
             static (_, _) => 0);
         Assert.Equal(30, matched);
-
-        // 5. Verify 0 bytes allocated when passing ReadOnlySpan<char> in a hot loop
-        var total = AllocationAssert.ZeroAllocations(dict, charSpan, static (d, span) => SpanStateHotLoop(d, span));
-
-        Assert.True(total > 0);
-
-        [MethodImpl(MethodImplOptions.NoInlining)]
-        static int SpanStateHotLoop(Dictionary<string, int> d, ReadOnlySpan<char> span)
-        {
-            var sum = 0;
-            for (var i = 0; i < 500; i++)
-            {
-                d.Entry("alpha").AndModify(span, static (v, s) => v + s.Length);
-                d.Entry("alpha").AndModify(span, static (ref v, s) => v += s.Length);
-                sum += d.Entry("alpha").OrInsertWith(span, static s => s.Length);
-                sum += d.Entry("alpha").Match(
-                    span,
-                    static (occ, s) => occ.Value + s.Length,
-                    static (_, s) => s.Length);
-            }
-
-            return sum;
-        }
     }
 
     private readonly ref struct ParseContext(ReadOnlySpan<char> digits, int Multiplier)

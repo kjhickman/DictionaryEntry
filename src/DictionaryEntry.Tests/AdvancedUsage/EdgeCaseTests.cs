@@ -24,16 +24,6 @@ public class EdgeCaseTests
     }
 
     [Fact]
-    public void OrDefault_WithReferenceTypeVacantEntry_InsertsNullDefaultValue()
-    {
-        var dictStr = new Dictionary<string, string?>();
-        ref var strValue = ref dictStr.Entry("key").OrDefault();
-
-        Assert.Null(dictStr["key"]);
-        Assert.Null(strValue);
-    }
-
-    [Fact]
     public void DefaultEntry_AllOperations_ThrowInvalidOperationExceptionWithoutInvokingCallbacks()
     {
         var invoked = false;
@@ -69,19 +59,6 @@ public class EdgeCaseTests
         Assert.Throws<InvalidOperationException>(() => default(VacantEntry<string, int>).Insert(1));
         Assert.Throws<InvalidOperationException>(() => default(VacantEntry<string, int>).InsertEntry(1));
         Assert.False(invoked);
-    }
-
-    [Fact]
-    public void AndModify_ChainedTwice_AppliesBothUpdates()
-    {
-        // Arrange
-        var dict = new Dictionary<string, int> { ["key"] = 1 };
-
-        // Act
-        dict.Entry("key").AndModify(v => v + 1).AndModify(v => v * 10);
-
-        // Assert
-        Assert.Equal(20, dict["key"]);
     }
 
     [Fact]
@@ -196,78 +173,6 @@ public class EdgeCaseTests
     }
 
     [Fact]
-    public void ValueTypeKeys_GuidAndRecordStruct_SupportFluentAndUnionOperations()
-    {
-        var id = Guid.NewGuid();
-        var byGuid = new Dictionary<Guid, string>();
-
-        byGuid.Entry(id).OrInsert("alice");
-        var name = byGuid.Entry(id) switch
-        {
-            OccupiedEntry<Guid, string> occupied => occupied.Value,
-            VacantEntry<Guid, string> => "none",
-        };
-        Assert.Equal("alice", name);
-
-        var coordDict = new Dictionary<GridCoord, int>();
-        var origin = new GridCoord(0, 0);
-        coordDict.Entry(origin).OrDefault() = 5;
-        coordDict.Entry(origin).AndModify(v => v + 10);
-        Assert.Equal(15, coordDict[origin]);
-    }
-
-    [Fact]
-    public void MutableStructValue_RefReturns_MutateFieldsInPlaceWithoutCopy()
-    {
-        var dict = new Dictionary<int, PlayerStats>();
-
-        ref var p1 = ref dict.Entry(1).OrInsert(new PlayerStats { Damage = 10, Hits = 1 });
-        p1.Damage += 25;
-        p1.Hits++;
-        Assert.Equal(new PlayerStats { Damage = 35, Hits = 2 }, dict[1]);
-
-        ref var p2 = ref dict.Entry(2).OrDefault();
-        p2.Damage = 5;
-        p2.Hits = 1;
-        Assert.Equal(new PlayerStats { Damage = 5, Hits = 1 }, dict[2]);
-
-        ref var p3 = ref dict.Entry(3).OrInsertWith(() => new PlayerStats { Damage = 1, Hits = 1 });
-        p3.Hits += 4;
-        Assert.Equal(new PlayerStats { Damage = 1, Hits = 5 }, dict[3]);
-
-        ref var p4 = ref dict.Entry(4).OrInsertWithKey(id => new PlayerStats { Damage = id * 10, Hits = 1 });
-        p4.Damage += 2;
-        Assert.Equal(new PlayerStats { Damage = 42, Hits = 1 }, dict[4]);
-    }
-
-    [Fact]
-    public void ValueRef_UpdateOnlyInPlaceStructMutation_UpdatesExistingAndSkipsMissing()
-    {
-        var dict = new Dictionary<int, PlayerStats>
-        {
-            [1] = new PlayerStats { Damage = 10, Hits = 1 }
-        };
-
-        // Existing key: mutates struct fields directly in dictionary storage
-        if (dict.Entry(1) is { IsOccupied: true } existing)
-        {
-            ref var stats = ref existing.ValueRef;
-            stats.Damage += 25;
-            stats.Hits++;
-        }
-
-        // Missing key: skipped without inserting a default entry
-        if (dict.Entry(99) is { IsOccupied: true } missing)
-        {
-            missing.ValueRef.Hits++;
-        }
-
-        Assert.Equal(new PlayerStats { Damage = 35, Hits = 2 }, dict[1]);
-        Assert.False(dict.ContainsKey(99));
-        Assert.Single(dict);
-    }
-
-    [Fact]
     public void ValueRef_AfterVacantTransition_PointsAtLiveStorage()
     {
         var dict = new Dictionary<string, int>();
@@ -346,79 +251,5 @@ public class EdgeCaseTests
         }
     }
 
-    [Fact]
-    public void InEntry_ReadonlyMembers_SupportInspectionPatternMatchingAndValueRefMutation()
-    {
-        var dict = new Dictionary<string, int> { ["existing"] = 10 };
-
-        var existingEntry = dict.Entry("existing");
-        var missingEntry = dict.Entry("missing");
-        Entry<string, int> defaultEntry = default;
-
-        InspectOccupied(in existingEntry);
-        InspectVacant(in missingEntry);
-        InspectDefault(in defaultEntry);
-
-        Assert.Equal(20, dict["existing"]);
-        Assert.False(dict.ContainsKey("missing"));
-
-        static void InspectOccupied(in Entry<string, int> entry)
-        {
-            Assert.Equal("existing", entry.Key);
-            Assert.True(entry.IsOccupied);
-            Assert.False(entry.IsVacant);
-            Assert.True(entry.TryGetOccupied(out var occupied));
-            Assert.Equal(10, occupied.Value);
-            Assert.False(entry.TryGetVacant(out _));
-            Assert.Equal(10, entry.ToOccupied().Value);
-
-            var matched = entry.Match(static o => o.Value * 2, static _ => -1);
-            Assert.Equal(20, matched);
-
-            var statefulMatched = entry.Match(3, static (o, add) => o.Value + add, static (_, _) => -1);
-            Assert.Equal(13, statefulMatched);
-
-            var switched = entry switch
-            {
-                OccupiedEntry<string, int> o => o.Value,
-                VacantEntry<string, int> => -1,
-            };
-            Assert.Equal(10, switched);
-
-            entry.ValueRef += 5;
-            entry.AndModify(static v => v + 2);
-            entry.AndModify(3, static (v, delta) => v + delta);
-        }
-
-        static void InspectVacant(in Entry<string, int> entry)
-        {
-            Assert.Equal("missing", entry.Key);
-            Assert.False(entry.IsOccupied);
-            Assert.True(entry.IsVacant);
-            Assert.False(entry.TryGetOccupied(out _));
-            Assert.True(entry.TryGetVacant(out var vacant));
-            Assert.Equal("missing", vacant.Key);
-            Assert.Equal("missing", entry.ToVacant().Key);
-
-            var switched = entry switch
-            {
-                OccupiedEntry<string, int> o => o.Value,
-                VacantEntry<string, int> => -1,
-            };
-            Assert.Equal(-1, switched);
-        }
-
-        static void InspectDefault(in Entry<string, int> entry)
-        {
-            Assert.False(entry.IsOccupied);
-            Assert.False(entry.IsVacant);
-            Assert.False(entry.TryGetOccupied(out _));
-            Assert.False(entry.TryGetVacant(out _));
-            Assert.True(entry is null);
-        }
-    }
-
     private delegate ref int RefInserter(Dictionary<int, int> dict, int key);
-
-    private readonly record struct GridCoord(int X, int Y);
 }

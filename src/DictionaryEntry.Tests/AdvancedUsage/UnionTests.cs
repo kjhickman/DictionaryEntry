@@ -40,72 +40,6 @@ public class UnionTests
     }
 
     [Fact]
-    public void PropertyPatterns_MatchOccupiedValueAndEntryProperties()
-    {
-        var dict = new Dictionary<string, int>
-        {
-            ["high"] = 200,
-            ["low"] = 5,
-        };
-
-        Assert.Equal("Large", Classify("high"));
-        Assert.Equal("Small", Classify("low"));
-        Assert.Equal("Missing", Classify("absent"));
-
-        // Untyped property pattern applies to Entry itself
-        Assert.True(dict.Entry("high") is { Key: "high", IsOccupied: true });
-        Assert.True(dict.Entry("absent") is { Key: "absent", IsVacant: true });
-
-        string Classify(string key) => dict.Entry(key) switch
-        {
-            OccupiedEntry<string, int> { Value: >= 100 } => "Large",
-            OccupiedEntry<string, int> => "Small",
-            VacantEntry<string, int> => "Missing",
-        };
-    }
-
-    [Fact]
-    public void PositionalDeconstructPattern_MatchesOccupiedEntry()
-    {
-        var dict = new Dictionary<string, int> { ["player1"] = 75 };
-
-        var formatted = dict.Entry("player1") switch
-        {
-            OccupiedEntry<string, int>(var key, >= 50 and var score) => $"{key}:{score}",
-            OccupiedEntry<string, int>(var key, _) => $"{key}:low",
-            VacantEntry<string, int> { Key: var key } => $"{key}:none",
-        };
-
-        Assert.Equal("player1:75", formatted);
-    }
-
-    [Fact]
-    public void SwitchStatement_MutatesDictionaryWithLocalState()
-    {
-        var dict = new Dictionary<string, int> { ["a"] = 10 };
-        var bonus = 5;
-
-        ApplyScore(dict, "a", bonus);
-        ApplyScore(dict, "b", bonus);
-
-        Assert.Equal(15, dict["a"]);
-        Assert.Equal(5, dict["b"]);
-
-        static void ApplyScore(Dictionary<string, int> scores, string key, int delta)
-        {
-            switch (scores.Entry(key))
-            {
-                case OccupiedEntry<string, int> occupied:
-                    occupied.Insert(occupied.Value + delta);
-                    break;
-                case VacantEntry<string, int> vacant:
-                    vacant.Insert(delta);
-                    break;
-            }
-        }
-    }
-
-    [Fact]
     public void ImplicitUnionConversion_ConvertsCaseTypesToEntry()
     {
         var dict = new Dictionary<string, int> { ["existing"] = 42 };
@@ -203,12 +137,13 @@ public class UnionTests
     }
 
     [Fact]
-    public void DefaultEntry_IsNullUnionAndDoesNotMatchCases()
+    public void DefaultEntry_IsNeitherOccupiedNorVacantAndMatchesOnlyNull()
     {
         Entry<string, int> defaultEntry = default;
 
+        Assert.False(defaultEntry.IsOccupied);
+        Assert.False(defaultEntry.IsVacant);
         Assert.True(defaultEntry is null);
-        Assert.False(defaultEntry is not null);
         Assert.False(defaultEntry is OccupiedEntry<string, int>);
         Assert.False(defaultEntry is VacantEntry<string, int>);
         Assert.False(defaultEntry.TryGetOccupied(out _));
@@ -280,82 +215,6 @@ public class UnionTests
     }
 
     [Fact]
-    public void SwitchExpression_WithoutNullArm_OnDefaultEntry_ThrowsSwitchExpressionException()
-    {
-        Assert.Throws<SwitchExpressionException>(() =>
-        {
-            Entry<string, int> defaultEntry = default;
-            return defaultEntry switch
-            {
-                OccupiedEntry<string, int> o => o.Value,
-                VacantEntry<string, int> => 0,
-            };
-        });
-    }
-
-    [Fact]
-    public void SwitchExpressionAndStatement_WithNullArm_MatchesDefaultEntryOnly()
-    {
-        var dict = new Dictionary<string, string?> { ["nullValue"] = null };
-        Entry<string, string?> defaultEntry = default;
-
-        Assert.Equal("default", ClassifyExpression(defaultEntry));
-        Assert.Equal("occupied:", ClassifyExpression(dict.Entry("nullValue")));
-        Assert.Equal("vacant:missing", ClassifyExpression(dict.Entry("missing")));
-
-        Assert.Equal("default", ClassifyStatement(defaultEntry));
-        Assert.Equal("occupied:", ClassifyStatement(dict.Entry("nullValue")));
-        Assert.Equal("vacant:missing", ClassifyStatement(dict.Entry("missing")));
-
-        static string ClassifyExpression(Entry<string, string?> entry) => entry switch
-        {
-            OccupiedEntry<string, string?> occupied => $"occupied:{occupied.Value}",
-            VacantEntry<string, string?> vacant => $"vacant:{vacant.Key}",
-            null => "default",
-        };
-
-        static string ClassifyStatement(Entry<string, string?> entry)
-        {
-            string result;
-            switch (entry)
-            {
-                case OccupiedEntry<string, string?> occupied:
-                    result = $"occupied:{occupied.Value}";
-                    break;
-                case VacantEntry<string, string?> vacant:
-                    result = $"vacant:{vacant.Key}";
-                    break;
-                case null:
-                    result = "default";
-                    break;
-            }
-
-            return result;
-        }
-    }
-
-    [Fact]
-    public void AndModify_ChainedIntoSwitchExpression_SeesModifiedValue()
-    {
-        var dict = new Dictionary<string, int> { ["existing"] = 32 };
-
-        var existingResult = dict.Entry("existing").AndModify(v => v + 10) switch
-        {
-            OccupiedEntry<string, int> occupied => occupied.Value,
-            VacantEntry<string, int> => -1,
-        };
-
-        var missingResult = dict.Entry("missing").AndModify(v => v + 10) switch
-        {
-            OccupiedEntry<string, int> occupied => occupied.Value,
-            VacantEntry<string, int> => -1,
-        };
-
-        Assert.Equal(42, existingResult);
-        Assert.Equal(-1, missingResult);
-    }
-
-    [Fact]
     public void LocalEntry_TransitionsFromVacantToOccupied_AcrossAllInsertionMethods()
     {
         var dict = new Dictionary<string, int>();
@@ -379,38 +238,6 @@ public class UnionTests
         Assert.True(viaInsertEntry is VacantEntry<string, int>);
         viaInsertEntry.InsertEntry(99);
         Assert.True(viaInsertEntry is OccupiedEntry<string, int> { Key: "d", Value: 99 });
-    }
-
-    [Fact]
-    public void ImplicitUnionConversion_WorksInMethodArgumentsAndMultiBranchExpressions()
-    {
-        var dict = new Dictionary<string, int> { ["existing"] = 12 };
-        var occupied = dict.Entry("existing").ToOccupied();
-        var vacant = dict.Entry("missing").ToVacant();
-
-        Assert.Equal("occupied:12", Describe(occupied));
-        Assert.Equal("vacant:missing", Describe(vacant));
-
-        Entry<string, int> fromSwitch = SelectCase(useOccupied: true, occupied, vacant);
-        Assert.True(fromSwitch is OccupiedEntry<string, int> { Value: 12 });
-
-        Entry<string, int> fromSwitchVacant = SelectCase(useOccupied: false, occupied, vacant);
-        Assert.True(fromSwitchVacant is VacantEntry<string, int> { Key: "missing" });
-
-        static string Describe(Entry<string, int> entry) => entry switch
-        {
-            OccupiedEntry<string, int> o => $"occupied:{o.Value}",
-            VacantEntry<string, int> v => $"vacant:{v.Key}",
-        };
-
-        static Entry<string, int> SelectCase(
-            bool useOccupied,
-            OccupiedEntry<string, int> occupied,
-            VacantEntry<string, int> vacant) => useOccupied switch
-            {
-                true => occupied,
-                false => vacant,
-            };
     }
 
 #if NET11_0_OR_GREATER

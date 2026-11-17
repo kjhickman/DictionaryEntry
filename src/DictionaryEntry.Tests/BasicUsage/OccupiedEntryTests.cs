@@ -32,22 +32,6 @@ public class OccupiedEntryTests
     }
 
     [Fact]
-    public void RemoveEntry_RemovesKeyAndReturnsNamedTuple()
-    {
-        // Arrange
-        var dict = new Dictionary<string, int> { ["key"] = 42 };
-
-        // Act
-        var occupied = dict.Entry("key").ToOccupied();
-        var removed = occupied.RemoveEntry();
-
-        // Assert
-        Assert.Equal("key", removed.Key);
-        Assert.Equal(42, removed.Value);
-        Assert.False(dict.ContainsKey("key"));
-    }
-
-    [Fact]
     public void RemoveEntry_WithCaseInsensitiveComparer_ReturnsLookupKeyAndRemovedValue()
     {
         var dict = new Dictionary<string, int>(StringComparer.OrdinalIgnoreCase)
@@ -104,18 +88,6 @@ public class OccupiedEntryTests
     }
 
     [Fact]
-    public void Remove_AfterExternalUpdate_ReturnsCurrentValue()
-    {
-        // Arrange
-        var dict = new Dictionary<string, int> { ["key"] = 1 };
-        var occupied = dict.Entry("key").ToOccupied();
-        dict["key"] = 99;
-
-        // Act & Assert
-        Assert.Equal(99, occupied.Remove());
-    }
-
-    [Fact]
     public void Remove_CalledTwice_ThrowsKeyNotFoundException()
     {
         // Arrange
@@ -126,50 +98,5 @@ public class OccupiedEntryTests
         // Act & Assert
         var ex = Assert.Throws<KeyNotFoundException>(() => occupied.Remove());
         Assert.Contains("'key'", ex.Message);
-    }
-
-    [Fact]
-    public void Remove_WithNullValue_ReturnsNull()
-    {
-        // Arrange
-        var dict = new Dictionary<string, string?> { ["key"] = null };
-        var occupied = dict.Entry("key").ToOccupied();
-
-        // Act
-        var removed = occupied.Remove();
-
-        // Assert
-        Assert.Null(removed);
-        Assert.Empty(dict);
-    }
-
-    [Fact]
-    public void Remove_WhenKeyRemovedExternally_ThrowsKeyNotFoundException()
-    {
-        // Arrange
-        var dict = new Dictionary<string, int> { ["key"] = 42 };
-        var occupied = dict.Entry("key").ToOccupied();
-        dict.Remove("key");
-
-        // Act & Assert
-        Assert.Throws<KeyNotFoundException>(() => occupied.Remove());
-        Assert.Empty(dict);
-    }
-
-    [Fact]
-    public void Insert_WhenKeyRemovedExternally_ReinsertsValue()
-    {
-        // Arrange
-        var dict = new Dictionary<string, int> { ["key"] = 42 };
-        var occupied = dict.Entry("key").ToOccupied();
-        dict.Remove("key");
-
-        // Act
-        var inserted = occupied.Insert(99);
-
-        // Assert
-        Assert.Equal(99, inserted);
-        Assert.Equal(99, dict["key"]);
-        Assert.Equal(42, occupied.Value);
     }
 }

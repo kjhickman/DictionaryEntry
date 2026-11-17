@@ -32,11 +32,6 @@ internal readonly record struct CollidingKey(int Id)
     public override int GetHashCode() => 0;
 }
 
-internal sealed record RefCollidingKey(int Id)
-{
-    public override int GetHashCode() => 42;
-}
-
 internal sealed class LowEntropySpanStringComparer(int mask)
     : IEqualityComparer<string>, IAlternateEqualityComparer<ReadOnlySpan<char>, string>
 {

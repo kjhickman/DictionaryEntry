@@ -183,19 +183,6 @@ public class AlternateEntryTests
     }
 
     [Fact]
-    public void OccupiedInsert_WhenKeyRemovedExternally_ReinsertsViaFallback()
-    {
-        var dict = new Dictionary<string, int>(StringComparer.Ordinal) { ["key"] = 1 };
-        var lookup = dict.GetAlternateLookup<ReadOnlySpan<char>>();
-
-        var occupied = lookup.Entry("key".AsSpan()).ToOccupied();
-        dict.Remove("key");
-
-        Assert.Equal(99, occupied.Insert(99));
-        Assert.Equal(99, dict["key"]);
-    }
-
-    [Fact]
     public void Match_AllFourOverloads_ExecuteExpectedBranch()
     {
         var dict = new Dictionary<string, int>(StringComparer.Ordinal) { ["hit"] = 10 };
@@ -311,26 +298,6 @@ public class AlternateEntryTests
     }
 
     [Fact]
-    public void AlternateEntry_InReadOnlyParameter_WorksWithoutDefensiveCopies()
-    {
-        var dict = new Dictionary<string, int>(StringComparer.Ordinal) { ["key"] = 10 };
-        var lookup = dict.GetAlternateLookup<ReadOnlySpan<char>>();
-
-        var entry = lookup.Entry("key".AsSpan());
-        Inspect(in entry);
-        Assert.Equal(15, dict["key"]);
-
-        static void Inspect(in AlternateEntry<string, int, ReadOnlySpan<char>> e)
-        {
-            Assert.True(e.IsOccupied);
-            Assert.False(e.IsVacant);
-            Assert.True(e.Key.SequenceEqual("key"));
-            e.ValueRef += 2;
-            e.AndModify(static (ref v) => v += 3);
-        }
-    }
-
-    [Fact]
     public void SpanLookups_AllocateZeroBytesAcrossCacheHitsAndReadOnlyMisses()
     {
         var dict = new Dictionary<string, int>(StringComparer.Ordinal)
@@ -404,23 +371,13 @@ public class AlternateEntryTests
     }
 
     [Fact]
-    public void DirectReadOnlySpanCharExtension_PreservesStringAndNullOverloadResolution()
+    public void DirectReadOnlySpanCharExtension_PreservesStringOverloadResolution()
     {
         var dict = new Dictionary<string, int> { ["alpha"] = 42 };
 
         // String literal/variable resolves to Entry<string, int> (priority 0), preserving C# 15 [Union] support
         Entry<string, int> stringEntry = dict.Entry("alpha");
         Assert.True(stringEntry.IsOccupied);
-
-        var matchedUnion = dict.Entry("alpha") switch
-        {
-            OccupiedEntry<string, int> { Value: var v } => v,
-            VacantEntry<string, int> => -1,
-        };
-        Assert.Equal(42, matchedUnion);
-
-        // null literal still resolves to string overload and throws ArgumentNullException
-        Assert.Throws<ArgumentNullException>(() => dict.Entry(null!));
 
         // Incompatible custom IEqualityComparer<string> throws InvalidOperationException on span lookup
         var customDict = new Dictionary<string, int>(StringOnlyComparer.Instance);

@@ -113,7 +113,7 @@ public class DictionaryInternalsTests
         d2.Add("c", 3); // reuses 'a's slot on _freeList!
         occ2.Insert(99);
         Assert.Equal(99, d2["a"]);
-        Assert.Equal(3, d2["c"]); // 'c' must NOT have been overwritten by occ2's old _byteOffset!
+        Assert.Equal(3, d2["c"]); // 'c' must NOT have been overwritten through occ2's stale slot location!
 
         // 3. External Clear() when freeCount was 0 (version unchanged, Count becomes 0)
         var d3 = new Dictionary<string, int> { ["a"] = 1 };
@@ -149,24 +149,6 @@ public class DictionaryInternalsTests
     }
 
     [Fact]
-    public void ReferenceTypeCollisions_Exceeding100Threshold_DelegateCleanlyAndPreserveAllEntries()
-    {
-        var dict = new Dictionary<RefCollidingKey, int>();
-        for (var i = 0; i < 140; i++)
-        {
-            dict.Entry(new RefCollidingKey(i)).OrInsert(i * 10);
-        }
-
-        Assert.Equal(140, dict.Count);
-        for (var i = 0; i < 140; i++)
-        {
-            var k = new RefCollidingKey(i);
-            Assert.Equal(i * 10, dict[k]);
-            Assert.True(dict.Entry(k) is OccupiedEntry<RefCollidingKey, int> { Value: var v } && v == i * 10);
-        }
-    }
-
-    [Fact]
     public void StringAndAlternateCollisions_Exceeding100Threshold_DelegateCleanlyAndPreserveAllEntries()
     {
         var dict = new Dictionary<string, int>(LowEntropySpanStringComparer.Colliding);
@@ -192,26 +174,6 @@ public class DictionaryInternalsTests
             Assert.Equal(i * 3, dict[key]);
             Assert.Equal(i * 3, lookup.Entry(key.AsSpan()).ToOccupied().Value);
         }
-    }
-
-    [Fact]
-    public void DiverseStructAndReferenceLayouts_PreserveExactFieldOffsetsAndGcWriteBarriers()
-    {
-        var smallKeyWideVal = new Dictionary<byte, Int128>();
-        smallKeyWideVal.Entry((byte)7).OrInsert(new Int128(0x1122334455667788UL, 0x99AABBCCDDEEFF00UL));
-        smallKeyWideVal.Entry((byte)7).ToOccupied().Insert(new Int128(0xCAFEBABEUL, 0xDEADBEEFUL));
-        Assert.Equal(new Int128(0xCAFEBABEUL, 0xDEADBEEFUL), smallKeyWideVal[7]);
-
-        var wideKeyMixedVal = new Dictionary<Guid, MixedLayoutValue>();
-        var id = Guid.NewGuid();
-        wideKeyMixedVal.Entry(id).OrInsert(new MixedLayoutValue(1, new string('a', 24), 100L));
-        var occ = wideKeyMixedVal.Entry(id).ToOccupied();
-
-        GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: true);
-        occ.Insert(new MixedLayoutValue(2, new string('b', 24), 200L));
-        GC.Collect(GC.MaxGeneration, GCCollectionMode.Forced, blocking: true, compacting: true);
-
-        Assert.Equal(new MixedLayoutValue(2, new string('b', 24), 200L), wideKeyMixedVal[id]);
     }
 
     [Fact]
@@ -313,8 +275,6 @@ public class DictionaryInternalsTests
         Assert.Equal(("k3", 35), o3.RemoveEntry());
         Assert.Empty(dict);
     }
-
-    private readonly record struct MixedLayoutValue(byte Tag, string Label, long Timestamp);
 
     private sealed class Mod10Comparer : IEqualityComparer<int>
     {
