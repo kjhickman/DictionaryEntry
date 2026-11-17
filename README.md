@@ -2,7 +2,7 @@
 
 `DictionaryEntry` brings Rust's [`entry()`](https://doc.rust-lang.org/std/collections/struct.HashMap.html#method.entry) API to C# `Dictionary<TKey, TValue>`, replacing multi-line `TryGetValue` + indexer boilerplate with expressive, **single-lookup** operations.
 
-Because every operation hashes and probes the dictionary only once—and avoids rehashing on inserts and updates—`DictionaryEntry` matches hand-written `Dictionary` code on cache hits and runs **25% to ~2x faster** on misses and updates, with **zero allocations**, NativeAOT compatibility, `ReadOnlySpan<char>` lookups, and zero-boxing **C# 15 `[Union]`** pattern matching.
+By avoiding repeated hashing and probing on inserts and updates, `DictionaryEntry` runs **up to ~2x as fast** as hand-written `TryGetValue` + indexer code in the miss and update benchmarks below, with **zero-allocation APIs**, NativeAOT compatibility, `ReadOnlySpan<char>` lookups, and zero-boxing **C# 15 `[Union]`** pattern matching.
 
 ```csharp
 // Increment or initialize in 1 lookup (instead of TryGetValue + dict[key] = ...)
@@ -130,21 +130,23 @@ headers.Entry(name).OrDefault()++;
 
 ## Benchmarks
 
-Benchmarked with BenchmarkDotNet v0.15.8 on `.NET 11.0` (Apple M1 Pro Arm64, RyuJIT). Comparing idiomatic hand-written `TryGetValue` + indexer code against `DictionaryEntry`:
+Benchmarked on November 17, 2026, at source revision `af9e3b9` with BenchmarkDotNet v0.15.8 on `.NET 11.0.0` (Linux NixOS 26.11, Intel Core i9-14900KF, x64 RyuJIT). Comparing idiomatic hand-written `TryGetValue` + indexer code against `DictionaryEntry`:
 
 | Scenario | Key / Value | Hand-Written | `DictionaryEntry` | vs. Hand-Written | Allocated |
 |---|---|---:|---:|---:|---:|
-| **Get-or-Add (Hit)** | `int, int` | `1.81 ns` | **`1.85 ns`** | ~1.0x (parity) | `0 B` |
-| **Get-or-Add (Miss)** | `int, int` | `5.17 ns` | **`3.72 ns`** | **1.39x faster** | `0 B` |
-| **Get-or-Default (Hit)** | `string, int` | `4.10 ns` | **`4.16 ns`** | ~1.0x (parity) | `0 B` |
-| **Get-or-Default (Miss)** | `string, string?` | `11.80 ns` | **`7.19 ns`** | **1.64x faster** | `0 B` |
-| **Stateful Factory (Miss)** | `string, int` | `11.95 ns` | **`9.66 ns`** | **1.24x faster** | `0 B` |
-| **Update Existing (Hit)** | `string, int` | `8.13 ns` | **`4.14 ns`** | **1.96x faster** | `0 B` |
-| **Increment Counter (Hit)** | `string, int` | `8.94 ns` | **`4.57 ns`** | **1.96x faster** | `0 B` |
-| **Increment Counter (Miss)** | `string, int` | `11.57 ns` | **`8.63 ns`** | **1.34x faster** | `0 B` |
-| **Union `switch` Upsert (Hit)** | `string, int` | `8.97 ns` | **`5.12 ns`** | **1.75x faster** | `0 B` |
-| **Union `switch` Upsert (Miss)** | `string, int` | `11.73 ns` | **`8.60 ns`** | **1.36x faster** | `0 B` |
-| **Span Lookup (Hit)** | `ReadOnlySpan<char>` | `18.82 ns` (`ToString`) | **`8.92 ns`** | **2.11x faster** | **`0 B`** vs `53 B` |
+| **Get-or-Add (Hit)** | `int, int` | `1.244 ns` | `1.360 ns` | ~9% slower | `0 B` |
+| **Get-or-Add (Miss)** | `int, int` | `3.473 ns` | **`2.700 ns`** | **1.29x faster** | `0 B` |
+| **Get-or-Default (Hit)** | `string, int` | `2.968 ns` | `3.254 ns` | ~10% slower | `0 B` |
+| **Get-or-Default (Miss)** | `string, string?` | `7.203 ns` | **`4.875 ns`** | **1.48x faster** | `0 B` |
+| **Stateful Factory (Miss)** | `string, int` | `8.095 ns` | **`6.664 ns`** | **1.21x faster** | `0 B` |
+| **Update Existing via `ValueRef` (Hit)** | `string, int` | `5.899 ns` | **`2.966 ns`** | **1.99x faster** | `0 B` |
+| **Increment Counter via `AndModify` (Hit)** | `string, int` | `5.904 ns` | **`3.674 ns`** | **1.61x faster** | `0 B` |
+| **Increment Counter via `AndModify` (Miss)** | `string, int` | `7.694 ns` | **`5.834 ns`** | **1.32x faster** | `0 B` |
+| **Union `switch` Upsert (Hit)** | `string, int` | `6.654 ns` | **`3.558 ns`** | **1.87x faster** | `0 B` |
+| **Union `switch` Upsert (Miss)** | `string, int` | `7.556 ns` | **`6.217 ns`** | **1.22x faster** | `0 B` |
+| **Direct Span Lookup (Hit)** | `ReadOnlySpan<char>` | `19.914 ns` (`ToString`) | **`6.567 ns`** | **3.03x faster** | **`0 B`** vs `53 B` |
+
+Results depend on the workload and machine; the full suite also includes scenarios where built-in dictionary operations are faster.
 
 Why is `DictionaryEntry` faster on misses and mutations?
 - **Single key hash & bucket probe:** `TryGetValue` followed by `dict[key] = value` hashes the key and walks the bucket chain twice. `Entry` caches the slot reference on hits and the computed hash code on misses.
