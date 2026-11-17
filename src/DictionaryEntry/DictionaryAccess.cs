@@ -26,6 +26,18 @@ internal static class DictionaryAccess
     internal static bool HasKnownLocation(ulong location) => (int)location >= 0;
 }
 
+internal static class StringSpanComparerCache
+{
+    public static readonly IEqualityComparer<string>? Ordinal =
+        DictionaryAccess<string, byte>.GetComparer(new Dictionary<string, byte>(StringComparer.Ordinal));
+
+    public static readonly IEqualityComparer<string>? Default =
+        DictionaryAccess<string, byte>.GetComparer(new Dictionary<string, byte>());
+
+    public static readonly IEqualityComparer<string>? OrdinalIgnoreCase =
+        DictionaryAccess<string, byte>.GetComparer(new Dictionary<string, byte>(StringComparer.OrdinalIgnoreCase));
+}
+
 /// <summary>
 /// Provides direct, zero-overhead access to <see cref="Dictionary{TKey, TValue}"/> internals via
 /// <see cref="UnsafeAccessorAttribute"/> so vacant insertions reuse the already-computed hash code
@@ -226,12 +238,11 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ref TValue FindAlternateValue<TAlternateKey>(
-        Dictionary<TKey, TValue>.AlternateLookup<TAlternateKey> lookup,
+        Dictionary<TKey, TValue> dictionary,
         TAlternateKey key,
         out ulong packedState)
         where TAlternateKey : notnull, allows ref struct
     {
-        Dictionary<TKey, TValue> dictionary = lookup.Dictionary;
         if (GetBuckets(dictionary) is null)
         {
             packedState = 0;
@@ -291,22 +302,21 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
             return ref AddStaleOrUninitialized(dictionary, key, overwriteIfStale);
         }
 
-        return ref InsertWithKnownHash(dictionary, key, (uint)hashAndVersion);
+        return ref InsertWithKnownHash(dictionary, key, (uint)hashAndVersion, snapshotVersion);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static ref TValue AddAlternateVacant<TAlternateKey>(
-        Dictionary<TKey, TValue>.AlternateLookup<TAlternateKey> lookup,
+        Dictionary<TKey, TValue> dictionary,
         TAlternateKey key,
         ulong hashAndVersion,
         bool overwriteIfStale = false)
         where TAlternateKey : notnull, allows ref struct
     {
-        Dictionary<TKey, TValue> dictionary = lookup.Dictionary;
         int snapshotVersion = (int)(hashAndVersion >> 32);
         if (GetBuckets(dictionary) is null || GetVersion(dictionary) != snapshotVersion)
         {
-            return ref AddAlternateStaleOrUninitialized(lookup, key, overwriteIfStale);
+            return ref AddAlternateStaleOrUninitialized(dictionary, key, overwriteIfStale);
         }
 
         var comparer = Unsafe.As<IAlternateEqualityComparer<TAlternateKey, TKey>>(GetComparer(dictionary)!);
@@ -316,14 +326,15 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
             DictionaryThrowHelper.ThrowKeyNull();
         }
 
-        return ref InsertWithKnownHash(dictionary, actualKey, (uint)hashAndVersion);
+        return ref InsertWithKnownHash(dictionary, actualKey, (uint)hashAndVersion, snapshotVersion);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private static ref TValue InsertWithKnownHash(
         Dictionary<TKey, TValue> dictionary,
         TKey key,
-        uint hashCode)
+        uint hashCode,
+        int snapshotVersion)
     {
         RawEntry[] entries = GetEntries(dictionary)!;
         int count = GetCount(dictionary);
@@ -333,13 +344,12 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
         {
             ref int bucket = ref GetBucket(dictionary, hashCode);
             GetCount(dictionary) = count + 1;
-            ref RawEntry entry = ref entries[count];
+            ref RawEntry entry = ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(entries), (nint)(uint)count);
             entry.hashCode = hashCode;
             entry.next = bucket - 1;
             entry.key = key;
-            entry.value = default!;
             bucket = count + 1;
-            GetVersion(dictionary)++;
+            GetVersion(dictionary) = snapshotVersion + 1;
             return ref entry.value;
         }
 
@@ -403,15 +413,15 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static ref TValue AddAlternateStaleOrUninitialized<TAlternateKey>(
-        Dictionary<TKey, TValue>.AlternateLookup<TAlternateKey> lookup,
+        Dictionary<TKey, TValue> dictionary,
         TAlternateKey key,
         bool overwriteIfStale)
         where TAlternateKey : notnull, allows ref struct
     {
-        ref var slot = ref CollectionsMarshal.GetValueRefOrAddDefault(lookup, key, out var existed);
+        ref var slot = ref CollectionsMarshal.GetValueRefOrAddDefault(dictionary.GetAlternateLookup<TAlternateKey>(), key, out var existed);
         if (existed && !overwriteIfStale)
         {
-            throw new ArgumentException($"An item with the same key has already been added. Key: {DictionaryThrowHelper.FormatAlternateKey(lookup.Dictionary, key)}");
+            throw new ArgumentException($"An item with the same key has already been added. Key: {DictionaryThrowHelper.FormatAlternateKey(dictionary, key)}");
         }
 
         return ref slot!;

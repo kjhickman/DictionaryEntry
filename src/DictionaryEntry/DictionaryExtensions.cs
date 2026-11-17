@@ -62,7 +62,7 @@ public static class DictionaryExtensions
         TAlternateKey key)
         where TKey : notnull
         where TAlternateKey : notnull, allows ref struct =>
-        new(lookup, key);
+        new(lookup.Dictionary, key);
 
     /// <summary>
     /// Gets an entry for the specified <see cref="ReadOnlySpan{T}"/> of <see cref="char"/> key in a
@@ -101,6 +101,20 @@ public static class DictionaryExtensions
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public static AlternateEntry<string, TValue, ReadOnlySpan<char>> Entry<TValue>(
         this Dictionary<string, TValue> dictionary,
-        ReadOnlySpan<char> key) =>
-        new(dictionary.GetAlternateLookup<ReadOnlySpan<char>>(), key);
+        ReadOnlySpan<char> key)
+    {
+        var comparer = DictionaryAccess<string, TValue>.GetComparer(dictionary);
+        if (!ReferenceEquals(comparer, StringSpanComparerCache.Ordinal) &&
+            !ReferenceEquals(comparer, StringSpanComparerCache.Default) &&
+            !ReferenceEquals(comparer, StringSpanComparerCache.OrdinalIgnoreCase))
+        {
+            ValidateSpanLookup(dictionary);
+        }
+
+        return new AlternateEntry<string, TValue, ReadOnlySpan<char>>(dictionary, key);
+    }
+
+    [MethodImpl(MethodImplOptions.NoInlining)]
+    private static void ValidateSpanLookup<TValue>(Dictionary<string, TValue> dictionary) =>
+        _ = dictionary.GetAlternateLookup<ReadOnlySpan<char>>();
 }

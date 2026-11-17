@@ -13,7 +13,7 @@ public readonly ref struct AlternateOccupiedEntry<TKey, TValue, TAlternateKey>
     where TKey : notnull
     where TAlternateKey : notnull, allows ref struct
 {
-    private readonly Dictionary<TKey, TValue>.AlternateLookup<TAlternateKey> _lookup;
+    private readonly Dictionary<TKey, TValue> _dictionary;
     private readonly TAlternateKey _key;
     private readonly TValue _value;
     private readonly ulong _location;
@@ -21,25 +21,25 @@ public readonly ref struct AlternateOccupiedEntry<TKey, TValue, TAlternateKey>
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal AlternateOccupiedEntry(
-        Dictionary<TKey, TValue>.AlternateLookup<TAlternateKey> lookup,
+        Dictionary<TKey, TValue> dictionary,
         TAlternateKey key,
         TValue value,
         ulong location)
     {
-        _lookup = lookup;
+        _dictionary = dictionary;
         _key = key;
         _value = value;
         _location = location;
-        _stamp = DictionaryAccess<TKey, TValue>.GetOccupiedStamp(lookup.Dictionary);
+        _stamp = DictionaryAccess<TKey, TValue>.GetOccupiedStamp(dictionary);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal AlternateOccupiedEntry(
-        Dictionary<TKey, TValue>.AlternateLookup<TAlternateKey> lookup,
+        Dictionary<TKey, TValue> dictionary,
         TAlternateKey key,
         TValue value)
     {
-        _lookup = lookup;
+        _dictionary = dictionary;
         _key = key;
         _value = value;
         _location = DictionaryAccess.UnknownLocation;
@@ -83,25 +83,24 @@ public readonly ref struct AlternateOccupiedEntry<TKey, TValue, TAlternateKey>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public TValue Insert(TValue newValue)
     {
-        var dictionary = _lookup.Dictionary;
-        DictionaryThrowHelper.ThrowIfDefault(dictionary);
+        DictionaryThrowHelper.ThrowIfDefault(_dictionary);
 
-        if (DictionaryAccess<TKey, TValue>.GetOccupiedStamp(dictionary) == _stamp && DictionaryAccess.HasKnownLocation(_location))
+        if (DictionaryAccess<TKey, TValue>.GetOccupiedStamp(_dictionary) == _stamp && DictionaryAccess.HasKnownLocation(_location))
         {
-            DictionaryAccess<TKey, TValue>.WriteOccupiedValue(dictionary, _location, newValue);
+            DictionaryAccess<TKey, TValue>.WriteOccupiedValue(_dictionary, _location, newValue);
             return newValue;
         }
 
-        return InsertFallback(_lookup, _key, newValue);
+        return InsertFallback(_dictionary, _key, newValue);
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static TValue InsertFallback(
-        Dictionary<TKey, TValue>.AlternateLookup<TAlternateKey> lookup,
+        Dictionary<TKey, TValue> dictionary,
         TAlternateKey key,
         TValue newValue)
     {
-        lookup[key] = newValue;
+        dictionary.GetAlternateLookup<TAlternateKey>()[key] = newValue;
         return newValue;
     }
 
@@ -129,26 +128,25 @@ public readonly ref struct AlternateOccupiedEntry<TKey, TValue, TAlternateKey>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public (TKey Key, TValue Value) RemoveEntry()
     {
-        var dictionary = _lookup.Dictionary;
-        DictionaryThrowHelper.ThrowIfDefault(dictionary);
+        DictionaryThrowHelper.ThrowIfDefault(_dictionary);
 
-        if (DictionaryAccess<TKey, TValue>.GetOccupiedStamp(dictionary) == _stamp && DictionaryAccess.HasKnownLocation(_location))
+        if (DictionaryAccess<TKey, TValue>.GetOccupiedStamp(_dictionary) == _stamp && DictionaryAccess.HasKnownLocation(_location))
         {
-            var value = DictionaryAccess<TKey, TValue>.RemoveOccupied(dictionary, _location, out var actualKey);
+            var value = DictionaryAccess<TKey, TValue>.RemoveOccupied(_dictionary, _location, out var actualKey);
             return (actualKey, value);
         }
 
-        return RemoveEntryFallback(_lookup, _key);
+        return RemoveEntryFallback(_dictionary, _key);
     }
 
     [MethodImpl(MethodImplOptions.NoInlining)]
     private static (TKey Key, TValue Value) RemoveEntryFallback(
-        Dictionary<TKey, TValue>.AlternateLookup<TAlternateKey> lookup,
+        Dictionary<TKey, TValue> dictionary,
         TAlternateKey key)
     {
-        if (!lookup.Remove(key, out var actualKey, out var value))
+        if (!dictionary.GetAlternateLookup<TAlternateKey>().Remove(key, out var actualKey, out var value))
         {
-            DictionaryThrowHelper.ThrowAlternateVacantOrDefault<TKey, TValue, TAlternateKey>(lookup.Dictionary, key);
+            DictionaryThrowHelper.ThrowAlternateVacantOrDefault(dictionary, key);
         }
 
         return (actualKey, value);

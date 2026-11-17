@@ -29,7 +29,8 @@ public ref struct Entry<TKey, TValue> : Entry<TKey, TValue>.IUnionMembers
     {
         _dictionary = dictionary;
         _key = key;
-        _valueRef = ref DictionaryAccess<TKey, TValue>.FindValue(dictionary, key, out _packedState);
+        _valueRef = ref DictionaryAccess<TKey, TValue>.FindValue(dictionary, key, out ulong packedState);
+        _packedState = packedState;
     }
 
     /// <summary>

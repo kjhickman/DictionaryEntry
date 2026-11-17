@@ -13,17 +13,17 @@ public readonly ref struct AlternateVacantEntry<TKey, TValue, TAlternateKey>
     where TKey : notnull
     where TAlternateKey : notnull, allows ref struct
 {
-    private readonly Dictionary<TKey, TValue>.AlternateLookup<TAlternateKey> _lookup;
+    private readonly Dictionary<TKey, TValue> _dictionary;
     private readonly TAlternateKey _key;
     private readonly ulong _hashAndVersion;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal AlternateVacantEntry(
-        Dictionary<TKey, TValue>.AlternateLookup<TAlternateKey> lookup,
+        Dictionary<TKey, TValue> dictionary,
         TAlternateKey key,
         ulong hashAndVersion)
     {
-        _lookup = lookup;
+        _dictionary = dictionary;
         _key = key;
         _hashAndVersion = hashAndVersion;
     }
@@ -46,9 +46,9 @@ public readonly ref struct AlternateVacantEntry<TKey, TValue, TAlternateKey>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     public TValue Insert(TValue value)
     {
-        DictionaryThrowHelper.ThrowIfDefault(_lookup.Dictionary);
+        DictionaryThrowHelper.ThrowIfDefault(_dictionary);
 
-        ref TValue slot = ref DictionaryAccess<TKey, TValue>.AddAlternateVacant(_lookup, _key, _hashAndVersion, overwriteIfStale: true);
+        ref TValue slot = ref DictionaryAccess<TKey, TValue>.AddAlternateVacant(_dictionary, _key, _hashAndVersion, overwriteIfStale: true);
         slot = value;
         return value;
     }
@@ -66,6 +66,6 @@ public readonly ref struct AlternateVacantEntry<TKey, TValue, TAlternateKey>
     public AlternateOccupiedEntry<TKey, TValue, TAlternateKey> InsertEntry(TValue value)
     {
         Insert(value);
-        return new AlternateOccupiedEntry<TKey, TValue, TAlternateKey>(_lookup, _key, value);
+        return new AlternateOccupiedEntry<TKey, TValue, TAlternateKey>(_dictionary, _key, value);
     }
 }
