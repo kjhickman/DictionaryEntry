@@ -1,0 +1,8 @@
+- name: Home
+  href: index.md
+- name: API Reference
+  href: api/
+- name: Benchmarks
+  href: benchmarks.md
+- name: GitHub
+  href: https://github.com/kjhickman/DictionaryEntry
