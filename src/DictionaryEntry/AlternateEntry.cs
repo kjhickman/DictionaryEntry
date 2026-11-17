@@ -27,14 +27,17 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
     private ref TValue _valueRef;
     // Occupied: (prevOrBucket << 32) | entryIndex; Vacant: (version << 32) | hashCode; Transitioned: DictionaryAccess.UnknownLocation.
     private ulong _packedState;
+    // Vacant only: the empty bucket found by the lookup (null if the probed chain was non-empty), reused on insertion.
+    private ref int _bucket;
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     internal AlternateEntry(Dictionary<TKey, TValue> dictionary, TAlternateKey key)
     {
         _dictionary = dictionary;
         _key = key;
-        _valueRef = ref DictionaryAccess<TKey, TValue>.FindAlternateValue(dictionary, key, out ulong packedState);
+        _valueRef = ref DictionaryAccess<TKey, TValue>.FindAlternateValue(dictionary, key, out ulong packedState, out BucketRef bucket);
         _packedState = packedState;
+        _bucket = ref bucket.Value;
     }
 
     /// <summary>
@@ -314,7 +317,7 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
 
         DictionaryThrowHelper.ThrowIfDefault(_dictionary);
 
-        _valueRef = ref DictionaryAccess<TKey, TValue>.AddAlternateVacant(_dictionary, _key, _packedState);
+        _valueRef = ref DictionaryAccess<TKey, TValue>.AddAlternateVacant(_dictionary, _key, _packedState, ref _bucket);
         _packedState = DictionaryAccess.UnknownLocation;
         return ref _valueRef;
     }
@@ -343,7 +346,7 @@ public ref struct AlternateEntry<TKey, TValue, TAlternateKey>
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
     private ref TValue InsertVacant(TValue value)
     {
-        _valueRef = ref DictionaryAccess<TKey, TValue>.AddAlternateVacant(_dictionary, _key, _packedState);
+        _valueRef = ref DictionaryAccess<TKey, TValue>.AddAlternateVacant(_dictionary, _key, _packedState, ref _bucket);
         _valueRef = value;
         _packedState = DictionaryAccess.UnknownLocation;
         return ref _valueRef;

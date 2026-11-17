@@ -26,6 +26,15 @@ internal static class DictionaryAccess
     internal static bool HasKnownLocation(ulong location) => (int)location >= 0;
 }
 
+/// <summary>Carries the bucket slot located during a vacant lookup so insertion does not recompute it.</summary>
+internal ref struct BucketRef
+{
+    public ref int Value;
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public BucketRef(ref int value) => Value = ref value;
+}
+
 internal static class StringSpanComparerCache
 {
     public static readonly IEqualityComparer<string>? Ordinal =
@@ -153,7 +162,8 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
     public static ref TValue FindValue(
         Dictionary<TKey, TValue> dictionary,
         TKey key,
-        out ulong packedState)
+        out ulong packedState,
+        out BucketRef bucketRef)
     {
         if (key is null)
         {
@@ -162,7 +172,9 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
 
         if (GetBuckets(dictionary) is null)
         {
-            packedState = 0;
+            // An impossible snapshot version forces AddVacant onto the BCL path, which initializes the dictionary.
+            packedState = (ulong)~(uint)GetVersion(dictionary) << 32;
+            bucketRef = default;
             return ref Unsafe.NullRef<TValue>();
         }
 
@@ -171,26 +183,39 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
         if (typeof(TKey).IsValueType && comparer is null)
         {
             hashCode = (uint)EqualityComparer<TKey>.Default.GetHashCode(key);
-            int i = GetBucket(dictionary, hashCode) - 1;
+            ref int bucket = ref GetBucket(dictionary, hashCode);
+            int i = bucket - 1;
             RawEntry[] entries = GetEntries(dictionary)!;
-            int last = -1;
-            uint collisionCount = 0;
-            while ((uint)i < (uint)entries.Length)
+            if ((uint)i < (uint)entries.Length)
             {
-                ref RawEntry entry = ref entries[i];
-                if (entry.hashCode == hashCode && EqualityComparer<TKey>.Default.Equals(entry.key, key))
+                int last = -1;
+                uint collisionCount = 0;
+                do
                 {
-                    packedState = ((ulong)(uint)last << 32) | (uint)i;
-                    return ref entry.value;
-                }
+                    ref RawEntry entry = ref entries[i];
+                    if (entry.hashCode == hashCode && EqualityComparer<TKey>.Default.Equals(entry.key, key))
+                    {
+                        packedState = ((ulong)(uint)last << 32) | (uint)i;
+                        bucketRef = default;
+                        return ref entry.value;
+                    }
 
-                last = i;
-                i = entry.next;
-                collisionCount++;
-                if (collisionCount > (uint)entries.Length)
-                {
-                    DictionaryThrowHelper.ThrowConcurrentOperations();
-                }
+                    last = i;
+                    i = entry.next;
+                    collisionCount++;
+                    if (collisionCount > (uint)entries.Length)
+                    {
+                        DictionaryThrowHelper.ThrowConcurrentOperations();
+                    }
+                } while ((uint)i < (uint)entries.Length);
+
+                bucketRef = default;
+            }
+            else
+            {
+                // Empty bucket: remember it so a vacant insertion can skip recomputing it.
+                // (Assigned only at exits so the ref is never live across the probe loop.)
+                bucketRef = new BucketRef(ref bucket);
             }
         }
         else
@@ -211,6 +236,7 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
                     if (entry.hashCode == hashCode && comparer.Equals(entry.key, key))
                     {
                         packedState = ((ulong)(uint)prevOrBucket << 32) | (uint)i;
+                        bucketRef = default;
                         return ref entry.value;
                     }
 
@@ -227,8 +253,15 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
                 {
                     // Force AddVacant onto the BCL path so NonRandomizedStringEqualityComparer can upgrade to randomized hashing.
                     packedState = ((ulong)~(uint)GetVersion(dictionary) << 32) | hashCode;
+                    bucketRef = default;
                     return ref Unsafe.NullRef<TValue>();
                 }
+
+                bucketRef = default;
+            }
+            else
+            {
+                bucketRef = new BucketRef(ref bucket);
             }
         }
 
@@ -240,12 +273,15 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
     public static ref TValue FindAlternateValue<TAlternateKey>(
         Dictionary<TKey, TValue> dictionary,
         TAlternateKey key,
-        out ulong packedState)
+        out ulong packedState,
+        out BucketRef bucketRef)
         where TAlternateKey : notnull, allows ref struct
     {
         if (GetBuckets(dictionary) is null)
         {
-            packedState = 0;
+            // An impossible snapshot version forces AddAlternateVacant onto the BCL path, which initializes the dictionary.
+            packedState = (ulong)~(uint)GetVersion(dictionary) << 32;
+            bucketRef = default;
             return ref Unsafe.NullRef<TValue>();
         }
 
@@ -266,6 +302,7 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
                 if (entry.hashCode == hashCode && comparer.Equals(key, entry.key))
                 {
                     packedState = ((ulong)(uint)prevOrBucket << 32) | (uint)i;
+                    bucketRef = default;
                     return ref entry.value;
                 }
 
@@ -281,8 +318,15 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
             if (typeof(TKey) == typeof(string) && collisionCount > DictionaryAccess.HashCollisionThreshold)
             {
                 packedState = ((ulong)~(uint)GetVersion(dictionary) << 32) | hashCode;
+                bucketRef = default;
                 return ref Unsafe.NullRef<TValue>();
             }
+
+            bucketRef = default;
+        }
+        else
+        {
+            bucketRef = new BucketRef(ref bucket);
         }
 
         packedState = ((ulong)(uint)GetVersion(dictionary) << 32) | hashCode;
@@ -297,12 +341,33 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
         bool overwriteIfStale = false)
     {
         int snapshotVersion = (int)(hashAndVersion >> 32);
-        if (GetBuckets(dictionary) is null || GetVersion(dictionary) != snapshotVersion)
+        if (GetVersion(dictionary) != snapshotVersion)
         {
             return ref AddStaleOrUninitialized(dictionary, key, overwriteIfStale);
         }
 
-        return ref InsertWithKnownHash(dictionary, key, (uint)hashAndVersion, snapshotVersion);
+        return ref InsertWithKnownHash(dictionary, key, (uint)hashAndVersion, snapshotVersion, ref Unsafe.NullRef<int>());
+    }
+
+    /// <summary>
+    /// Inserts using the empty bucket located by <see cref="FindValue"/> (or a null ref when the probed chain was non-empty).
+    /// An unchanged <c>_version</c> guarantees <c>_buckets</c> was not reallocated (initialize/resize/trim all increment it),
+    /// so the bucket is still valid.
+    /// </summary>
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ref TValue AddVacant(
+        Dictionary<TKey, TValue> dictionary,
+        TKey key,
+        ulong hashAndVersion,
+        ref int bucket)
+    {
+        int snapshotVersion = (int)(hashAndVersion >> 32);
+        if (GetVersion(dictionary) != snapshotVersion)
+        {
+            return ref AddStaleOrUninitialized(dictionary, key, overwriteIfStale: false);
+        }
+
+        return ref InsertWithKnownHash(dictionary, key, (uint)hashAndVersion, snapshotVersion, ref bucket);
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -314,11 +379,42 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
         where TAlternateKey : notnull, allows ref struct
     {
         int snapshotVersion = (int)(hashAndVersion >> 32);
-        if (GetBuckets(dictionary) is null || GetVersion(dictionary) != snapshotVersion)
+        if (GetVersion(dictionary) != snapshotVersion)
         {
             return ref AddAlternateStaleOrUninitialized(dictionary, key, overwriteIfStale);
         }
 
+        TKey actualKey = CreateAlternateKey(dictionary, key);
+        return ref InsertWithKnownHash(dictionary, actualKey, (uint)hashAndVersion, snapshotVersion, ref Unsafe.NullRef<int>());
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    public static ref TValue AddAlternateVacant<TAlternateKey>(
+        Dictionary<TKey, TValue> dictionary,
+        TAlternateKey key,
+        ulong hashAndVersion,
+        ref int bucket)
+        where TAlternateKey : notnull, allows ref struct
+    {
+        int snapshotVersion = (int)(hashAndVersion >> 32);
+        if (GetVersion(dictionary) != snapshotVersion)
+        {
+            return ref AddAlternateStaleOrUninitialized(dictionary, key, overwriteIfStale: false);
+        }
+
+        TKey actualKey = CreateAlternateKey(dictionary, key);
+        if (GetVersion(dictionary) != snapshotVersion)
+        {
+            return ref AddStaleOrUninitialized(dictionary, actualKey, overwriteIfStale: false);
+        }
+
+        return ref InsertWithKnownHash(dictionary, actualKey, (uint)hashAndVersion, snapshotVersion, ref bucket);
+    }
+
+    [MethodImpl(MethodImplOptions.AggressiveInlining)]
+    private static TKey CreateAlternateKey<TAlternateKey>(Dictionary<TKey, TValue> dictionary, TAlternateKey key)
+        where TAlternateKey : notnull, allows ref struct
+    {
         var comparer = Unsafe.As<IAlternateEqualityComparer<TAlternateKey, TKey>>(GetComparer(dictionary)!);
         TKey actualKey = comparer.Create(key);
         if (actualKey is null)
@@ -326,7 +422,7 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
             DictionaryThrowHelper.ThrowKeyNull();
         }
 
-        return ref InsertWithKnownHash(dictionary, actualKey, (uint)hashAndVersion, snapshotVersion);
+        return actualKey;
     }
 
     [MethodImpl(MethodImplOptions.AggressiveInlining)]
@@ -334,7 +430,8 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
         Dictionary<TKey, TValue> dictionary,
         TKey key,
         uint hashCode,
-        int snapshotVersion)
+        int snapshotVersion,
+        ref int knownBucket)
     {
         RawEntry[] entries = GetEntries(dictionary)!;
         int count = GetCount(dictionary);
@@ -342,7 +439,7 @@ internal static class DictionaryAccess<TKey, TValue> where TKey : notnull
         // Fast path: no free-list entries and spare capacity (collision threshold was already verified during FindValue).
         if (GetFreeCount(dictionary) == 0 && (uint)count < (uint)entries.Length)
         {
-            ref int bucket = ref GetBucket(dictionary, hashCode);
+            ref int bucket = ref Unsafe.IsNullRef(ref knownBucket) ? ref GetBucket(dictionary, hashCode) : ref knownBucket;
             GetCount(dictionary) = count + 1;
             ref RawEntry entry = ref Unsafe.Add(ref MemoryMarshal.GetArrayDataReference(entries), (nint)(uint)count);
             entry.hashCode = hashCode;
