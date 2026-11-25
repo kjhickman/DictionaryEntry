@@ -28,6 +28,9 @@ public class LayoutParityTests
             TypeSample.Create("alpha", "beta"),
             TypeSample.Create(new PackedKeyStruct(1, 100), new PackedKeyStruct(2, 200)),
             TypeSample.Create(new RefBearingKeyStruct(1, "k1"), new RefBearingKeyStruct(2, "k2")),
+#if NET11_0_OR_GREATER
+            TypeSample.Create(new ExtendedCStruct(1, 0x123456789ABCDEF0L, 7), new ExtendedCStruct(2, 0x0FEDCBA987654321L, 9)),
+#endif
         ];
 
         ReadOnlySpan<TypeSample> values =
@@ -42,6 +45,9 @@ public class LayoutParityTests
             TypeSample.Create(Vector128.Create(1.5, 2.5), Vector128.Create(3.5, 4.5)),
             TypeSample.Create(Vector256.Create(10L, 20L, 30L, 40L), Vector256.Create(50L, 60L, 70L, 80L)),
             TypeSample.Create(new ExplicitUnionStruct { LongValue = 0x1122334455667788L }, new ExplicitUnionStruct { LongValue = 0x99AABBCCL }),
+#if NET11_0_OR_GREATER
+            TypeSample.Create(new ExtendedCUnionStruct { LongValue = 0x1122334455667788L }, new ExtendedCUnionStruct { LongValue = 0x99AABBCCL }),
+#endif
             TypeSample.Create(new PackedOddStruct(3, 0x123456789ABCDEF0L), new PackedOddStruct(4, 0x0FEDCBA987654321L)),
             TypeSample.Create(
                 new MixedGcStruct(1, "v1", 99.5m, SampleIntArray, 7),
@@ -117,4 +123,17 @@ public class LayoutParityTests
         decimal Amount,
         object? Extra,
         short Tail);
+
+#if NET11_0_OR_GREATER
+    [ExtendedLayout(ExtendedLayoutKind.CStruct)]
+    private readonly record struct ExtendedCStruct(byte Tag, long Payload, short Tail);
+
+    [ExtendedLayout(ExtendedLayoutKind.CUnion)]
+    private record struct ExtendedCUnionStruct
+    {
+        public long LongValue;
+        public int LowInt;
+        public double DoubleValue;
+    }
+#endif
 }
